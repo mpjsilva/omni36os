@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Sab — diagnóstico e ajustes do R36S. Só stdlib.
+"""Omni36OS — diagnóstico e ajustes do R36S. Só stdlib.
 
-Uso: sab.py <ferramenta> ['{"arg": valor}']   (sem argumentos lista as ferramentas)
+Uso: omni.py <ferramenta> ['{"arg": valor}']   (sem argumentos lista as ferramentas)
 """
 import configparser
 import glob
@@ -200,7 +200,7 @@ def test_microsd_speed(args):
     target = args.get("path", "/roms")
     if not any(target in m for m in mmc_mounts().values()):
         return f"{target} não é uma partição de cartão SD."
-    test_file = os.path.join(target, ".sab_speedtest.bin")
+    test_file = os.path.join(target, ".omni_speedtest.bin")
     size_mb = 64
     block = os.urandom(1024 * 1024)
     try:
@@ -285,21 +285,21 @@ def get_cpu_governors(_args=None):
     return read_text(f"{CPUFREQ}/scaling_available_governors", "").split()
 
 
-# O ES põe a CPU em "performance" (perfmax) ao abrir qualquer port, a Sab
+# O ES põe a CPU em "performance" (perfmax) ao abrir qualquer port, o Omni36OS
 # inclusive, e o perfnorm volta o modo quando o port fecha. O dArkOSen guarda
 # o modo e o limite de frequência em /etc/cpu-settings.conf (o CPU Manager e o
 # R36 Tuner usam o mesmo arquivo; o cpu-governor.service o aplica no boot).
-# A Sab grava ali também e faz o perfnorm ler dali: um lugar só para tudo.
+# O Omni36OS grava ali também e faz o perfnorm ler dali: um lugar só para tudo.
 CPU_CONF = "/etc/cpu-settings.conf"
 GPU_CONF = "/etc/gpu-settings.conf"
 DMC_CONF = "/etc/dmc-settings.conf"
-GOV_PREF = f"{HOME}/.config/sab/governor"   # versões até 1.5.0 (migrado)
+GOV_PREF = f"{HOME}/.config/omni36os/governor"   # versões até 1.5.0 (migrado)
 PERFNORM = "/usr/local/bin/perfnorm"
 PERFNORM_ORIG = "echo ondemand > /sys/devices/system/cpu/cpufreq/policy0/scaling_governor"
-PERFNORM_OLD = ('echo "$(cat /home/ark/.config/sab/governor 2>/dev/null || echo ondemand)" '
-                "> /sys/devices/system/cpu/cpufreq/policy0/scaling_governor  # Sab")
+PERFNORM_OLD = ('echo "$(cat /home/ark/.config/omni36os/governor 2>/dev/null || echo ondemand)" '
+                "> /sys/devices/system/cpu/cpufreq/policy0/scaling_governor  # Omni36OS")
 PERFNORM_SAB = ('echo "$(. /etc/cpu-settings.conf 2>/dev/null; echo ${GOV:-ondemand})" '
-                "> /sys/devices/system/cpu/cpufreq/policy0/scaling_governor  # Sab")
+                "> /sys/devices/system/cpu/cpufreq/policy0/scaling_governor  # Omni36OS")
 GPU_DEV = "/sys/class/devfreq/ff400000.gpu"
 CPU_SAFE_MHZ = 1296      # padrão do dArkOSen; acima disso é overclock
 OC_MAX_TEMP = 70         # °C: não libera overclock acima disso (1º ponto de corte do kernel)
@@ -341,21 +341,21 @@ def get_preferred_governor(_args=None):
 
 
 def patch_perfnorm():
-    """Faz o perfnorm ler o modo de /etc/cpu-settings.conf (backup em perfnorm.sab-bak)."""
+    """Faz o perfnorm ler o modo de /etc/cpu-settings.conf (backup em perfnorm.omni36os-bak)."""
     text = (read(PERFNORM) or b"").decode()
     if PERFNORM_SAB in text:
         return True
     old = PERFNORM_OLD if PERFNORM_OLD in text else PERFNORM_ORIG if PERFNORM_ORIG in text else None
     if not old:
         return False
-    if not os.path.exists(PERFNORM + ".sab-bak"):
-        shutil.copy2(PERFNORM, PERFNORM + ".sab-bak")
+    if not os.path.exists(PERFNORM + ".omni36os-bak"):
+        shutil.copy2(PERFNORM, PERFNORM + ".omni36os-bak")
     write_text(PERFNORM, text.replace(old, PERFNORM_SAB, 1))
     return True
 
 
 def migrate_cpu_settings():
-    """Versões antigas da Sab guardavam o modo em ~/.config/sab/governor."""
+    """Versões antigas do Omni36OS guardavam o modo em ~/.config/omni36os/governor."""
     if os.path.exists(GOV_PREF):
         if "GOV" not in read_conf(CPU_CONF):
             write_conf(CPU_CONF, GOV=read_text(GOV_PREF))
@@ -375,9 +375,9 @@ def set_preferred_governor(args):
 
 
 def relax_clocks(_args=None):
-    """O ES roda o perfmax ao abrir qualquer port, a Sab inclusive: CPU, GPU e
-    RAM ficam travadas no máximo enquanto ela está aberta, só esquentando. Um
-    menu não precisa disso; o perfnorm volta o modo escolhido quando a Sab fecha."""
+    """O ES roda o perfmax ao abrir qualquer port, o Omni36OS inclusive: CPU, GPU e
+    RAM ficam travadas no máximo enquanto ele está aberto, só esquentando. Um
+    menu não precisa disso; o perfnorm volta o modo escolhido quando o Omni36OS fecha."""
     for path, gov in ((f"{CPUFREQ}/scaling_governor", "ondemand"),
                       (f"{GPU_DEV}/governor", "simple_ondemand"),
                       ("/sys/class/devfreq/dmc/governor", "dmc_ondemand")):
@@ -440,7 +440,7 @@ def zram_facts(_args=None):
 
 # --- Serviços do sistema ---
 
-# Falhas conhecidas: o que significam e se a Sab sabe consertar.
+# Falhas conhecidas: o que significam e se o Omni36OS sabe consertar.
 KNOWN_FAILS = {
     "dmc-governor.service": ("O ajuste de frequência da RAM falha no boot (configuração vazia).", "fix_dmc"),
     "systemd-remount-fs.service": ("Falha conhecida e inofensiva do dArkOSen: o sistema já monta o "
@@ -589,10 +589,10 @@ def set_led(args):
 
 # --- Teste de ports ---
 
-SAB_DIR = os.path.dirname(os.path.abspath(__file__))
+OMNI_DIR = os.path.dirname(os.path.abspath(__file__))
 PORT_DIRS = ("/roms2/ports", "/roms/ports")
-PORT_RESULTS = os.path.join(SAB_DIR, "logs", "resultados.txt")
-TEST_RESULT = "/tmp/sab-test-result"
+PORT_RESULTS = os.path.join(OMNI_DIR, "logs", "resultados.txt")
+TEST_RESULT = "/tmp/omni36os-test-result"
 
 
 ES_SYSTEMS = "/etc/emulationstation/es_systems.cfg"
@@ -610,12 +610,12 @@ def es_ports_dir():
 
 
 def port_groups(_args=None):
-    """Ports que o ES mostra (só a pasta do es_systems.cfg), sem a própria Sab."""
+    """Ports que o ES mostra (só a pasta do es_systems.cfg), sem o próprio Omni36OS."""
     d = es_ports_dir()
     if not os.path.isdir(d):
         return []
     ports = sorted((p for p in glob.glob(f"{d}/*.sh") + glob.glob(f"{d}/*.SH")
-                    if os.path.basename(p) != "Sab.sh"), key=lambda p: os.path.basename(p).lower())
+                    if os.path.basename(p) != "Omni36OS.sh"), key=lambda p: os.path.basename(p).lower())
     card = "cartão de jogos" if d.startswith("/roms2") else "cartão do sistema"
     return [{"dir": d, "label": f"{d} ({card})", "es": True, "ports": ports}] if ports else []
 
@@ -636,7 +636,7 @@ def port_results(_args=None):
 
 # Avisos limpos: "nome|data" de falhas já vistas. Elas somem do alerta do card,
 # mas o resultado continua na lista; um teste novo (outra data) volta a avisar.
-PORT_ACKS = os.path.join(SAB_DIR, "logs", "avisos_limpos.txt")
+PORT_ACKS = os.path.join(OMNI_DIR, "logs", "avisos_limpos.txt")
 
 
 def port_acks(_args=None):
@@ -653,7 +653,7 @@ def clear_port_alerts(_args=None):
 
 
 def last_test(_args=None):
-    """Resultado do teste que acabou de rodar (o Sab.sh reabre a Sab depois)."""
+    """Resultado do teste que acabou de rodar (o Omni36OS.sh reabre o Omni36OS depois)."""
     lines = read_text(TEST_RESULT, "").splitlines()
     if len(lines) < 3:
         return None
@@ -672,11 +672,11 @@ def test_port(args):
 
 # --- Modo de exibição: port (lista de Ports) ou sistema (entrada própria no ES) ---
 
-MODE_FILE = f"{HOME}/.config/sab/modo"
-RESTART_ES = "/tmp/sab-restart-es"     # o launch.sh reinicia o ES quando a Sab fecha
-ES_MARK, ES_MARK_END = "<!-- Sab: sistema próprio no ES -->", "<!-- /Sab -->"
+MODE_FILE = f"{HOME}/.config/omni36os/modo"
+RESTART_ES = "/tmp/omni36os-restart-es"     # o launch.sh reinicia o ES quando o Omni36OS fecha
+ES_MARK, ES_MARK_END = "<!-- Omni36OS: sistema próprio no ES -->", "<!-- /Omni36OS -->"
 WRAPPER = """#!/bin/bash
-# Sab: atalho para o launcher de verdade (sab/launch.sh). Ver Ajuda > Mostrar no console.
+# Omni36OS: atalho para o launcher de verdade (omni36os/launch.sh). Ver Ajuda > Mostrar no console.
 exec bash "{launch}"
 """
 
@@ -687,20 +687,20 @@ def get_mode(_args=None):
 
 
 def system_dir():
-    """Pasta do sistema "Sab" no ES, ao lado da pasta de ports (ex.: /roms2/sab)."""
-    return os.path.join(os.path.dirname(es_ports_dir()), "sab")
+    """Pasta do sistema "Omni36OS" no ES, ao lado da pasta de ports (ex.: /roms2/omni36os)."""
+    return os.path.join(os.path.dirname(es_ports_dir()), "omni36os")
 
 
 def _write_wrapper(path):
-    write_text(path, WRAPPER.format(launch=os.path.join(SAB_DIR, "launch.sh")))
+    write_text(path, WRAPPER.format(launch=os.path.join(OMNI_DIR, "launch.sh")))
     os.chmod(path, 0o755)
 
 
 def _es_block():
-    return (f"\t{ES_MARK}\n\t<system>\n\t\t<name>sab</name>\n\t\t<fullname>Sab</fullname>\n"
+    return (f"\t{ES_MARK}\n\t<system>\n\t\t<name>omni36os</name>\n\t\t<fullname>Omni36OS</fullname>\n"
             f"\t\t<path>{system_dir()}/</path>\n\t\t<extension>.sh .SH</extension>\n"
             "\t\t<command>sudo perfmax %GOVERNOR% %ROM%; nice -n -19 %ROM%; sudo perfnorm</command>\n"
-            "\t\t<platform>pc</platform>\n\t\t<theme>sab</theme>\n\t</system>\n"
+            "\t\t<platform>pc</platform>\n\t\t<theme>omni36os</theme>\n\t</system>\n"
             f"\t{ES_MARK_END}\n")
 
 
@@ -717,17 +717,17 @@ def _es_without_block(text):
 
 def set_mode(args):
     mode = args["mode"]
-    ports_link = os.path.join(es_ports_dir(), "Sab.sh")
+    ports_link = os.path.join(es_ports_dir(), "Omni36OS.sh")
     sysdir = system_dir()
     text = (read(ES_SYSTEMS) or b"").decode()     # cru: read_text cortaria o fim do arquivo
     if "</systemList>" not in text:
         return "Não achei o es_systems.cfg do ES."
-    if not os.path.exists(ES_SYSTEMS + ".sab-bak"):
-        shutil.copy2(ES_SYSTEMS, ES_SYSTEMS + ".sab-bak")
+    if not os.path.exists(ES_SYSTEMS + ".omni36os-bak"):
+        shutil.copy2(ES_SYSTEMS, ES_SYSTEMS + ".omni36os-bak")
     text = _es_without_block(text)
     if mode == "sistema":
         os.makedirs(sysdir, exist_ok=True)
-        _write_wrapper(os.path.join(sysdir, "Sab.sh"))
+        _write_wrapper(os.path.join(sysdir, "Omni36OS.sh"))
         text = text.replace("</systemList>", _es_block() + "</systemList>", 1)
         if os.path.exists(ports_link):
             os.remove(ports_link)
@@ -739,8 +739,8 @@ def set_mode(args):
     os.makedirs(os.path.dirname(MODE_FILE), exist_ok=True)
     write_text(MODE_FILE, mode)
     write_text(RESTART_ES, "1")
-    return ("A Sab vai aparecer como sistema no menu do console" if mode == "sistema"
-            else "A Sab vai aparecer na lista de Ports")
+    return ("O Omni36OS vai aparecer como sistema no menu do console" if mode == "sistema"
+            else "O Omni36OS vai aparecer na lista de Ports")
 
 
 def remember_mode(args):
@@ -757,10 +757,10 @@ def restart_es_on_exit(_args=None):
 
 # --- Tela inicial (hub) e atalho L3+R3 ---
 
-HUB_CONF = f"{HOME}/.config/sab/hub"          # desligada | sempre | alertas
-HOTKEY_CONF = f"{HOME}/.config/sab/atalho"    # ligado | desligado | jogo (também dentro dos jogos)
-HUB_DROPIN = "/etc/systemd/system/emulationstation.service.d/sab-hub.conf"
-HOTKEY_UNIT = "/etc/systemd/system/sab-atalho.service"
+HUB_CONF = f"{HOME}/.config/omni36os/hub"          # desligada | sempre | alertas
+HOTKEY_CONF = f"{HOME}/.config/omni36os/atalho"    # ligado | desligado | jogo (também dentro dos jogos)
+HUB_DROPIN = "/etc/systemd/system/emulationstation.service.d/omni36os-hub.conf"
+HOTKEY_UNIT = "/etc/systemd/system/omni36os-atalho.service"
 HUB_MODES = ("desligada", "sempre", "alertas")
 HOTKEY_MODES = ("desligado", "ligado", "jogo")
 
@@ -803,12 +803,12 @@ def set_hub(args):
             os.remove(HUB_DROPIN)
     else:
         os.makedirs(os.path.dirname(HUB_DROPIN), exist_ok=True)
-        write_text(HUB_DROPIN, "# Sab: tela inicial do console (Ajuda > Tela inicial)\n[Service]\nExecStart=\n"
-                               f"ExecStart=/bin/bash {SAB_DIR}/hub.sh\n")
+        write_text(HUB_DROPIN, "# Omni36OS: tela inicial do console (Ajuda > Tela inicial)\n[Service]\nExecStart=\n"
+                               f"ExecStart=/bin/bash {OMNI_DIR}/hub.sh\n")
     _systemctl("daemon-reload")     # vale no próximo boot; o ES aberto não é tocado
     return {"desligada": "Tela inicial desligada: o console abre direto no ES",
-            "sempre": "A Sab abre no boot, antes do ES",
-            "alertas": "A Sab abre no boot só quando houver alerta"}[mode] + " (a partir do próximo boot)"
+            "sempre": "O Omni36OS abre no boot, antes do ES",
+            "alertas": "O Omni36OS abre no boot só quando houver alerta"}[mode] + " (a partir do próximo boot)"
 
 
 def get_hotkey(_args=None):
@@ -823,18 +823,18 @@ def set_hotkey(args):
     os.makedirs(os.path.dirname(HOTKEY_CONF), exist_ok=True)
     write_text(HOTKEY_CONF, mode)
     if mode == "desligado":
-        _systemctl("disable", "--now", "sab-atalho.service")
+        _systemctl("disable", "--now", "omni36os-atalho.service")
         if os.path.exists(HOTKEY_UNIT):
             os.remove(HOTKEY_UNIT)
         _systemctl("daemon-reload")
         return "Atalho L3+R3 desligado"
-    write_text(HOTKEY_UNIT, "[Unit]\nDescription=Sab: atalho L3+R3 abre a Sab\nAfter=emulationstation.service\n\n"
-                            f"[Service]\nExecStart=/usr/bin/python3 {SAB_DIR}/sab_atalho.py\nRestart=on-failure\n"
+    write_text(HOTKEY_UNIT, "[Unit]\nDescription=Omni36OS: atalho L3+R3 abre o Omni36OS\nAfter=emulationstation.service\n\n"
+                            f"[Service]\nExecStart=/usr/bin/python3 {OMNI_DIR}/omni_atalho.py\nRestart=on-failure\n"
                             "Nice=10\n\n[Install]\nWantedBy=multi-user.target\n")
     _systemctl("daemon-reload")
-    _systemctl("enable", "sab-atalho.service")
-    _systemctl("restart", "sab-atalho.service")    # relê o modo
-    return ("Segure L3+R3 (aperte os dois analógicos) por 1 s para abrir a Sab"
+    _systemctl("enable", "omni36os-atalho.service")
+    _systemctl("restart", "omni36os-atalho.service")    # relê o modo
+    return ("Segure L3+R3 (aperte os dois analógicos) por 1 s para abrir o Omni36OS"
             + (", também dentro dos jogos (experimental)" if mode == "jogo" else ""))
 
 
@@ -848,9 +848,9 @@ def usb_net_active(_args=None):
 
 # --- Ferramentas de tela cheia do dArkOSen ---
 
-# Elas desenham no terminal e não podem rodar com a Sab na tela: a Sab fecha,
-# o Sab.sh roda a ferramenta e o ES volta para Ports quando ela termina.
-HANDOFF = "/tmp/sab-next"
+# Elas desenham no terminal e não podem rodar com o Omni36OS na tela: o Omni36OS fecha,
+# o Omni36OS.sh roda a ferramenta e o ES volta para Ports quando ela termina.
+HANDOFF = "/tmp/omni36os-next"
 SYSTOOLS = {
     "calibrar_bateria": "/opt/system/System/R36S Battery Calibration Tool v1.3.sh",
     "backup": "/opt/system/System/R36 Backup and Migration Assistant.sh",
@@ -869,7 +869,7 @@ def systool_available(name):
 
 
 def handoff(args):
-    """A Sab fecha, o launch.sh roda a ferramenta e reabre a Sab em `card`."""
+    """O Omni36OS fecha, o launch.sh roda a ferramenta e reabre o Omni36OS em `card`."""
     path = SYSTOOLS[args["tool"]]
     if not os.path.exists(path):
         return "Ferramenta não encontrada neste sistema."
@@ -877,23 +877,23 @@ def handoff(args):
     return "ok"
 
 
-ES_CLEAN = "/tmp/sab-es-clean"   # o job do launch.sh tira a arte da Sab em vez de aplicar
+ES_CLEAN = "/tmp/omni36os-es-clean"   # o job do launch.sh tira a arte do Omni36OS em vez de aplicar
 
 
 def restart_es(_args=None):
     write_text(RESTART_ES, "1")
-    return "O console reinicia o ES quando a Sab fechar"
+    return "O console reinicia o ES quando o Omni36OS fechar"
 
 
 def restore_es(_args=None):
-    """Desfaz o que a Sab mudou no ES: volta para a lista de Ports, sem sistema próprio nem arte."""
+    """Desfaz o que o Omni36OS mudou no ES: volta para a lista de Ports, sem sistema próprio nem arte."""
     res = set_mode({"mode": "port"})
     if res.startswith("Não"):
         return res
     set_hub({"mode": "desligada"})
     set_hotkey({"mode": "desligado"})
     write_text(ES_CLEAN, "1")
-    return "ES restaurado: a Sab volta para Ports quando fechar"
+    return "ES restaurado: o Omni36OS volta para Ports quando fechar"
 
 
 def set_cpu_governor(args):
@@ -955,10 +955,10 @@ def restore_retroarch(_args=None):
         if not os.path.exists(bak):
             continue
         if os.path.exists(cur):
-            shutil.copy2(cur, f"{cur}.sab-{stamp}")
+            shutil.copy2(cur, f"{cur}.omni36os-{stamp}")
         shutil.copy(bak, cur)
         os.chown(cur, 1000, 1000)
-        lines.append(f"{name} restaurado (anterior salvo como {name}.sab-{stamp})")
+        lines.append(f"{name} restaurado (anterior salvo como {name}.omni36os-{stamp})")
     return "\n".join(lines) or "Nenhuma cópia de fábrica encontrada."
 
 
@@ -1020,7 +1020,7 @@ def usb_restore(_args=None):
     return usb_run("restore")
 
 
-# --- Executor (usado pela interface e por sab_checks.py) ---
+# --- Executor (usado pela interface e por omni_checks.py) ---
 
 TOOLS = {
     "detect_hardware_and_screen": detect_hardware_and_screen,

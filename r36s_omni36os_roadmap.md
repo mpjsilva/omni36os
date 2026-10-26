@@ -1,6 +1,6 @@
-# ROADMAP: Sab — Assistente de Diagnóstico e Ajustes para o R36S
+# ROADMAP: Omni36OS — Assistente de Diagnóstico e Ajustes para o R36S
 
-> **Sab** é uma contração de *Saber* / *Sabrina*, em homenagem a uma youtuber que fala de ports do R36S e ajudou muito este projeto.
+> **Omni36OS** nasceu da Sab, o assistente do R36S feito em homenagem a Sabrina Broch, youtuber que fala de ports do R36S e ajudou muito o projeto. O nome junta *omni* (tudo) e R36S.
 
 Utilitário local para o R36S e clones (Rockchip **RK3326**) rodando **dArkOS / ArkOS**, distribuído como port do **PortMaster**. Objetivo: permitir que usuários leigos diagnostiquem e ajustem o aparelho **sem terminal e sem editar arquivos**.
 
@@ -36,7 +36,7 @@ Princípios:
 └──────────────────────┬────────────────────────┘
                        ▼
 ┌───────────────────────────────────────────────┐
-│  sab.py — ferramentas + executor              │
+│  omni.py — ferramentas + executor              │
 │  (só stdlib, sem shell=True, valores limitados)│
 └──────────────────────┬────────────────────────┘
                        ▼  (Fase 4, opcional)
@@ -86,7 +86,7 @@ Princípios:
 
 **O que o dArkOS já resolve:** o catálogo em `/boot/dtb/` e o seletor `SELECT MODEL` — mas o seletor roda no PC e o usuário precisa saber qual pasta escolher.
 
-**O que o Sab acrescenta:** com a tela funcionando, dizer **qual pasta do catálogo corresponde ao aparelho**, para o usuário anotar antes de atualizar ou reinstalar.
+**O que o Omni36OS acrescenta:** com a tela funcionando, dizer **qual pasta do catálogo corresponde ao aparelho**, para o usuário anotar antes de atualizar ou reinstalar.
 
 **Método (validado):**
 1. Ler `model` e o SHA-256 de `panel-init-sequence` do DT em execução.
@@ -119,10 +119,10 @@ Princípios:
 
 ¹ `compatible` = `simple-panel-dsi` nesses DTBs.
 
-- `r36_devices.ini` diz que as seções são "strings exatas da linha `Hardware:` do `/proc/cpuinfo`" e classifica cada modelo como `r36s`, `clone` ou `soysauce`; o seletor do PC marca `clone` e `soysauce` como **UNSUPPORTED**. O Sab deve repetir esse aviso.
-- O seletor apaga os `.dtb` da raiz da BOOT e copia **toda** a pasta escolhida (inclusive `boot.ini`). Por isso o Sab recomenda backup de `/boot` antes.
+- `r36_devices.ini` diz que as seções são "strings exatas da linha `Hardware:` do `/proc/cpuinfo`" e classifica cada modelo como `r36s`, `clone` ou `soysauce`; o seletor do PC marca `clone` e `soysauce` como **UNSUPPORTED**. O Omni36OS deve repetir esse aviso.
+- O seletor apaga os `.dtb` da raiz da BOOT e copia **toda** a pasta escolhida (inclusive `boot.ini`). Por isso o Omni36OS recomenda backup de `/boot` antes.
 - O significado dos sufixos numéricos das pastas (2529, 2550…) não está documentado: a linha `Hardware:` do aparelho de referência é `R36S-V21 2024-12-18`, sem sufixo. ⚠️ Perguntar na comunidade e não exibir interpretação ao usuário.
-- O catálogo muda a cada versão do dArkOS. O Sab deve **gerar a tabela em tempo de execução** a partir de `/boot/dtb`, e não embutir a tabela acima; ela fica aqui como referência e caso de teste.
+- O catálogo muda a cada versão do dArkOS. O Omni36OS deve **gerar a tabela em tempo de execução** a partir de `/boot/dtb`, e não embutir a tabela acima; ela fica aqui como referência e caso de teste.
 - Em ArkOS e outras distros sem `/boot/dtb`, mostrar só modelo, controlador e hash. ⚠️ verificar onde o ArkOS guarda as variantes de painel.
 
 ### 3.2 Cartões MicroSD
@@ -134,7 +134,7 @@ Princípios:
 
 ### 3.3 Energia e desempenho
 
-- Governador: oferecer só o que estiver em `scaling_available_governors`. Atenção: o dArkOS usa `perfmax`/`perfnorm` ao abrir/fechar jogos; o Sab deve restaurar o governador anterior ao sair.
+- Governador: oferecer só o que estiver em `scaling_available_governors`. Atenção: o dArkOS usa `perfmax`/`perfnorm` ao abrir/fechar jogos; o Omni36OS deve restaurar o governador anterior ao sair.
 - Brilho: `round(pct/100 * 160)` no aparelho de referência — sempre ler `max_brightness`; mínimo 1.
 - Volume: `amixer -c 0 -q sset Playback <pct>%`.
 
@@ -144,15 +144,15 @@ Princípios:
   1. `cp ~/.asoundrcbak ~/.asoundrc` (o mesmo que o `perfnorm` faz);
   2. rota: `alsa_path` do modelo em `r36_devices.ini` (`SPK_HP` ou `SPK`; fallback `SPK_HP`, como no `fixvolume.sh`), aplicada com `amixer -c 0 cset name='Playback Path' <rota>`;
   3. volume em 40% (`boot_volume.sh`).
-- **RetroArch:** copiar o atual para `retroarch.cfg.sab-<data>` e restaurar a partir de `retroarch.cfg.bak` (e `retroarch-core-options.cfg.bak`). Antes, mostrar o número de linhas diferentes.
+- **RetroArch:** copiar o atual para `retroarch.cfg.omni36os-<data>` e restaurar a partir de `retroarch.cfg.bak` (e `retroarch-core-options.cfg.bak`). Antes, mostrar o número de linhas diferentes.
 
 ---
 
 ## 4. Código
 
-> **Implementação atual:** `port/` (`Sab.sh` + `sab/sab.py`, `sab/sab_menu.sh`, `sab/sab.gptk`), instalada em `/roms2/ports/` no aparelho de referência. Os trechos abaixo são o esboço original; o código em `port/` é a referência. Diferenças principais: parser de DTB em Python puro (não depende de `fdtget`), casamento de modelo por prefixo (os DTBs do catálogo têm sufixo, ex. `… 2550`), menu no padrão dos scripts do dArkOS (`/opt/inttools/gptokeyb`, fonte Terminus 22×11).
+> **Implementação atual:** `port/` (`Omni36OS.sh` + `omni36os/omni.py`, `omni36os/omni_menu.sh`, `omni36os/omni.gptk`), instalada em `/roms2/ports/` no aparelho de referência. Os trechos abaixo são o esboço original; o código em `port/` é a referência. Diferenças principais: parser de DTB em Python puro (não depende de `fdtget`), casamento de modelo por prefixo (os DTBs do catálogo têm sufixo, ex. `… 2550`), menu no padrão dos scripts do dArkOS (`/opt/inttools/gptokeyb`, fonte Terminus 22×11).
 
-### 4.1 `sab.py` (núcleo, só stdlib)
+### 4.1 `omni.py` (núcleo, só stdlib)
 
 ```python
 #!/usr/bin/env python3
@@ -332,11 +332,11 @@ if __name__ == "__main__":
         print("\n".join(TOOLS))
 ```
 
-Teste via SSH: `sudo python3 sab.py detect_hardware_and_screen` — no aparelho de referência deve listar as pastas `r36s/R36S-V21 2024-12-18 …`.
+Teste via SSH: `sudo python3 omni.py detect_hardware_and_screen` — no aparelho de referência deve listar as pastas `r36s/R36S-V21 2024-12-18 …`.
 
-### 4.2 Menu (`sab_menu.sh`)
+### 4.2 Menu (`omni_menu.sh`)
 
-`dialog --menu` chamando `sab.py <ferramenta>` e exibindo o resultado com `dialog --msgbox`. Brilho e volume via `dialog --rangebox` (0–100). Rodar no `/dev/tty1` com `TERM=linux`.
+`dialog --menu` chamando `omni.py <ferramenta>` e exibindo o resultado com `dialog --msgbox`. Brilho e volume via `dialog --rangebox` (0–100). Rodar no `/dev/tty1` com `TERM=linux`.
 
 ### 4.3 `tools.gbnf` (Fase 4)
 
@@ -356,11 +356,11 @@ gov ::= "\"" ("performance" | "powersave" | "schedutil" | "ondemand" | "conserva
 ws ::= [ \t\n]?
 ```
 
-### 4.4 `Sab.sh` (lançador padrão PortMaster)
+### 4.4 `Omni36OS.sh` (lançador padrão PortMaster)
 
 ```bash
 #!/bin/bash
-# PORTMASTER: Sab — diagnóstico e ajustes do R36S
+# PORTMASTER: Omni36OS — diagnóstico e ajustes do R36S
 
 XDG_DATA_HOME=${XDG_DATA_HOME:-$HOME/.local/share}
 
@@ -378,18 +378,18 @@ source $controlfolder/control.txt
 [ -f "${controlfolder}/mod_${CFW_NAME}.txt" ] && source "${controlfolder}/mod_${CFW_NAME}.txt"
 get_controls
 
-GAMEDIR="/$directory/ports/sab"
+GAMEDIR="/$directory/ports/omni36os"
 cd "$GAMEDIR"
 
-$GPTOKEYB "dialog" -c "$GAMEDIR/sab.gptk" &
-$ESUDO env TERM=linux bash "$GAMEDIR/sab_menu.sh" > /dev/tty1 < /dev/tty1
+$GPTOKEYB "dialog" -c "$GAMEDIR/omni.gptk" &
+$ESUDO env TERM=linux bash "$GAMEDIR/omni_menu.sh" > /dev/tty1 < /dev/tty1
 
 pm_finish
 ```
 
 `$directory` resolve para `roms` ou `roms2`; não fixar `/storage/roms` (caminho do JELOS/ROCKNIX).
 
-### 4.5 `sab.gptk`
+### 4.5 `omni.gptk`
 
 ```text
 up = up
@@ -428,7 +428,7 @@ Candidatos (nesta ordem): Qwen2.5-0.5B-Instruct Q4_K_M, SmolLM2-360M-Instruct Q4
 
 * [x] **Fase 0 — Inspeção do aparelho de referência** (2026-10-25, dArkOS 10152026, R36S-V21 2024-12-18): painel, catálogo de DTBs, áudio, RetroArch, PortMaster
 * [~] **Fase 1 — Núcleo e menu** — código em `port/`; ferramentas testadas via SSH em 2026-10-25 (painel em 2,1 s, SD, status, brilho/volume/governador com restauração dos valores, rejeição de valores inválidos e de `/tmp`). Falta: abrir o menu pelo EmulationStation e testar `restore_audio`/`restore_retroarch` no aparelho
-  * `sab.py` + `sab_menu.sh` com `dialog`; testar cada ferramenta via SSH.
+  * `omni.py` + `omni_menu.sh` com `dialog`; testar cada ferramenta via SSH.
   * Restaurar governador e brilho originais ao sair.
 * [ ] **Fase 2 — Identificação de painel**
   * Geração do catálogo em tempo de execução a partir de `/boot/dtb`; validar contra a tabela da seção 3.1.
@@ -439,5 +439,5 @@ Candidatos (nesta ordem): Qwen2.5-0.5B-Instruct Q4_K_M, SmolLM2-360M-Instruct Q4
 * [ ] **Fase 4 — LLM opcional**
   * Compilar `llama-server`/`llama-bench` para aarch64 e executar as medições da seção 5.
 * [ ] **Fase 5 — Pacote PortMaster**
-  * `.zip` com `Sab.sh` + pasta `sab/`, extraível em `roms/ports/`.
+  * `.zip` com `Omni36OS.sh` + pasta `omni36os/`, extraível em `roms/ports/`.
   * Testar em cartão limpo no dArkOS e no ArkOS.

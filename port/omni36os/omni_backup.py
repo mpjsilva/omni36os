@@ -1,8 +1,8 @@
-"""Backup da Sab: exporta e importa as configurações de cada módulo como .tar.gz.
+"""Backup do Omni36OS: exporta e importa as configurações de cada módulo como .tar.gz.
 
 Só configuração: saves, estados, cores, shaders, temas e bancos de dados ficam
 de fora (são grandes e não são "opções"). Cada arquivo leva um manifesto
-(sab-backup.txt) com o módulo, e a importação só extrai caminhos desse módulo.
+(omni36os-backup.txt) com o módulo, e a importação só extrai caminhos desse módulo.
 """
 import fnmatch
 import glob
@@ -11,16 +11,16 @@ import os
 import tarfile
 import time
 
-import sab
+import omni
 
-HOME = sab.HOME
+HOME = omni.HOME
 
 # módulo -> (nome na tela, caminhos/globs incluídos, pedaços de caminho excluídos)
 MODULES = {
-    "sab": ("Sab", [
-        f"{HOME}/.config/sab", f"{sab.SAB_DIR}/logs/resultados.txt", f"{sab.SAB_DIR}/logs/avisos_limpos.txt",
+    "omni36os": ("Omni36OS", [
+        f"{HOME}/.config/omni36os", f"{omni.OMNI_DIR}/logs/resultados.txt", f"{omni.OMNI_DIR}/logs/avisos_limpos.txt",
         "/etc/cpu-settings.conf", "/etc/gpu-settings.conf", "/etc/dmc-settings.conf", "/etc/gamma-settings.conf",
-    ], ["/.config/sab/modo"]),   # o modo depende do es_systems.cfg deste console: não se importa
+    ], ["/.config/omni36os/modo"]),   # o modo depende do es_systems.cfg deste console: não se importa
     "retroarch": ("RetroArch", [
         f"{HOME}/.config/{ra}/{p}" for ra in ("retroarch", "retroarch32")
         for p in ("*.cfg", "config", "remaps", "playlists", "overlay", "records_config")
@@ -38,13 +38,13 @@ MODULES = {
         f"{HOME}/.emulationstation/scripts",
     ], []),
 }
-MANIFEST = "sab-backup.txt"
+MANIFEST = "omni36os-backup.txt"
 
 
 def backup_dir():
     """Pasta dos backups no cartão em que o ES guarda os jogos (dá para copiar pelo pendrive)."""
-    root = "/roms2" if sab.es_ports_dir().startswith("/roms2") else "/roms"
-    return f"{root}/backup/sab"
+    root = "/roms2" if omni.es_ports_dir().startswith("/roms2") else "/roms"
+    return f"{root}/backup/omni36os"
 
 
 def _files(module):
@@ -99,7 +99,7 @@ def export(module, tag=""):
 
 
 def read_version():
-    return sab.read_text(os.path.join(sab.SAB_DIR, "VERSION"), "?")
+    return omni.read_text(os.path.join(omni.OMNI_DIR, "VERSION"), "?")
 
 
 def manifest(path):
@@ -115,7 +115,7 @@ def manifest(path):
 def import_(module, path):
     m = manifest(path)
     if not m:
-        return "Este arquivo não é um backup da Sab."
+        return "Este arquivo não é um backup do Omni36OS."
     if m.get("module") != module:
         other = MODULES.get(m.get("module"), ("outro módulo",))[0]
         return f"Este backup é de {other}, não de {MODULES[module][0]}."

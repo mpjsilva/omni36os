@@ -1,4 +1,4 @@
-"""Sab — desenho com a SDL2 via ctypes (sem pygame no dArkOS).
+"""Omni36OS — desenho com a SDL2 via ctypes (sem pygame no dArkOS).
 
 Formas são triângulos (SDL_RenderGeometry) com cor por vértice: dá degradê,
 borda suave (uma faixa de 1 px que some no alfa) e brilho/sombra (a mesma
@@ -105,11 +105,11 @@ def alpha(c, a):
 
 
 class Gfx:
-    def __init__(self, title="Sab"):
+    def __init__(self, title="Omni36OS"):
         if SDL_Init(INIT_VIDEO | INIT_GAMECONTROLLER) != 0:
             raise RuntimeError(SDL_GetError().decode())
         SDL_SetHint(b"SDL_RENDER_SCALE_QUALITY", b"1")
-        flags = WINDOW_SHOWN | (0 if os.environ.get("SAB_WINDOWED") else WINDOW_FULLSCREEN)
+        flags = WINDOW_SHOWN | (0 if os.environ.get("OMNI_WINDOWED") else WINDOW_FULLSCREEN)
         self.win = SDL_CreateWindow(title.encode(), 0, 0, W, H, flags)
         if not self.win:
             raise RuntimeError(SDL_GetError().decode())
@@ -404,6 +404,13 @@ class Gfx:
             SDL_RenderCopyF(self.r, tex, None, C.byref(FRect(x, y, size, size)))
 
     # --- camadas (transições) ---
+
+    def flush(self):
+        """Esquece geometria e sprites (troca de tema: as cores mudaram)."""
+        for t in self.sprites.values():
+            SDL_DestroyTexture(t)
+        self.sprites.clear()
+        self.vcache.clear()
 
     def sprite(self, key, w, h, pad, draw, x, y, a=255):
         """Desenha formas uma vez numa textura e depois só a copia para (x, y).

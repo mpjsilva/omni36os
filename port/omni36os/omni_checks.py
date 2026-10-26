@@ -1,18 +1,18 @@
 #!/usr/bin/env python3
-"""Sab — diagnósticos por regras fixas (sem IA).
+"""Omni36OS — diagnósticos por regras fixas (sem IA).
 
-Cada verificação coleta fatos com as ferramentas de sab.py e devolve achados
+Cada verificação coleta fatos com as ferramentas de omni.py e devolve achados
 (nível, texto) e as ações sugeridas. Níveis: "ok", "info", "aviso", "problema"
 ("info" não conta como alerta).
 
-Uso: sab_checks.py [verificação]   (sem argumento lista as verificações)
+Uso: omni_checks.py [verificação]   (sem argumento lista as verificações)
 """
 import glob
 import json
 import os
 import sys
 
-import sab
+import omni
 
 TEMP_QUENTE = 75      # °C: acima disso o aparelho está aquecendo
 BATERIA_BAIXA = 20    # %
@@ -22,20 +22,20 @@ SD_LENTO = 10         # MB/s de escrita
 
 ACTIONS = {
     "economizar_bateria": ("Ativar modo economia",
-                           lambda: sab.set_preferred_governor({"governor": "powersave"})),
+                           lambda: omni.set_preferred_governor({"governor": "powersave"})),
     "modo_desempenho": ("Ativar desempenho máximo",
-                        lambda: sab.set_preferred_governor({"governor": "performance"})),
+                        lambda: omni.set_preferred_governor({"governor": "performance"})),
     "modo_equilibrado": ("Voltar ao modo equilibrado",
-                         lambda: sab.set_preferred_governor({"governor": "ondemand"})),
-    "baixar_brilho": ("Baixar o brilho para 30%", lambda: sab.set_screen_brightness({"value": 30})),
-    "restaurar_audio": ("Restaurar o áudio do sistema", sab.restore_audio),
-    "volume_60": ("Colocar o volume em 60%", lambda: sab.set_system_volume({"value": 60})),
-    "restaurar_retroarch": ("Restaurar o RetroArch de fábrica", sab.restore_retroarch),
-    "ligar_pendrive": ("Ligar o modo pendrive (reinicia)", sab.usb_on),
-    "desligar_pendrive": ("Desligar o modo pendrive (reinicia)", sab.usb_off),
-    "fix_dmc": ("Consertar o ajuste da RAM", sab.fix_dmc),
-    "limpar_mac": ("Limpar o lixo do Mac", sab.clean_mac_junk),
-    "cpu_padrao": ("Tirar o overclock (1296 MHz)", lambda: sab.set_cpu_max({"mhz": sab.CPU_SAFE_MHZ})),
+                         lambda: omni.set_preferred_governor({"governor": "ondemand"})),
+    "baixar_brilho": ("Baixar o brilho para 30%", lambda: omni.set_screen_brightness({"value": 30})),
+    "restaurar_audio": ("Restaurar o áudio do sistema", omni.restore_audio),
+    "volume_60": ("Colocar o volume em 60%", lambda: omni.set_system_volume({"value": 60})),
+    "restaurar_retroarch": ("Restaurar o RetroArch de fábrica", omni.restore_retroarch),
+    "ligar_pendrive": ("Ligar o modo pendrive (reinicia)", omni.usb_on),
+    "desligar_pendrive": ("Desligar o modo pendrive (reinicia)", omni.usb_off),
+    "fix_dmc": ("Consertar o ajuste da RAM", omni.fix_dmc),
+    "limpar_mac": ("Limpar o lixo do Mac", omni.clean_mac_junk),
+    "cpu_padrao": ("Tirar o overclock (1296 MHz)", lambda: omni.set_cpu_max({"mhz": omni.CPU_SAFE_MHZ})),
 }
 
 ESPACO_POUCO_PCT = 90   # % de uso do cartão
@@ -50,34 +50,34 @@ def run_action(name):
 
 def battery_facts():
     return {
-        "bateria_pct": int(sab.read_text("/sys/class/power_supply/battery/capacity", "0")),
-        "bateria_estado": sab.read_text("/sys/class/power_supply/battery/status"),
+        "bateria_pct": int(omni.read_text("/sys/class/power_supply/battery/capacity", "0")),
+        "bateria_estado": omni.read_text("/sys/class/power_supply/battery/status"),
     }
 
 
 def cpu_facts():
-    temp = sab.read_text("/sys/class/thermal/thermal_zone0/temp", "0")
+    temp = omni.read_text("/sys/class/thermal/thermal_zone0/temp", "0")
     return {
         "temperatura_c": int(temp) // 1000 if temp.isdigit() else None,
-        # o que vale no menu do ES (dentro da Sab o ES sempre deixa "performance")
-        "governador": sab.get_preferred_governor(),
-        "freq_mhz": int(sab.read_text(f"{sab.CPUFREQ}/scaling_cur_freq", "0")) // 1000,
-        "cpu_max_mhz": sab.get_cpu_max(),
-        "gpu_max_mhz": sab.get_gpu_max(),
+        # o que vale no menu do ES (dentro do Omni36OS o ES sempre deixa "performance")
+        "governador": omni.get_preferred_governor(),
+        "freq_mhz": int(omni.read_text(f"{omni.CPUFREQ}/scaling_cur_freq", "0")) // 1000,
+        "cpu_max_mhz": omni.get_cpu_max(),
+        "gpu_max_mhz": omni.get_gpu_max(),
     }
 
 
 def audio_facts():
     route = ""
-    for line in sab.amixer("sget", "Playback Path").splitlines():
+    for line in omni.amixer("sget", "Playback Path").splitlines():
         if line.strip().startswith("Item0:"):
             route = line.split("'")[1]
-    asound, backup = sab.read(f"{sab.HOME}/.asoundrc"), sab.read(f"{sab.HOME}/.asoundrcbak")
+    asound, backup = omni.read(f"{omni.HOME}/.asoundrc"), omni.read(f"{omni.HOME}/.asoundrcbak")
     return {
-        "volume_pct": sab.get_volume(),
+        "volume_pct": omni.get_volume(),
         "saida_audio": route,
-        "saida_esperada": sab.device_alsa_path(),
-        # O perfmax do dArkOS apaga o .asoundrc ao abrir qualquer port (a Sab
+        "saida_esperada": omni.device_alsa_path(),
+        # O perfmax do dArkOS apaga o .asoundrc ao abrir qualquer port (o Omni36OS
         # inclusive) e o perfnorm o devolve ao sair: ausente é o normal aqui.
         "asoundrc_padrao": asound is None or backup is None or asound == backup,
     }
@@ -85,15 +85,15 @@ def audio_facts():
 
 def sd_facts():
     cards = []
-    mounts = sab.mmc_mounts()
+    mounts = omni.mmc_mounts()
     for dev in sorted(glob.glob("/sys/block/mmcblk*/device")):
         blk = dev.split("/")[3]
-        manfid = int(sab.read_text(f"{dev}/manfid", "0"), 16)
+        manfid = int(omni.read_text(f"{dev}/manfid", "0"), 16)
         cards.append({
-            "codigo": f"0x{manfid:02x}", "nome": sab.read_text(f"{dev}/name"),
+            "codigo": f"0x{manfid:02x}", "nome": omni.read_text(f"{dev}/name"),
             "cartao": "sistema" if "/" in mounts.get(blk, []) else "jogos",
-            "fabricante": sab.SD_VENDORS.get(manfid, "desconhecido"),
-            "tamanho_gb": round(int(sab.read_text(f"/sys/block/{blk}/size", "0")) * 512 / 1e9, 1),
+            "fabricante": omni.SD_VENDORS.get(manfid, "desconhecido"),
+            "tamanho_gb": round(int(omni.read_text(f"/sys/block/{blk}/size", "0")) * 512 / 1e9, 1),
         })
     return {"cartoes": cards}
 
@@ -103,7 +103,7 @@ def speed_facts():
     for name, path in (("sistema", "/roms"), ("jogos", "/roms2")):
         if not os.path.ismount(path):
             continue
-        for line in sab.test_microsd_speed({"path": path}).splitlines():
+        for line in omni.test_microsd_speed({"path": path}).splitlines():
             if "Escrita" in line or "Leitura" in line:
                 key = "escrita" if "Escrita" in line else "leitura"
                 facts[f"{name}_{key}_mbs"] = float(line.split(":")[1].split()[0])
@@ -111,8 +111,8 @@ def speed_facts():
 
 
 def screen_facts():
-    live = sab.live_panel() or {}
-    entries = list(sab.catalog_panels()) if os.path.isdir(sab.CATALOG) else []
+    live = omni.live_panel() or {}
+    entries = list(omni.catalog_panels()) if os.path.isdir(omni.CATALOG) else []
     same = [e for e in entries if e["hash"] == live.get("hash")]
     model = live.get("model", "")
     folders = [e["folder"] for e in same if e["model"] == model or e["model"].startswith(model + " ")]
@@ -136,7 +136,7 @@ def check_temp(f, out):
 
 
 def check_overclock(f, out, acts):
-    oc = f["cpu_max_mhz"] > sab.CPU_SAFE_MHZ
+    oc = f["cpu_max_mhz"] > omni.CPU_SAFE_MHZ
     if oc and (f["temperatura_c"] or 0) > TEMP_QUENTE:
         out.append(("aviso", f"Overclock ligado ({f['cpu_max_mhz']} MHz) com o aparelho quente."))
         acts.append("cpu_padrao")
@@ -145,8 +145,8 @@ def check_overclock(f, out, acts):
 
 
 def check_services(out, acts):
-    for unit in sab.failed_services():
-        txt, fix = sab.KNOWN_FAILS.get(unit, (None, None))
+    for unit in omni.failed_services():
+        txt, fix = omni.KNOWN_FAILS.get(unit, (None, None))
         if txt and not fix:
             out.append(("info", txt))
         elif txt:
@@ -158,7 +158,7 @@ def check_services(out, acts):
 
 def check_disk(out):
     nomes = {"sistema": "do sistema", "roms": "/roms", "jogos": "de jogos"}
-    for name, d in sab.disk_facts().items():
+    for name, d in omni.disk_facts().items():
         if d["uso_pct"] >= ESPACO_POUCO_PCT or d["livre_gb"] < ESPACO_POUCO_GB:
             dica = " Atualizações podem falhar." if name == "sistema" else ""
             out.append(("aviso", f"Cartão {nomes[name]} quase cheio: {d['uso_pct']}% usado, "
@@ -214,7 +214,7 @@ def checkup():
 
 
 def bateria():
-    f = {**battery_facts(), **cpu_facts(), "brilho_pct": sab.get_brightness()}
+    f = {**battery_facts(), **cpu_facts(), "brilho_pct": omni.get_brightness()}
     out, acts = [], []
     check_battery(f, out)
     if f["brilho_pct"] > 60:
@@ -281,7 +281,7 @@ def atualizar():
 def retroarch():
     # linhas "arquivo: N linha(s) diferentes ..." ou "arquivo: sem cópia de fábrica"
     f = {}
-    for line in sab.retroarch_changes().splitlines():
+    for line in omni.retroarch_changes().splitlines():
         name, _, rest = line.partition(": ")
         f[name] = int(rest.split()[0]) if rest[:1].isdigit() else None
     out, acts = [], []
@@ -302,9 +302,9 @@ def retroarch():
 
 
 def pc():
-    f = sab.usb_facts()
+    f = omni.usb_facts()
     warn = []
-    if sab.usb_net_active():
+    if omni.usb_net_active():
         warn.append(("aviso", "O USB Network Mode está ligado: ele usa a mesma porta. Desligue-o antes do pendrive."))
     part = f["particao_para_o_pc"]
     livre = f["livre_gb"].get(part)

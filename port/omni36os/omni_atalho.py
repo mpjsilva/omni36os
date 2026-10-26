@@ -1,11 +1,11 @@
-"""Atalho global da Sab: segurar L3+R3 (os dois analógicos) por 1 s abre a Sab.
+"""Atalho global do Omni36OS: segurar L3+R3 (os dois analógicos) por 1 s abre o Omni36OS.
 
-Roda como serviço (sab-atalho.service, ligado em Ajuda > Atalho L3+R3).
-- No menu do ES: com a tela inicial ligada, fecha o ES e o hub.sh abre a Sab
+Roda como serviço (omni36os-atalho.service, ligado em Ajuda > Atalho L3+R3).
+- No menu do ES: com a tela inicial ligada, fecha o ES e o hub.sh abre o Omni36OS
   (ao sair dela o ES volta). Sem a tela inicial, um job do systemd para o ES,
-  abre a Sab e sobe o ES de novo.
+  abre o Omni36OS e sobe o ES de novo.
 - Dentro de um jogo (modo "jogo", experimental): congela o jogo (SIGSTOP),
-  abre a Sab por cima e descongela quando ela fecha. Se a Sab não conseguir a
+  abre o Omni36OS por cima e descongela quando ela fecha. Se o Omni36OS não conseguir a
   tela (alguns emuladores não soltam o vídeo), o jogo volta na hora.
 Lê o controle direto do /dev/input, sem bibliotecas: struct input_event.
 """
@@ -23,8 +23,8 @@ COMBO = {706, 707}            # L3 e R3 (b14 e b15 no gamecontrollerdb do R36S)
 HOLD = 1.0
 EV_KEY = 1
 EVENT = struct.Struct("llHHi")   # timeval (64 bits no aarch64), tipo, código, valor
-CONF = "/home/ark/.config/sab/atalho"
-HUB_OPEN = "/dev/shm/sab-hub-open"
+CONF = "/home/ark/.config/omni36os/atalho"
+HUB_OPEN = "/dev/shm/omni36os-hub-open"
 USER = pwd.getpwnam("ark")
 
 
@@ -80,8 +80,8 @@ def as_ark(cmd, **env):
 
 
 def open_sab():
-    if pgrep("-f", "sab_ui.py"):
-        return                                   # já aberta
+    if pgrep("-f", "omni_ui.py"):
+        return                                   # já aberto
     es = pgrep("-x", "emulationstation")
     if not es:
         return
@@ -91,10 +91,10 @@ def open_sab():
             with open(HUB_OPEN, "w"):
                 pass
             os.chown(HUB_OPEN, USER.pw_uid, USER.pw_gid)   # o hub (usuário ark) apaga depois
-            os.kill(es[0], signal.SIGTERM)       # o ES salva as listas e sai; o hub abre a Sab
+            os.kill(es[0], signal.SIGTERM)       # o ES salva as listas e sai; o hub abre o Omni36OS
         else:
-            launch = " ".join(as_ark(["bash", f"{HERE}/launch.sh"], SAB_HUB="atalho"))
-            subprocess.run(["systemd-run", "--no-block", "--collect", "--unit", f"sab-atalho-{int(time.time())}",
+            launch = " ".join(as_ark(["bash", f"{HERE}/launch.sh"], OMNI_HUB="atalho"))
+            subprocess.run(["systemd-run", "--no-block", "--collect", "--unit", f"omni36os-atalho-{int(time.time())}",
                             "bash", "-c", f"systemctl stop emulationstation; {launch}; "
                                           "systemctl start emulationstation"])
         return
@@ -102,7 +102,7 @@ def open_sab():
         return
     signal_all(game, signal.SIGSTOP)
     try:
-        subprocess.run(as_ark(["bash", f"{HERE}/launch.sh"], SAB_HUB="jogo"), timeout=3600)
+        subprocess.run(as_ark(["bash", f"{HERE}/launch.sh"], OMNI_HUB="jogo"), timeout=3600)
     except subprocess.TimeoutExpired:
         pass
     finally:

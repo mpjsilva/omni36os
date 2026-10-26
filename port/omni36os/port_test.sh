@@ -1,25 +1,25 @@
 #!/bin/bash
-# Teste de port da Sab: roda o port como o ES roda (nice -19, já sob perfmax),
+# Teste de port do Omni36OS: roda o port como o ES roda (nice -19, já sob perfmax),
 # espera TEMPO segundos e encerra. Se o port fechar sozinho antes disso, conta
-# como falha e gera um relatório em sab/logs/<nome do port>/.
+# como falha e gera um relatório em omni36os/logs/<nome do port>/.
 # Uso: port_test.sh "/roms2/ports/Nome.sh"
 
 PORT="$1"
 TEMPO=15
-SAB_DIR="$(cd "$(dirname "$0")" && pwd)"
+OMNI_DIR="$(cd "$(dirname "$0")" && pwd)"
 NAME="$(basename "$PORT" .sh)"
 SAFE="$(printf '%s' "$NAME" | tr -c 'A-Za-z0-9._ -' '_')"
-OUT="/tmp/sab-port-out.log"
-RESULT="/tmp/sab-test-result"
-RESULTS="$SAB_DIR/logs/resultados.txt"   # nome|resultado|data|segundos
+OUT="/tmp/omni36os-port-out.log"
+RESULT="/tmp/omni36os-test-result"
+RESULTS="$OMNI_DIR/logs/resultados.txt"   # nome|resultado|data|segundos
 
-mkdir -p "$SAB_DIR/logs"
+mkdir -p "$OMNI_DIR/logs"
 sudo dmesg -c > /dev/null 2>&1           # o relatório mostra só o que o port causou
 START=$(date +%s)
 STAMP_START="$(date '+%Y-%m-%d %H:%M:%S')"
 
-# A Sab relaxa os clocks para não esquentar; o port roda como no ES (perfmax
-# "performance"). A Sab volta a relaxar quando reabre.
+# O Omni36OS relaxa os clocks para não esquentar; o port roda como no ES (perfmax
+# "performance"). O Omni36OS volta a relaxar quando reabre.
 for g in /sys/devices/system/cpu/cpufreq/policy0/scaling_governor \
          /sys/devices/platform/ff400000.gpu/devfreq/ff400000.gpu/governor \
          /sys/devices/platform/dmc/devfreq/dmc/governor; do
@@ -61,11 +61,11 @@ printf "\033c" > /dev/tty1 2>/dev/null
 
 REPORT=""
 if [ "$STATUS" = "falhou" ]; then
-  DIR="$SAB_DIR/logs/$SAFE"
+  DIR="$OMNI_DIR/logs/$SAFE"
   mkdir -p "$DIR"
   REPORT="$DIR/$(date '+%Y-%m-%d_%H-%M-%S').txt"
   {
-    echo "RELATÓRIO DE TESTE DE PORT (Sab)"
+    echo "RELATÓRIO DE TESTE DE PORT (Omni36OS)"
     echo "================================"
     echo "Port:        $NAME"
     echo "Script:      $PORT"
@@ -96,11 +96,11 @@ if [ "$STATUS" = "falhou" ]; then
   } > "$REPORT" 2>&1
 fi
 
-# histórico (uma linha por port, a mais recente vale) e resultado para a Sab
+# histórico (uma linha por port, a mais recente vale) e resultado para o Omni36OS
 touch "$RESULTS"
 awk -F'|' -v n="$NAME" '$1 != n' "$RESULTS" > "$RESULTS.tmp" 2>/dev/null
 echo "$NAME|$STATUS|$(date '+%d/%m/%Y %H:%M')|$ELAPSED" >> "$RESULTS.tmp"
 mv "$RESULTS.tmp" "$RESULTS"
 printf '%s\n%s\n%s\n%s\n' "$NAME" "$STATUS" "$ELAPSED" "$REPORT" > "$RESULT"
-chown -R ark:ark "$SAB_DIR/logs" 2>/dev/null || sudo chown -R ark:ark "$SAB_DIR/logs"
+chown -R ark:ark "$OMNI_DIR/logs" 2>/dev/null || sudo chown -R ark:ark "$OMNI_DIR/logs"
 exit 0
