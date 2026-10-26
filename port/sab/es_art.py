@@ -74,6 +74,28 @@ def theme_art():
         sab.write_text(os.path.join(d, "theme.xml"), THEME_XML)
 
 
+def clean_gamelist(folder):
+    """Tira a descrição e o ícone da entrada da Sab (o resto do gamelist fica igual)."""
+    path = os.path.join(folder, "gamelist.xml")
+    try:
+        tree = ET.parse(path)
+    except (OSError, ET.ParseError):
+        return
+    for game in tree.getroot().findall("game"):
+        if (game.findtext("path") or "").endswith("/Sab.sh"):
+            for tag in ("desc", "image", "developer"):
+                for el in game.findall(tag):
+                    game.remove(el)
+    ET.indent(tree, "\t")
+    tree.write(path, encoding="utf-8", xml_declaration=True)
+
+
+def clean():
+    clean_gamelist(sab.es_ports_dir())
+    for t in themes():
+        shutil.rmtree(os.path.join(t, "sab"), ignore_errors=True)
+
+
 def apply():
     mode = sab.get_mode() or "port"
     folder = sab.system_dir() if mode == "sistema" else sab.es_ports_dir()
@@ -83,4 +105,8 @@ def apply():
 
 
 if __name__ == "__main__":
-    apply()
+    if os.path.exists(sab.ES_CLEAN):
+        os.remove(sab.ES_CLEAN)
+        clean()
+    else:
+        apply()

@@ -772,6 +772,12 @@ SYSTOOLS = {
     "calibrar_bateria": "/opt/system/System/R36S Battery Calibration Tool v1.3.sh",
     "backup": "/opt/system/System/R36 Backup and Migration Assistant.sh",
     "backup_config": "/opt/system/Advanced/Backup dArkOS Settings.sh",
+    "controle": "/opt/system/Advanced/Controller Tester.sh",
+    "atalhos": "/opt/system/Advanced/Fix Global Hotkeys.sh",
+    "info": "/opt/system/System/System Info.sh",
+    "splash": "/opt/system/System/Boot Splash Manager.sh",
+    "ra_manager": "/opt/system/Advanced/Retroarch Manager.sh",
+    "ra_cores": "/opt/system/Advanced/Reset Retroarch Core Settings.sh",
 }
 
 
@@ -780,11 +786,29 @@ def systool_available(name):
 
 
 def handoff(args):
+    """A Sab fecha, o launch.sh roda a ferramenta e reabre a Sab em `card`."""
     path = SYSTOOLS[args["tool"]]
     if not os.path.exists(path):
         return "Ferramenta não encontrada neste sistema."
-    write_text(HANDOFF, path)
+    write_text(HANDOFF, f"tool:{args.get('card', '')}:{path}")
     return "ok"
+
+
+ES_CLEAN = "/tmp/sab-es-clean"   # o job do launch.sh tira a arte da Sab em vez de aplicar
+
+
+def restart_es(_args=None):
+    write_text(RESTART_ES, "1")
+    return "O console reinicia o ES quando a Sab fechar"
+
+
+def restore_es(_args=None):
+    """Desfaz o que a Sab mudou no ES: volta para a lista de Ports, sem sistema próprio nem arte."""
+    res = set_mode({"mode": "port"})
+    if res.startswith("Não"):
+        return res
+    write_text(ES_CLEAN, "1")
+    return "ES restaurado: a Sab volta para Ports quando fechar"
 
 
 def set_cpu_governor(args):
@@ -934,7 +958,7 @@ TOOLS = {
     "schedule_scan": schedule_scan, "last_scan": last_scan,
     "get_gamma": get_gamma, "set_gamma": set_gamma, "get_led": get_led, "set_led": set_led,
     "usb_net_active": usb_net_active, "handoff": handoff,
-    "list_ports": list_ports, "port_groups": port_groups, "port_results": port_results, "get_mode": get_mode, "set_mode": set_mode, "clear_port_alerts": clear_port_alerts, "test_port": test_port,
+    "list_ports": list_ports, "port_groups": port_groups, "port_results": port_results, "get_mode": get_mode, "set_mode": set_mode, "restart_es": restart_es, "restore_es": restore_es, "clear_port_alerts": clear_port_alerts, "test_port": test_port,
     "retroarch_changes": retroarch_changes,
     "restore_retroarch": restore_retroarch,
     "usb_facts": usb_facts,

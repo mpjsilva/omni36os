@@ -326,7 +326,7 @@ class App:
     def check_all(self):
         out = {}
         todo = [c for c in CARDS + [card_info(c) for c in SUBPAGES]
-                if c[0] != "ajuda" and (not RESUME or c[0] == "testar")]
+                if c[0] != "ajuda" and (RESUME != "testar" or c[0] == "testar")]
         self.warm.insert(0, "home")
         self.load_total = len(todo) + len(self.warm)
         for k, (cid, title, *_) in enumerate(todo):
@@ -367,6 +367,7 @@ class App:
     def open_page(self, cid):
         self.page = self.last_page = cid
         self.items, self.item_sel, self.item_y, self.item_h = self.build_items(cid), 0, 0.0, 0.0
+        self.act_off = 0.0
         self.findings, self.info = None, []
         self.find_top, self.find_max, self.find_scroll = 0, 0, 0.0
         if cid in self.results:       # já verificado no carregamento
@@ -482,19 +483,26 @@ class App:
         self.items = extra + base
         self.item_sel = min(self.item_sel, len(self.items) - 1)
 
+    def systool(self, tool, label, icon, what):
+        """Ferramenta do dArkOSen, se existir neste sistema. A Sab volta ao fechar."""
+        if not (FAKE or sab.systool_available(tool)):
+            return []
+        return [Action(label, icon, lambda: self.handoff(tool),
+                       confirm=f"Abrir {what} do dArkOSen?\nA Sab fecha, a ferramenta abre em tela cheia "
+                               "e a Sab volta quando ela fechar.")]
+
     def build_items(self, cid):
         A = Action
         recheck = A("Verificar de novo", "refresh", self.reload_findings)
         if cid == "checkup":
-            return [recheck]
+            return (self.systool("controle", "Testar o controle", "device-gamepad-2", "o teste de controle")
+                    + self.systool("atalhos", "Consertar atalhos", "adjustments", "o conserto dos atalhos globais")
+                    + [recheck])
         if cid == "bateria":
             # as sugestões de economia mexem nestes mesmos controles
             out = [Choice("Processador no menu", "cpu", "gov", D.get("govs"), GOV_NAMES),
                    Slider("Brilho", "sun", "brilho", lo=10)]
-            if FAKE or sab.systool_available("calibrar_bateria"):
-                out.append(A("Calibrar a bateria", "battery-2", lambda: self.handoff("calibrar_bateria"),
-                             confirm="Abrir a calibração da bateria do dArkOSen?\nA Sab fecha e a ferramenta abre "
-                                     "em tela cheia."))
+            out += self.systool("calibrar_bateria", "Calibrar a bateria", "battery-2", "a calibração da bateria")
             return out + [recheck]
         if cid == "som":
             return [Slider("Volume", "volume", "volume"),
@@ -506,10 +514,9 @@ class App:
                    Choice("Gamma (contraste)", "adjustments", "gamma", GAMMAS, {g: f"{g:.1f}" for g in GAMMAS}),
                    Choice("Cor do LED", "bulb", "led", ["verde", "vermelho"], {"verde": "Verde", "vermelho": "Vermelho"}),
                    A("Detalhes da tela", "device-tv", lambda: self.run_info("Tela e modelo", "detect_hardware_and_screen"))]
-            if FAKE or sab.systool_available("backup"):
-                out.append(A("Backup e migração", "device-floppy", lambda: self.handoff("backup"),
-                             confirm="Abrir o assistente de backup e migração do dArkOSen?\nA Sab fecha e ele "
-                                     "abre em tela cheia."))
+            out += self.systool("info", "Informações do sistema", "info-circle", "as informações do sistema")
+            out += self.systool("splash", "Tela de boot", "power", "o gerenciador da tela de boot")
+            out += self.systool("backup", "Backup e migração", "device-floppy", "o assistente de backup e migração")
             return out
         if cid == "desempenho":
             return [Choice("Processador no menu", "cpu", "gov", D.get("govs"), GOV_NAMES),
@@ -555,11 +562,15 @@ class App:
                     A("Novidades", "tag", lambda: self.read(f"Novidades · Sab {sab_version()}", "tag",
                                                           sab_help.novidades_text())),
                     A("Créditos", "users", lambda: self.read("Créditos", "users", sab_help.CREDITOS)),
-                    A("Grupo no Telegram", "brand-telegram", self.show_qr)]
+                    A("Grupo no Telegram", "brand-telegram", self.show_qr),
+                    A("Restaurar o ES", "rotate", self.ask_restore_es)]
         if cid == "retroarch":
-            return [tagged(A("Restaurar de fábrica", "rotate", lambda: self.do_action("restaurar_retroarch"),
+            return ([tagged(A("Restaurar de fábrica", "rotate", lambda: self.do_action("restaurar_retroarch"),
                              confirm="Restaurar o RetroArch de fábrica?\nUma cópia das configurações atuais fica guardada.",
-                             danger=True), "restaurar_retroarch"), recheck]
+                             danger=True), "restaurar_retroarch")]
+                    + self.systool("ra_manager", "Gerenciador do RetroArch", "adjustments", "o gerenciador do RetroArch")
+                    + self.systool("ra_cores", "Restaurar opções dos cores", "cpu", "a restauração das opções dos cores")
+                    + [recheck])
         return [recheck]
 
     # --- ações ---
@@ -582,7 +593,7 @@ class App:
         self.worker(lambda: D.run(tool), done, busy="Lendo...")
 
     def handoff(self, tool):
-        res = "ok" if FAKE else D.run("handoff", {"tool": tool})
+        res = "ok" if FAKE else D.run("handoff", {"tool": tool, "card": self.page or ""})
         if res == "ok":
             self.running = False      # o Sab.sh abre a ferramenta
         else:
@@ -769,6 +780,25 @@ class App:
     def quit(self):
         self.running = False
 
+    def ask_restore_es(self):
+        self.modal = {"title": "Restaurar o ES", "icon": "rotate", "sel": 0,
+                      "buttons": ["Só reiniciar", "Desfazer a Sab", "Cancelar"],
+                      "text": "Só reiniciar: o menu do console recarrega quando a Sab fechar (ES travado ou "
+                              "lista desatualizada).\nDesfazer a Sab: tira o sistema próprio, o ícone e o logo "
+                              "que a Sab pôs no ES; ela volta para a lista de Ports.",
+                      "fns": [lambda: self.restore_es("restart_es"), lambda: self.restore_es("restore_es"),
+                              lambda: None]}
+
+    def restore_es(self, tool):
+        if FAKE:
+            return
+        res = D.run(tool)
+        if not res.startswith("Não"):
+            self.modal = {"title": "Pronto", "icon": "check", "buttons": ["Fechar a Sab", "Depois"], "sel": 0,
+                          "text": res + ".", "fns": [self.quit, lambda: None]}
+        else:
+            self.toast = (res, "problema", self.t + 4)
+
     # --- backup ---
 
     def backup_menu(self, module):
@@ -865,7 +895,7 @@ class App:
         if self.modal:
             m = self.modal
             if cmd in ("left", "right") and len(m["buttons"]) > 1:
-                m["sel"] = 1 - m["sel"]
+                m["sel"] = (m["sel"] + (1 if cmd == "right" else -1)) % len(m["buttons"])
             elif cmd == "ok":
                 self.modal = None
                 if m.get("fns"):
@@ -1236,7 +1266,14 @@ class App:
                 ih = max(50, 16 + 19 * len(lines) + extra)
             layout.append((y, ih, lines))
             y += ih + gap
+        # muitas ações (Ajuda): a coluna rola para o item escolhido caber acima do rodapé
+        top, bottom = cy + 18, H - 52
+        sy, sh = layout[self.item_sel][:2] if layout else (cy + 22, 50)
+        want = max(0, sy + sh - bottom) if sy - (cy + 22) > 0 else 0
+        self.act_off = approach(getattr(self, "act_off", 0), want, dt, 18)
+        layout = [(y - self.act_off, ih, lines) for y, ih, lines in layout]
         sel_y, sel_h = layout[self.item_sel][:2] if layout else (cy + 22, 50)
+        g.clip(cx - 20, top, cw + 40, bottom - top + 4)
         self.item_y = approach(self.item_y or sel_y, sel_y, dt, 18)
         self.item_h = approach(getattr(self, "item_h", 0) or sel_h, sel_h, dt, 18)
         a1, a2 = self.accent
@@ -1276,6 +1313,7 @@ class App:
                     g.text("Bold", 9, tag, cx + 46 + tw / 2, ty - 12.5, alpha(TEXT, a), "c", "m")
                 for n, ln in enumerate(lines):
                     g.text("SemiBold", 14, ln, cx + 46, ty + 19 * n + 9.5, alpha(TEXT, a), "l", "m")
+        g.clip()
         it = self.items[self.item_sel] if self.items else None
         hints = [("A", "Confirmar", TEXT), ("B", "Voltar", MUTED)]
         if isinstance(it, (Slider, Choice)):
@@ -1475,6 +1513,9 @@ class App:
                 self.sel = next(i for i, c in enumerate(CARDS) if c[0] == "testar")
                 self.open_page("testar")
                 self.show_test_result()
+            elif RESUME in [c[0] for c in CARDS]:    # voltou de uma ferramenta do dArkOSen
+                self.sel = next(i for i, c in enumerate(CARDS) if c[0] == RESUME)
+                self.open_page(RESUME)
             elif not FAKE and sab.get_mode() is None:   # primeira execução
                 self.ask_mode(first=True)
 

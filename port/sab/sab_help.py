@@ -5,6 +5,12 @@ TELEGRAM = "t.me/r36sbr"
 
 # A versão em uso vem do arquivo VERSION; a lista abaixo é o histórico.
 NOVIDADES = [
+    ("1.10.0", "26/10/2026", [
+        "As ferramentas do dArkOSen abertas pela Sab devolvem a Sab quando fecham, no mesmo card.",
+        "Novas ferramentas: teste de controle e conserto dos atalhos (Verificar), informações do sistema e "
+        "tela de boot (Tela e sistema), gerenciador do RetroArch e opções dos cores (RetroArch).",
+        "Ajuda > Restaurar o ES: só reiniciar o menu do console, ou desfazer tudo que a Sab pôs no ES.",
+    ]),
     ("1.9.2", "26/10/2026", [
         "Ícone novo (R36S Brasil) no cabeçalho, no loading e no menu do ES.",
         "No ES, a entrada da Sab ganha ícone, descrição e favorito; no modo sistema, o logo do sistema no tema.",
@@ -90,11 +96,12 @@ As verificações rodam na tela de carregamento. Depois de uma ação, o card ve
 
 # Verificar
 Resumo geral: bateria, temperatura, som, espaço, overclock, cartões e serviços do sistema numa tela só.
+"Testar o controle" e "Consertar atalhos" abrem as ferramentas do dArkOSen; a Sab volta quando elas fecham.
 Serviços que falham no boot aparecem aqui. A falha do dmc-governor (ajuste da RAM) tem conserto com um botão; a do systemd-remount-fs é conhecida e inofensiva no dArkOSen.
 
 # Bateria
 Mostra a carga da bateria e se está carregando. Ajuste o brilho e o modo do processador para a bateria durar mais.
-"Calibrar a bateria" abre a ferramenta de calibração do dArkOSen: a Sab fecha, a ferramenta abre em tela cheia e, ao terminar, você volta para Ports. Calibre quando a porcentagem pular ou o aparelho desligar com carga sobrando.
+"Calibrar a bateria" abre a ferramenta de calibração do dArkOSen: a Sab fecha, a ferramenta abre em tela cheia e, ao terminar, a Sab volta no card Bateria. Calibre quando a porcentagem pular ou o aparelho desligar com carga sobrando.
 
 # Som
 Volume e saída de som. "Restaurar áudio" volta a saída padrão, a configuração de som do sistema e o volume para 40%.
@@ -103,7 +110,7 @@ Volume e saída de som. "Restaurar áudio" volta a saída padrão, a configuraç
 Brilho e o modelo da sua tela. "Detalhes da tela" diz qual opção escolher no SELECT MODEL ao atualizar o dArkOS, e avisa se o aparelho é um clone.
 Gamma: deixa a imagem mais clara (abaixo de 1.0) ou mais escura e contrastada (acima de 1.0). Vale na hora e fica salvo para o boot; as teclas de atalho de gamma do dArkOSen continuam a partir do valor escolhido.
 Cor do LED: verde ou vermelho, também no boot. Com a bateria em 10% ou menos, o LED pisca.
-"Backup e migração" abre o assistente de backup do dArkOSen em tela cheia (a Sab fecha antes).
+"Informações do sistema", "Tela de boot" e "Backup e migração" abrem as ferramentas do dArkOSen em tela cheia; a Sab fecha antes e volta quando elas fecham.
 
 # Desempenho
 Modo do processador: Economia, Equilibrado ou Máximo. A escolha fica salva em /etc/cpu-settings.conf, o mesmo arquivo do CPU Manager e do R36 Tuner, e vale no boot e depois de jogar.
@@ -129,6 +136,7 @@ A Sab avisa quando um cartão passa de 90% de uso ou tem menos de 1 GB livre.
 
 # RetroArch
 Mostra o que foi mudado na configuração do RetroArch e restaura a de fábrica. Uma cópia da configuração atual fica guardada antes.
+"Gerenciador do RetroArch" e "Restaurar opções dos cores" abrem as ferramentas do dArkOSen (a Sab volta quando elas fecham).
 
 # Testar ports
 Mostra os ports da pasta que o ES exibe na lista de Ports. O ArkOS guarda os jogos em /roms2 (cartão de jogos) ou em /roms (cartão do sistema); a Sab lê qual está em uso no es_systems.cfg e ignora a outra.
@@ -158,7 +166,8 @@ Antes de importar, a Sab salva o que está valendo agora como "...-antes-de-impo
 Só configurações: saves, estados, cores, shaders, temas e bancos de dados ficam de fora.
 
 # Ajuda
-Este manual, os cuidados, as novidades de cada versão e os créditos."""
+Este manual, os cuidados, as novidades de cada versão e os créditos.
+"Restaurar o ES": "Só reiniciar" recarrega o menu do console quando a Sab fecha (para um ES travado ou lista desatualizada). "Desfazer a Sab" tira o sistema próprio, o ícone, a descrição e o logo que a Sab pôs no ES, e ela volta para a lista de Ports."""
 
 CUIDADOS = """# Antes de qualquer coisa
 Faça backup do cartão do sistema no PC de vez em quando. Uma imagem do cartão inteiro salva você de quase qualquer problema.
