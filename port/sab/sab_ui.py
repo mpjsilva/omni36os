@@ -544,9 +544,9 @@ class App:
                 ("sab", "Sab", "help-circle"), ("retroarch", "RetroArch", "device-gamepad-2"),
                 ("standalone", "Emuladores standalone", "cpu"), ("es", "EmulationStation", "device-tv"))]
         if cid == "ajuda":
-            mode = "Sistema no ES" if not FAKE and sab.get_mode() == "sistema" else "Lista de Ports"
+            mode = "Sistema no console" if not FAKE and sab.get_mode() == "sistema" else "Lista de Ports"
             return [subpage(A("Backup", "device-floppy", lambda: self.open_page("backup")), "backup"),
-                    A(f"Mostrar no ES: {mode}", "device-tv", self.ask_mode),
+                    A(f"Mostrar no console: {mode}", "device-tv", self.ask_mode),
                     A("Manual", "book", lambda: self.read("Manual", "book", sab_help.MANUAL)),
                     A("Cuidados", "alert-triangle", lambda: self.read("Cuidados", "alert-triangle", sab_help.CUIDADOS)),
                     A("Novidades", "tag", lambda: self.read(f"Novidades · Sab {sab_version()}", "tag",
@@ -742,12 +742,12 @@ class App:
 
     def ask_mode(self, first=False):
         cur = None if FAKE else sab.get_mode()
-        text = ("Onde a Sab deve aparecer no ES?\n" if first else "") + \
+        text = ("Onde a Sab deve aparecer no console?\n" if first else "") + \
             ("Lista de Ports: junto com os outros ports.\n"
-             "Sistema: uma entrada própria no menu principal do ES.\n"
-             "Trocar reinicia o ES quando a Sab fechar. Dá para mudar depois em Ajuda.")
+             "Sistema: uma entrada própria no menu principal do console.\n"
+             "Trocar reinicia o menu do console quando a Sab fechar. Dá para mudar depois em Ajuda.")
         self.modal = {"title": "Como mostrar a Sab", "text": text, "icon": "help-circle",
-                      "buttons": ["Lista de Ports", "Sistema no ES"], "sel": 1 if cur == "sistema" else 0,
+                      "buttons": ["Lista de Ports", "Sistema no console"], "sel": 1 if cur == "sistema" else 0,
                       "fns": [lambda: self.choose_mode("port", first), lambda: self.choose_mode("sistema", first)]}
 
     def choose_mode(self, mode, first):
@@ -761,7 +761,7 @@ class App:
             return
         res = D.run("set_mode", {"mode": mode})
         self.modal = {"title": "Pronto", "icon": "check", "buttons": ["Fechar a Sab"], "sel": 0,
-                      "text": res + ".\nO ES reinicia quando a Sab fechar.", "fns": [self.quit]}
+                      "text": res + ".\nO menu do console reinicia quando a Sab fechar.", "fns": [self.quit]}
 
     def quit(self):
         self.running = False

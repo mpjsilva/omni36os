@@ -7,7 +7,7 @@ TELEGRAM = "t.me/r36sbr"
 NOVIDADES = [
     ("1.9.0", "26/10/2026", [
         "Na primeira execução a Sab pergunta onde aparecer: na lista de Ports ou como sistema próprio no menu do ES.",
-        "Ajuda > Mostrar no ES: troca entre os dois modos (o ES reinicia quando a Sab fecha).",
+        "Ajuda > Mostrar no console: troca entre os dois modos (o ES reinicia quando a Sab fecha).",
         "Ajuda > Backup: exportar e importar as configurações da Sab, do RetroArch, dos emuladores standalone e do ES.",
         "Importar navega pelas pastas e mostra de qual módulo é cada backup; antes de importar, o atual é salvo.",
     ]),
@@ -129,11 +129,11 @@ A lista mostra o último resultado de cada port, e as falhas viram alerta no car
 "Limpar avisos de falha" tira o alerta do card depois que você já viu as falhas. O resultado continua na lista até o port ser testado de novo; se o novo teste falhar, o aviso volta.
 Ports com menu próprio (como Daytona USA e NFSU1) passam quando o menu abre: o teste não aperta botões.
 
-# Mostrar no ES (port ou sistema)
+# Mostrar no console (port ou sistema)
 Na primeira vez que abre, a Sab pergunta onde aparecer:
 Lista de Ports: junto com os outros ports (o atalho Sab.sh fica na pasta de ports).
-Sistema no ES: uma entrada própria "Sab" no menu principal do ES (o atalho fica em /roms2/sab/ e sai da lista de Ports).
-Para trocar depois: Ajuda > Mostrar no ES. A troca muda o es_systems.cfg (com backup em es_systems.cfg.sab-bak) e o ES reinicia quando a Sab fecha.
+Sistema no console: uma entrada própria "Sab" no menu principal do console (o atalho fica em /roms2/sab/ e sai da lista de Ports).
+Para trocar depois: Ajuda > Mostrar no console. A troca muda o es_systems.cfg (com backup em es_systems.cfg.sab-bak) e o ES reinicia quando a Sab fecha.
 Se o seu tema não tiver arte para "Sab", o ES mostra o nome em texto.
 
 # Backup

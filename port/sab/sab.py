@@ -676,7 +676,7 @@ MODE_FILE = f"{HOME}/.config/sab/modo"
 RESTART_ES = "/tmp/sab-restart-es"     # o launch.sh reinicia o ES quando a Sab fecha
 ES_MARK, ES_MARK_END = "<!-- Sab: sistema próprio no ES -->", "<!-- /Sab -->"
 WRAPPER = """#!/bin/bash
-# Sab: atalho para o launcher de verdade (sab/launch.sh). Ver Ajuda > Mostrar no ES.
+# Sab: atalho para o launcher de verdade (sab/launch.sh). Ver Ajuda > Mostrar no console.
 exec bash "{launch}"
 """
 
@@ -739,7 +739,7 @@ def set_mode(args):
     os.makedirs(os.path.dirname(MODE_FILE), exist_ok=True)
     write_text(MODE_FILE, mode)
     write_text(RESTART_ES, "1")
-    return ("A Sab vai aparecer como sistema no menu do ES" if mode == "sistema"
+    return ("A Sab vai aparecer como sistema no menu do console" if mode == "sistema"
             else "A Sab vai aparecer na lista de Ports")
 
 
