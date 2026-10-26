@@ -309,7 +309,6 @@ DANGER = {
     "Enable Quick Mode.sh": (5, False, "Muda o que sobe no boot.", "Rode de novo para voltar ao modo normal."),
     "Remove Kodi.sh": (5, False, "Apaga o Kodi e as configurações dele.", "Só reinstalando o Kodi."),
 }
-KIND_NAMES = {"nativo": "Nativo", "janela": "Janelas", "app": "App", "perigoso": "Cuidado"}
 HUB_NAMES = {"desligada": "Desligada (ES direto)", "sempre": "Omni36OS no boot", "alertas": "Só com alertas"}
 HOTKEY_NAMES = {"desligado": "Desligado", "ligado": "No menu do ES", "jogo": "Menu e jogos (beta)"}
 
@@ -926,8 +925,7 @@ class App:
 
     def open_tools(self, cat, start=None):
         ts = [t for t in self.tool_list() if t["cat"] == cat]
-        colors = {"nativo": LEVEL["ok"], "janela": LEVEL["info"], "app": MUTED, "perigoso": LEVEL["problema"]}
-        rows = [{"name": t["name"], "right": (KIND_NAMES[t["kind"]], colors[t["kind"]]), "tool": t} for t in ts]
+        rows = [{"name": t["name"], "tool": t} for t in ts]
         self.show_list(cat, "adjustments", rows, lambda r: self.ask_tool(r["tool"], cat, rows.index(r)),
                        "Abrir", start)
 

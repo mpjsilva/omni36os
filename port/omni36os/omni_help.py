@@ -6,6 +6,7 @@ TELEGRAM = "t.me/r36sbr"
 # A versão em uso vem do arquivo VERSION; a lista abaixo é o histórico.
 NOVIDADES = [
     ("1.3.1", "26/10/2026", [
+        "Lista de ferramentas mais limpa: sem as etiquetas Nativo/Janelas/App.",
         "START+SELECT juntos não fecham mais o Omni36OS (para ir ao ES: SELECT > Abrir o ES, ou FN+SELECT).",
         "Jogos só abrem pela lista da tela inicial; no card Jogos do menu a ficha é só para consultar.",
     ]),
@@ -113,7 +114,7 @@ Com a tela inicial ligada, o console liga direto na lista de jogos. Esquerda/dir
 START abre as opções (os cards do Omni36OS); B ou START voltam para os jogos. SELECT abre Energia: abrir o EmulationStation, reiniciar ou desligar. O ES continua instalado como reserva: FN+SELECT também alterna entre os dois.
 
 # Ferramentas
-As ferramentas do menu Opções do dArkOSen, por categoria. "Nativo": reescrita no Omni36OS (copiar padrões, montar pendrive, backup, trapaças...). "Janelas": o script original roda, mas os menus, mensagens e o teclado aparecem no visual do Omni36OS; o sistema não é alterado para isso (só o script vê a troca). "App": programas com tela própria. "Perigoso": mexem no boot, no kernel ou no ES; abrem um aviso vermelho com contagem (10 s nas que podem impedir o boot, 5 s nas outras) e as três mais graves pedem segurar A por 3 s. Cancelar fica escolhido desde o início; depois de passar uma vez, a mesma ferramenta não espera de novo até reiniciar.
+As ferramentas do menu Opções do dArkOSen, por categoria. Parte delas foi reescrita e roda aqui dentro; as outras rodam o script original, com os menus, mensagens e o teclado no visual do Omni36OS (o sistema não é alterado para isso). Programas com tela própria abrem como no ES. "Perigoso": mexem no boot, no kernel ou no ES; abrem um aviso vermelho com contagem (10 s nas que podem impedir o boot, 5 s nas outras) e as três mais graves pedem segurar A por 3 s. Cancelar fica escolhido desde o início; depois de passar uma vez, a mesma ferramenta não espera de novo até reiniciar.
 
 # Jogos
 Lista os jogos que o ES mostra, lidos do es_systems.cfg e dos gamelist.xml (o Omni36OS só lê; quem grava é o ES). "Por sistema", "Favoritos", "Recentes" e "Mais jogados" abrem listas; L1/R1 pulam de letra em letra.
