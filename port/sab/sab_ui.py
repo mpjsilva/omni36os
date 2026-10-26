@@ -91,9 +91,7 @@ def about_findings():
     return out
 
 FAKE_PORTS = [{"dir": "/roms2/ports", "label": "/roms2/ports (cartão de jogos)", "es": True,
-               "ports": ["/roms2/ports/Daytona USA.sh", "/roms2/ports/NFSU1.sh", "/roms2/ports/Undertale.sh"]},
-              {"dir": "/roms/ports", "label": "/roms/ports (cartão do sistema)", "es": False,
-               "ports": ["/roms/ports/Blobby Volley 2.sh"]}]
+               "ports": ["/roms2/ports/Daytona USA.sh", "/roms2/ports/NFSU1.sh", "/roms2/ports/Undertale.sh"]}]
 GAMMAS = [0.6, 0.8, 0.9, 1.0, 1.1, 1.2, 1.4, 1.6]
 GOV_NAMES = {"powersave": "Economia", "ondemand": "Equilibrado", "schedutil": "Equilibrado (kernel)",
              "performance": "Máximo"}
@@ -401,11 +399,15 @@ class App:
         res = {} if FAKE else sab.port_results()
         out = []
         self.port_count = sum(len(g["ports"]) for g in groups)
+        acks = set() if FAKE else sab.port_acks()
         for g in groups:
-            where = "o ES mostra esta pasta" if g["es"] else "fora do ES: não aparece na lista de Ports"
-            out.append(("ok" if g["es"] else "info", f"{len(g['ports'])} ports em {g['label']}; {where}."))
+            out.append(("ok", f"{len(g['ports'])} ports em {g['label']}, a pasta que o ES mostra."))
         names = {os.path.basename(p)[:-3] for g in groups for p in g["ports"]}
-        fails = sorted(n for n, r in res.items() if r[0] == "falhou" and n in names)
+        fails = sorted(n for n, r in res.items() if r[0] == "falhou" and n in names
+                       and f"{n}|{r[1]}" not in acks)
+        seen = sum(1 for n, r in res.items() if r[0] == "falhou" and n in names and f"{n}|{r[1]}" in acks)
+        if seen:
+            out.append(("info", f"{seen} falha(s) já vista(s): continuam marcadas na lista até um novo teste."))
         oks = sum(1 for n, r in res.items() if r[0] == "ok" and n in names)
         for n in fails:
             out.append(("aviso", f"{n} falhou no teste de {res[n][1]}. Relatório em sab/logs/{n}/."))
@@ -518,7 +520,8 @@ class App:
                       confirm="Verificar e reparar o cartão de jogos?\nO aparelho reinicia, verifica o cartão e "
                               "volta sozinho. Leva alguns minutos.", danger=True)]
         if cid == "testar":
-            return [A("Escolher o port", "player-play", self.open_picker), recheck]
+            return [A("Escolher o port", "player-play", self.open_picker),
+                    A("Limpar avisos de falha", "check", lambda: self.run_tool_toast("clear_port_alerts")), recheck]
         if cid == "ajuda":
             return [A("Manual", "book", lambda: self.read("Manual", "book", sab_help.MANUAL)),
                     A("Cuidados", "alert-triangle", lambda: self.read("Cuidados", "alert-triangle", sab_help.CUIDADOS)),

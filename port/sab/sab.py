@@ -610,18 +610,14 @@ def es_ports_dir():
 
 
 def port_groups(_args=None):
-    """Ports instalados por cartão, a pasta do ES primeiro. Sem a própria Sab."""
-    es = es_ports_dir()
-    groups = []
-    for d in sorted(set(PORT_DIRS) | {es}, key=lambda d: d != es):
-        if not os.path.isdir(d):
-            continue
-        ports = sorted((p for p in glob.glob(f"{d}/*.sh") + glob.glob(f"{d}/*.SH")
-                        if os.path.basename(p) != "Sab.sh"), key=lambda p: os.path.basename(p).lower())
-        if ports:
-            card = "cartão de jogos" if d.startswith("/roms2") else "cartão do sistema"
-            groups.append({"dir": d, "label": f"{d} ({card})", "es": d == es, "ports": ports})
-    return groups
+    """Ports que o ES mostra (só a pasta do es_systems.cfg), sem a própria Sab."""
+    d = es_ports_dir()
+    if not os.path.isdir(d):
+        return []
+    ports = sorted((p for p in glob.glob(f"{d}/*.sh") + glob.glob(f"{d}/*.SH")
+                    if os.path.basename(p) != "Sab.sh"), key=lambda p: os.path.basename(p).lower())
+    card = "cartão de jogos" if d.startswith("/roms2") else "cartão do sistema"
+    return [{"dir": d, "label": f"{d} ({card})", "es": True, "ports": ports}] if ports else []
 
 
 def list_ports(_args=None):
@@ -636,6 +632,24 @@ def port_results(_args=None):
         if len(parts) == 4:
             out[parts[0]] = (parts[1], parts[2], parts[3])
     return out
+
+
+# Avisos limpos: "nome|data" de falhas já vistas. Elas somem do alerta do card,
+# mas o resultado continua na lista; um teste novo (outra data) volta a avisar.
+PORT_ACKS = os.path.join(SAB_DIR, "logs", "avisos_limpos.txt")
+
+
+def port_acks(_args=None):
+    return set(read_text(PORT_ACKS, "").splitlines())
+
+
+def clear_port_alerts(_args=None):
+    fails = [f"{n}|{r[1]}" for n, r in port_results().items() if r[0] == "falhou"]
+    if not fails:
+        return "Nenhum aviso de falha para limpar"
+    os.makedirs(os.path.dirname(PORT_ACKS), exist_ok=True)
+    write_text(PORT_ACKS, "\n".join(sorted(set(fails))) + "\n")
+    return f"{len(fails)} aviso(s) limpo(s); os resultados continuam na lista"
 
 
 def last_test(_args=None):
@@ -835,7 +849,7 @@ TOOLS = {
     "schedule_scan": schedule_scan, "last_scan": last_scan,
     "get_gamma": get_gamma, "set_gamma": set_gamma, "get_led": get_led, "set_led": set_led,
     "usb_net_active": usb_net_active, "handoff": handoff,
-    "list_ports": list_ports, "port_groups": port_groups, "port_results": port_results, "test_port": test_port,
+    "list_ports": list_ports, "port_groups": port_groups, "port_results": port_results, "clear_port_alerts": clear_port_alerts, "test_port": test_port,
     "retroarch_changes": retroarch_changes,
     "restore_retroarch": restore_retroarch,
     "usb_facts": usb_facts,

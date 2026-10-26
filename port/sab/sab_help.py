@@ -5,6 +5,10 @@ TELEGRAM = "t.me/r36sbr"
 
 # A versão em uso vem do arquivo VERSION; a lista abaixo é o histórico.
 NOVIDADES = [
+    ("1.8.1", "26/10/2026", [
+        "Testar ports: \"Limpar avisos de falha\" tira o alerta do card; o resultado continua na lista até um novo teste.",
+        "A lista de ports mostra só a pasta que o ES exibe (lida do es_systems.cfg).",
+    ]),
     ("1.8.0", "26/10/2026", [
         "Cartões SD agora fica dentro do card Desempenho (botão \"Cartões SD\", que substitui o \"Testar cartões\").",
         "B na página dos cartões volta para Desempenho; os alertas dos cartões aparecem no ponto do Desempenho.",
@@ -111,11 +115,12 @@ A Sab avisa quando um cartão passa de 90% de uso ou tem menos de 1 GB livre.
 Mostra o que foi mudado na configuração do RetroArch e restaura a de fábrica. Uma cópia da configuração atual fica guardada antes.
 
 # Testar ports
-Mostra os ports instalados separados por cartão: /roms2/ports (cartão de jogos) e /roms/ports (cartão do sistema). O ArkOS usa um ou outro para os jogos; a etiqueta "O ES MOSTRA" indica a pasta que aparece na lista de Ports (lida do es_systems.cfg). Ports na outra pasta estão instalados mas não aparecem no ES.
+Mostra os ports da pasta que o ES exibe na lista de Ports. O ArkOS guarda os jogos em /roms2 (cartão de jogos) ou em /roms (cartão do sistema); a Sab lê qual está em uso no es_systems.cfg e ignora a outra.
 Escolha um port e aperte A: a Sab fecha, o port abre como se fosse pelo ES e, depois de 15 segundos, é encerrado sozinho. A Sab volta com o resultado.
 Passou: o port ficou aberto os 15 segundos.
 Falhou: o port fechou antes. O relatório fica em sab/logs/<nome do port>/ (dentro de /roms2/ports/sab) com a saída do port, os logs da pasta dele, as mensagens do kernel e o estado do sistema.
 A lista mostra o último resultado de cada port, e as falhas viram alerta no card.
+"Limpar avisos de falha" tira o alerta do card depois que você já viu as falhas. O resultado continua na lista até o port ser testado de novo; se o novo teste falhar, o aviso volta.
 Ports com menu próprio (como Daytona USA e NFSU1) passam quando o menu abre: o teste não aperta botões.
 
 # Ajuda
