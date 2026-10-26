@@ -14,6 +14,7 @@ import ctypes as C
 import json
 import math
 import os
+import signal
 import threading
 import time
 
@@ -100,6 +101,9 @@ def card_info(cid):
 FPS_ACTIVE, FPS_IDLE, IDLE_AFTER = 30, 10, 4.0   # quadros/s; segundos sem botão até ficar parado
 LIB_POS = "/tmp/omni36os-biblioteca.json"
 HUB = os.environ.get("OMNI_HUB", "")         # boot/atalho/saida: tela inicial; jogo: por cima de um jogo
+POWER_PRESS = "/dev/shm/omni36os-power-press"   # power_button.py: menu pedido pelo botão de power
+POWER_FLAG = "/dev/shm/omni36os-power-menu"     # abrir já no menu de energia
+PANIC_MSG = "/dev/shm/omni36os-panic-msg"
 RESUME = os.environ.get("OMNI_RESUME", "")   # "testar": o Omni36OS voltou de um teste de port
 
 import omni_help
@@ -204,7 +208,7 @@ class Data:
             return {"brilho": 40, "volume": 60, "gov": "ondemand", "govs": ["powersave", "ondemand", "performance"],
                     "part": "roms2", "pendrive": False, "cpu_max": 1296, "cpu_freqs": [1296, 1416, 1512],
                     "gpu_max": 520, "gpu_freqs": [400, 480, 520, 600], "gamma": 1.0, "led": "verde",
-                    "hub": "desligada", "atalho": "desligado", "tema": THEME}[what]
+                    "hub": "desligada", "atalho": "desligado", "power": "desligar", "tema": THEME}[what]
         if what == "brilho":
             return omni.get_brightness()
         if what == "volume":
@@ -235,6 +239,8 @@ class Data:
             return omni.get_hub()
         if what == "atalho":
             return omni.get_hotkey()
+        if what == "power":
+            return omni.get_power_button()
 
     def set(self, what, value):
         if what == "tema":
@@ -266,6 +272,8 @@ class Data:
             return omni.set_hub({"mode": value})
         if what == "atalho":
             return omni.set_hotkey({"mode": value})
+        if what == "power":
+            return omni.set_power_button({"mode": value})
 
     def run(self, tool, args=None):
         if FAKE:
@@ -372,6 +380,10 @@ class App:
         except (OSError, ValueError):
             pass
         self.toast = None             # (texto, nível, até)
+        self.want_power = self.want_msg = False
+        self.msg_t = -9.0
+        signal.signal(signal.SIGUSR1, lambda *_: setattr(self, "want_power", True))
+        signal.signal(signal.SIGUSR2, lambda *_: setattr(self, "want_msg", True))
         self.busy = None              # texto enquanto uma tarefa roda
         self.held = {}                # direção -> próximo repeat
         self.combo = set()
@@ -724,6 +736,7 @@ class App:
                     Choice("Tema", "sun", "tema", list(THEMES), {"escuro": "Escuro", "claro": "Claro"}),
                     Choice("Tela inicial do console", "power", "hub", list(HUB_NAMES), HUB_NAMES),
                     Choice("Atalho L3+R3", "device-gamepad-2", "atalho", list(HOTKEY_NAMES), HOTKEY_NAMES),
+                    Choice("Botão de power", "power", "power", list(omni.POWER_NAMES), omni.POWER_NAMES),
                     A("Manual", "book", lambda: self.read("Manual", "book", omni_help.MANUAL)),
                     A("Cuidados", "alert-triangle", lambda: self.read("Cuidados", "alert-triangle", omni_help.CUIDADOS)),
                     A("Novidades", "tag", lambda: self.read(f"Novidades · Omni36OS {omni_version()}", "tag",
@@ -1074,18 +1087,51 @@ class App:
         self.draw_footer([("A", "Ver o jogo", TEXT), ("LR", "Sistema", MUTED), ("L1 / R1", "Letra", MUTED),
                           ("START", "Opções", MUTED), ("SELECT", "Energia", MUTED)])
 
-    def power_menu(self):
+    def power_menu(self, button=False):
+        """SELECT na biblioteca, ou o botão de power (aí Cancelar vem primeiro e apertar o power
+        de novo desliga: o power_button.py vê o pedido em aberto)."""
         rows = [{"name": "Abrir o EmulationStation", "icon": "device-tv", "do": "es"},
+                {"name": "Suspender", "icon": "clock", "do": "suspend"},
                 {"name": "Reiniciar o console", "icon": "refresh", "do": "reboot"},
                 {"name": "Desligar o console", "icon": "power", "do": "poweroff"}]
+        if button:
+            rows = [{"name": "Cancelar", "icon": "x", "do": "cancel"}] + rows[1:]
+
+        def done():
+            try:
+                os.remove(POWER_PRESS)
+            except OSError:
+                pass
 
         def go(r):
             self.picker = None
+            done()
             if r["do"] == "es":
                 self.quit()           # no sistema (tela inicial), sair do Omni36OS abre o ES
-            elif not FAKE:
+            elif r["do"] != "cancel" and not FAKE:
                 omni.power({"what": r["do"]})
         self.show_list("Energia", "power", rows, go, "Escolher")
+        if self.picker:
+            self.picker["on_back"] = done
+
+    def power_check(self):
+        """Sinais do power_button.py: USR1 abre o menu de energia, USR2 mostra o aviso do pânico."""
+        if self.loading:
+            return                    # depois da tela de abertura, para o aviso não sumir nela
+        if self.want_power:
+            self.want_power = False
+            self.sheet = self.danger = self.modal = None
+            self.power_menu(button=True)
+        if self.want_msg or self.t - self.msg_t > 1.5:
+            self.want_msg, self.msg_t = False, self.t
+            try:
+                with open(PANIC_MSG) as f:
+                    msg = f.read().strip()
+                os.remove(PANIC_MSG)
+                if msg:
+                    self.toast = (msg, "aviso", self.t + 3.5)
+            except OSError:
+                pass
 
     # --- jogos ---
 
@@ -1612,7 +1658,7 @@ class App:
                 self.status = D.status()
             if it.key == "tema":
                 self.g.flush()
-            if it.key in ("hub", "atalho") and isinstance(res, str):
+            if it.key in ("hub", "atalho", "power") and isinstance(res, str):
                 self.toast = (res, "ok", self.t + 4)
         elif isinstance(it, Action) and cmd == "ok":
             if it.confirm:
@@ -2200,6 +2246,12 @@ class App:
                 self.open_page(RESUME)
             elif not FAKE and omni.get_mode() is None:   # primeira execução
                 self.ask_mode(first=True)
+            try:
+                if time.time() - os.path.getmtime(POWER_FLAG) < 60:
+                    self.want_power = True
+                os.remove(POWER_FLAG)
+            except OSError:
+                pass
 
     def prewarm(self):
         """Monta a geometria e o texto de uma página por quadro, fora da tela,
@@ -2238,6 +2290,7 @@ class App:
             dt = min(0.05, now - last)
             last = now
             self.poll()
+            self.power_check()
             if demo and now >= next_demo and not self.busy:
                 cmd = demo.pop(0)
                 next_demo = now + 0.45

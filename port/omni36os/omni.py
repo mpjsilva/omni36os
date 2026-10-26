@@ -839,13 +839,62 @@ def set_hotkey(args):
 
 
 def power(args):
-    """Reiniciar ou desligar (menu Energia da biblioteca)."""
+    """Reiniciar, desligar ou suspender (menu Energia). Como o finish.sh do dArkOSen: o ES
+    fecha (grava as listas), o /boot é desmontado e tudo é gravado antes; num job à parte do
+    systemd, porque parar o ES (o hub) fecha o Omni36OS junto."""
     what = args["what"]
-    if what not in ("reboot", "poweroff"):
+    if what not in ("reboot", "poweroff", "suspend"):
         return "Opção inválida."
     os.sync()
-    subprocess.Popen(["systemctl", what])
+    if what == "suspend":
+        subprocess.Popen(["systemctl", "suspend"])
+        return "ok"
+    subprocess.run(["systemd-run", "--no-block", "--collect", "--unit", f"omni36os-power-{int(time.time())}",
+                    "bash", "-c", "systemctl stop emulationstation; mountpoint -q /boot && umount /boot; "
+                                  f"sync; systemctl {what}"])
     return "ok"
+
+
+# --- Botão de power ---
+
+# O ogage do dArkOSen chama o finish.sh a cada toque no power. Ligado, o finish.sh passa
+# antes pelo power_button.py (menu de energia; FN + power = pânico); se ele falhar ou não
+# tratar o toque, o original (guardado em finish.sh.omni36os-orig) desliga como sempre.
+FINISH = "/usr/local/bin/finish.sh"
+FINISH_ORIG = FINISH + ".omni36os-orig"
+FINISH_MARK = "# Omni36OS: botão de power"
+FINISH_WRAP = f"""#!/bin/bash
+{FINISH_MARK}. Original em {FINISH_ORIG}; Ajuda > Botão de power desfaz.
+H={OMNI_DIR}/power_button.py
+if [ -f "$H" ] && timeout 8 python3 -B "$H"; then exit 0; fi
+exec bash {FINISH_ORIG}
+"""
+POWER_NAMES = {"desligar": "Desligar direto", "menu": "Menu de energia"}
+
+
+def get_power_button(_args=None):
+    return "menu" if FINISH_MARK in read_text(FINISH, "") else "desligar"
+
+
+def set_power_button(args):
+    mode = args["mode"]
+    if mode not in POWER_NAMES:
+        return "Modo inválido."
+    cur = read_text(FINISH, "")
+    if mode == "menu":
+        if FINISH_MARK not in cur:
+            if not cur.startswith("#!"):
+                return "Não achei o finish.sh do dArkOSen: o botão de power fica como está."
+            shutil.copy2(FINISH, FINISH_ORIG)
+            write_text(FINISH + ".tmp", FINISH_WRAP)
+            os.chmod(FINISH + ".tmp", 0o755)
+            os.replace(FINISH + ".tmp", FINISH)
+        return "Power: menu de energia. FN + power: pânico"
+    if FINISH_MARK in cur and os.path.exists(FINISH_ORIG):
+        shutil.copy2(FINISH_ORIG, FINISH + ".tmp")
+        os.replace(FINISH + ".tmp", FINISH)
+        os.remove(FINISH_ORIG)
+    return "Power: desliga direto, como no dArkOSen"
 
 
 # --- Conflitos com outros scripts ---
@@ -902,6 +951,7 @@ def restore_es(_args=None):
         return res
     set_hub({"mode": "desligada"})
     set_hotkey({"mode": "desligado"})
+    set_power_button({"mode": "desligar"})
     write_text(ES_CLEAN, "1")
     return "ES restaurado: o Omni36OS volta para Ports quando fechar"
 

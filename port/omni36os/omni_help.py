@@ -5,6 +5,14 @@ TELEGRAM = "t.me/r36sbr"
 
 # A versão em uso vem do arquivo VERSION; a lista abaixo é o histórico.
 NOVIDADES = [
+    ("1.4.0", "26/10/2026", [
+        "Botão de power abre o menu de energia (Cancelar, Suspender, Reiniciar, Desligar); apertar o power "
+        "de novo com o menu aberto desliga. Ligue ou desligue em Ajuda > Botão de power.",
+        "FN + power: modo pânico. Fecha o jogo, port ou ferramenta na tela e volta o processador, o brilho e o "
+        "som para níveis seguros. Duas vezes em 10 s: grava tudo e reinicia.",
+        "Desligar e reiniciar pelo Omni36OS agora fecham o ES e gravam tudo antes, como o power do dArkOSen.",
+        "Atalho L3+R3 desligado: a troca entre o Omni36OS e o ES é pelo menu (SELECT > Abrir o ES).",
+    ]),
     ("1.3.1", "26/10/2026", [
         "Lista de ferramentas mais limpa: sem as etiquetas Nativo/Janelas/App.",
         "FN+SELECT não alterna mais entre o Omni36OS e o ES (no ES só esmaecia a tela); use SELECT > Abrir o ES.",
@@ -153,6 +161,7 @@ Só configurações: saves, estados, cores, shaders, temas e bancos de dados fic
 Este manual, os cuidados, as novidades de cada versão e os créditos.
 "Tema": escuro ou claro, vale na hora e fica salvo.
 "Tela inicial do console": Desligada (o console abre no ES, como sempre), Omni36OS no boot (o Omni36OS abre antes do ES; B na tela inicial vai para o ES e sair do ES volta para o Omni36OS) ou Só com alertas (o Omni36OS só abre no boot se a bateria estiver fraca, o console quente, um serviço falhando ou um cartão cheio). Vale a partir do próximo boot. No boot, segure B para o BaRT do dArkOSen ou L1 para pular o Omni36OS.
+"Botão de power": Menu de energia (um toque abre Cancelar, Suspender, Reiniciar e Desligar; outro toque com o menu aberto desliga) ou Desligar direto (como no dArkOSen). Com o menu ligado, FN + power é o modo pânico: fecha o que estiver na tela, tira o overclock, põe o processador no modo normal, sobe o brilho se estiver quase apagado e abaixa o som se estiver no máximo. Duas vezes em menos de 10 s, o console grava tudo e reinicia. Segurar o power por uns 8 s sempre desliga à força: isso é do chip de energia, não do Omni36OS. O botão de reset reinicia por hardware e não pode ser mudado.
 "Atalho L3+R3": segure L3+R3 (os dois analógicos) por 1 s para alternar: do ES para o Omni36OS e do Omni36OS de volta. No menu do ES, o Omni36OS abre e o ES volta quando ele fecha. Em "Menu e jogos (beta)", também dentro de um jogo: o jogo congela, o Omni36OS abre por cima e o jogo continua quando ele fecha (alguns emuladores não soltam a tela; aí o jogo volta na hora). Por cima de um jogo, testes de port e ferramentas de tela cheia ficam bloqueados.
 "Restaurar o ES": "Só reiniciar" recarrega o menu do console quando o Omni36OS fecha (para um ES travado ou lista desatualizada). "Desfazer o Omni36OS" tira o sistema próprio, o ícone, a descrição e o logo que o Omni36OS pôs no ES (inclusive a tela inicial e o atalho), e ele volta para a lista de Ports."""
 
