@@ -5,6 +5,11 @@ TELEGRAM = "t.me/r36sbr"
 
 # A versão em uso vem do arquivo VERSION; a lista abaixo é o histórico.
 NOVIDADES = [
+    ("1.8.0", "26/10/2026", [
+        "Cartões SD agora fica dentro do card Desempenho (botão \"Cartões SD\", que substitui o \"Testar cartões\").",
+        "B na página dos cartões volta para Desempenho; os alertas dos cartões aparecem no ponto do Desempenho.",
+        "Tela inicial de novo com 9 cards em 3 linhas.",
+    ]),
     ("1.7.1", "26/10/2026", [
         "Menos calor: a Sab desenha 30 quadros/s em uso e 10 parada (antes eram 60 sem parar).",
         "Ao abrir, a Sab devolve CPU, GPU e RAM ao modo automático (o ES deixa tudo no máximo para ports).",
@@ -86,7 +91,7 @@ Limite do processador: 1296 MHz é o padrão. De 1368 a 1512 MHz é overclock (O
 Limite da GPU: 520 MHz é o padrão; 600 MHz é overclock.
 O overclock só é liberado com o aparelho abaixo de 70 °C. Se ele esquentar com o OC ligado, a Sab sugere voltar ao padrão.
 O painel também mostra os limites atuais e a ZRAM (memória comprimida que ajuda nos jogos pesados).
-"Testar cartões" mede a velocidade dos cartões SD; leva até um minuto.
+"Cartões SD" abre a página dos cartões (veja abaixo). B volta para Desempenho.
 
 # Pendrive USB
 Liga o modo pendrive: com o cabo de dados no PC, a partição de jogos (ou a do sistema) aparece como um pendrive para copiar ROMs.
@@ -96,8 +101,9 @@ Ao tirar o cabo ou ejetar no PC, o console monta a partição de novo e volta ao
 "Limpar lixo do Mac" apaga os arquivos ._ e .DS_Store que o macOS cria ao copiar. Eles aparecem como jogos fantasmas no ES. A busca leva até um minuto.
 Se o USB Network Mode estiver ligado, a Sab avisa: ele usa a mesma porta e precisa ser desligado antes.
 
-# Cartões SD
-Marca, tamanho, espaço livre e velocidade dos cartões. Cartões genéricos sem marca costumam ser lentos e falhar mais.
+# Cartões SD (dentro de Desempenho)
+Fica no card Desempenho, no botão "Cartões SD". Os alertas dos cartões aparecem no ponto do card Desempenho.
+Marca, tamanho, espaço livre e velocidade dos cartões. "Testar velocidade" leva até um minuto. Cartões genéricos sem marca costumam ser lentos e falhar mais.
 A Sab avisa quando um cartão passa de 90% de uso ou tem menos de 1 GB livre.
 "Verificar e reparar o cartão de jogos" reinicia o aparelho e roda o reparo do dArkOSen (fsck.exfat) com o cartão desmontado. Depois o resultado aparece neste card, e o log fica em /boot/sd2_scan.log.
 

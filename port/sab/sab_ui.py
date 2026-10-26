@@ -40,12 +40,22 @@ CARDS = [
     ("tela", "Tela e sistema", "sun", "fbbf24", "f97316"),
     ("desempenho", "Desempenho", "gauge", "fb7185", "e11d48"),
     ("pendrive", "Pendrive USB", "usb", "818cf8", "4f46e5"),
-    ("cartoes", "Cartões SD", "device-sd-card", "2dd4bf", "0284c7"),
     ("retroarch", "RetroArch", "device-gamepad-2", "c084fc", "7c3aed"),
     ("testar", "Testar ports", "player-play", "34d399", "059669"),
     ("ajuda", "Ajuda", "help-circle", "60a5fa", "a78bfa"),
 ]
 COLS = 3
+# Páginas abertas de dentro de outro card: B volta para o card de origem e os
+# alertas delas aparecem no ponto do card de origem.
+SUBPAGES = {"cartoes": ("Cartões SD", "device-sd-card", "2dd4bf", "0284c7", "desempenho")}
+PARENT = {cid: v[4] for cid, v in SUBPAGES.items()}
+
+
+def card_info(cid):
+    """(id, título, ícone, cor 1, cor 2) de um card ou subpágina."""
+    if cid in SUBPAGES:
+        return (cid, *SUBPAGES[cid][:4])
+    return next(c for c in CARDS if c[0] == cid)
 FPS_ACTIVE, FPS_IDLE, IDLE_AFTER = 30, 10, 4.0   # quadros/s; segundos sem botão até ficar parado
 RESUME = os.environ.get("SAB_RESUME", "")   # "testar": a Sab voltou de um teste de port
 
@@ -224,6 +234,12 @@ class Choice:
         self.index = options.index(cur) if cur in options else 0
 
 
+def subpage(action, cid):
+    """Marca o botão que abre uma subpágina (o B dela volta com ele selecionado)."""
+    action.sub = cid
+    return action
+
+
 def tagged(action, name):
     """Marca o controle com a ação de sab_checks que ele faz (evita repetir a sugestão)."""
     action.act = name
@@ -251,7 +267,7 @@ class App:
         self.page = None              # id do cartão aberto
         self.last_page = None         # a página que está saindo (na transição)
         self.snap = None              # (página, última) já desenhadas nas camadas
-        self.warm = [c[0] for c in CARDS]  # páginas a pré-montar (geometria e texto)
+        self.warm = [c[0] for c in CARDS] + list(SUBPAGES)  # páginas a pré-montar
         self.page_anim = 0.0          # 0 = início, 1 = página
         self.status = D.status()
         self.status_at = 0.0
@@ -305,7 +321,8 @@ class App:
 
     def check_all(self):
         out = {}
-        todo = [c for c in CARDS if c[0] != "ajuda" and (not RESUME or c[0] == "testar")]
+        todo = [c for c in CARDS + [card_info(c) for c in SUBPAGES]
+                if c[0] != "ajuda" and (not RESUME or c[0] == "testar")]
         self.warm.insert(0, "home")
         self.load_total = len(todo) + len(self.warm)
         for k, (cid, title, *_) in enumerate(todo):
@@ -326,11 +343,20 @@ class App:
 
     def set_result(self, cid, r):
         self.results[cid] = r
-        n = sum(1 for lvl, _ in r["achados"] if lvl in ("aviso", "problema"))
+        home = PARENT.get(cid, cid)
+        worst, n = "ok", 0
+        for c in [home] + [k for k, p in PARENT.items() if p == home]:
+            rc = self.results.get(c)
+            if not rc:
+                continue
+            k = sum(1 for lvl, _ in rc["achados"] if lvl in ("aviso", "problema"))
+            if k:
+                n += k
+                worst = "problema" if "problema" in (worst, rc["nivel"]) else "aviso"
         if n:
-            self.alerts[cid] = (r["nivel"], n)
+            self.alerts[home] = (worst, n)
         else:
-            self.alerts.pop(cid, None)
+            self.alerts.pop(home, None)
 
     # --- páginas ---
 
@@ -367,7 +393,7 @@ class App:
         z = sab.zram_facts()
         out.append(("info", f"Limites: processador {f['cpu_max_mhz']} MHz, GPU {f['gpu_max_mhz']} MHz. "
                             f"ZRAM {z['zram_mb']} MB ({z['zram_usado_mb']} MB em uso)."))
-        out.append(("ok", "Use \"Testar cartões\" se os jogos demoram para carregar."))
+        out.append(("ok", "Abra \"Cartões SD\" se os jogos demoram para carregar."))
         return sab_checks.finish(out, acts, f)
 
     def _testar(self):
@@ -407,6 +433,19 @@ class App:
         if isinstance(res, Exception):
             self.findings = {"nivel": "problema", "achados": [("problema", f"Erro: {res}")], "acoes": []}
             return
+        # alertas das subpáginas (ex.: Cartões SD em Desempenho) aparecem aqui também
+        extra_alerts = []
+        for sub, parent in PARENT.items():
+            r = self.results.get(sub)
+            if parent == self.page and r:
+                n = sum(1 for lvl, _ in r["achados"] if lvl in ("aviso", "problema"))
+                if n:
+                    extra_alerts.append((r["nivel"], f"{SUBPAGES[sub][0]}: {n} alerta(s). Abra \"{SUBPAGES[sub][0]}\" para ver."))
+        if extra_alerts:
+            order = {"problema": 0, "aviso": 1, "ok": 2, "info": 3}
+            res = dict(res, achados=sorted(extra_alerts + list(res["achados"]), key=lambda x: order.get(x[0], 9)))
+            if res["nivel"] == "ok" or "problema" in (lvl for lvl, _ in extra_alerts):
+                res["nivel"] = "problema" if any(l == "problema" for l, _ in extra_alerts) else "aviso"
         self.findings = res
         # ações sugeridas pela verificação entram no topo da lista
         base = [i for i in self.items if not getattr(i, "suggested", False)]
@@ -456,7 +495,7 @@ class App:
                            {f: f"{f} MHz" + (" (OC)" if f > 1296 else "") for f in D.get("cpu_freqs")}),
                     Choice("Limite da GPU", "device-gamepad-2", "gpu_max", D.get("gpu_freqs"),
                            {f: f"{f} MHz" + (" (OC)" if f > 520 else "") for f in D.get("gpu_freqs")}),
-                    A("Testar cartões", "brand-speedtest", self.speed_test)]
+                    subpage(A("Cartões SD", "device-sd-card", lambda: self.open_page("cartoes")), "cartoes")]
         if cid == "pendrive":
             on = D.get("pendrive")
             tog = A("Desligar pendrive" if on else "Ligar pendrive", "power",
@@ -707,7 +746,13 @@ class App:
         elif cmd == "down":
             self.item_sel = (self.item_sel + 1) % len(self.items)
         elif cmd == "back":
-            self.page = None
+            if self.page in PARENT:       # subpágina: volta ao card de origem
+                sub = self.page
+                self.open_page(PARENT[sub])
+                self.item_sel = next((i for i, x in enumerate(self.items)
+                                      if getattr(x, "sub", None) == sub), 0)
+            else:
+                self.page = None
         elif isinstance(it, Slider) and cmd in ("left", "right"):
             it.value = max(it.lo, min(100, it.value + (it.step if cmd == "right" else -it.step)))
             D.set(it.key, it.value)
@@ -894,7 +939,9 @@ class App:
             g.arc(29, 115, 6, 2.5, self.t * 360, self.t * 360 + 270, alpha(MUTED, 255 * fade))
             g.text("Regular", 13, "Dando uma olhada no aparelho...", 42, 105, alpha(MUTED, 255 * fade))
 
-        cw, ch, gap, x0, y0 = 192, 68, 8, 22, 136
+        rows = (len(CARDS) + COLS - 1) // COLS
+        cw, x0, y0 = 192, 22, 136
+        ch, gap = (94, 10) if rows <= 3 else (68, 8)
         col, row = self.sel % COLS, self.sel // COLS
         self.sel_x = approach(self.sel_x, x0 + col * (cw + gap), dt, 18)
         self.sel_y = approach(self.sel_y, y0 + row * (ch + gap), dt, 18)
@@ -924,7 +971,7 @@ class App:
             else:
                 g.rrect(bx, by, 46, 46, 14, alpha(hexc(c1), 255 * fade), alpha(hexc(c2), 255 * fade))
             g.icon(ic, bx + 10, by + 10, 26, alpha(TEXT, 255 * fade))
-            g.text("SemiBold", 14, title, x + 72, y + 12 + lift, alpha(TEXT, 255 * fade))
+            g.text("SemiBold", 14, title, x + 72, y + ch / 2 - 23 + lift, alpha(TEXT, 255 * fade))
             if cid in self.alerts:
                 lvl, n = self.alerts[cid]
                 bc = LEVEL[lvl]
@@ -934,13 +981,13 @@ class App:
                          px_ - 13, py_ - 13, 255 * ring * fade)
                 g.circle(px_, py_, 10, alpha(bc, 255 * fade))
                 g.text("Bold", 11, str(n), px_, py_ + 0.5, alpha(hexc("10142a"), 255 * fade), "c", "m")
-            g.text("Regular", 11, self.card_subtitle(cid), x + 72, y + 36 + lift,
+            g.text("Regular", 11, self.card_subtitle(cid), x + 72, y + ch / 2 + 1 + lift,
                    alpha((235, 240, 255, 255) if on else MUTED, (230 if on else 255) * fade))
         self.draw_footer([("A", "Abrir", TEXT), ("B", "Sair", MUTED), ("SELECT + START", "Fechar", MUTED)])
 
     def draw_page(self, dt, fade):
         g = self.g
-        cid, title, ic, c1, c2 = next(c for c in CARDS if c[0] == self.page)
+        cid, title, ic, c1, c2 = card_info(self.page)
         off = 0
         a = 255 * fade
         # título
@@ -1179,7 +1226,7 @@ class App:
         if self.page is None:
             tgt = CARDS[self.sel]
         else:
-            tgt = next(c for c in CARDS if c[0] == self.page)
+            tgt = card_info(self.page)
         # cor troca de uma vez: uma cor intermediária por quadro refaria a geometria
         self.accent = [hexc(tgt[3]), hexc(tgt[4])]
         self.page_anim = approach(self.page_anim, 1.0 if self.page else 0.0, dt, 12)
