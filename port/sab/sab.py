@@ -572,6 +572,75 @@ def set_led(args):
     return f"LED {color}"
 
 
+# --- Teste de ports ---
+
+SAB_DIR = os.path.dirname(os.path.abspath(__file__))
+PORT_DIRS = ("/roms2/ports", "/roms/ports")
+PORT_RESULTS = os.path.join(SAB_DIR, "logs", "resultados.txt")
+TEST_RESULT = "/tmp/sab-test-result"
+
+
+ES_SYSTEMS = "/etc/emulationstation/es_systems.cfg"
+
+
+def es_ports_dir():
+    """Pasta de ports que o ES mostra. O ArkOS deixa os jogos em /roms (cartão do
+    sistema) ou /roms2 (segundo cartão), e o "Switch to SD2" troca isso no
+    es_systems.cfg; a fonte da verdade é o <path> do sistema "ports"."""
+    text = read_text(ES_SYSTEMS, "")
+    for block in text.split("<system>")[1:]:
+        if "<name>ports</name>" in block and "<path>" in block:
+            return block.split("<path>", 1)[1].split("</path>", 1)[0].strip().rstrip("/")
+    return "/roms2/ports" if os.path.ismount("/roms2") else "/roms/ports"
+
+
+def port_groups(_args=None):
+    """Ports instalados por cartão, a pasta do ES primeiro. Sem a própria Sab."""
+    es = es_ports_dir()
+    groups = []
+    for d in sorted(set(PORT_DIRS) | {es}, key=lambda d: d != es):
+        if not os.path.isdir(d):
+            continue
+        ports = sorted((p for p in glob.glob(f"{d}/*.sh") + glob.glob(f"{d}/*.SH")
+                        if os.path.basename(p) != "Sab.sh"), key=lambda p: os.path.basename(p).lower())
+        if ports:
+            card = "cartão de jogos" if d.startswith("/roms2") else "cartão do sistema"
+            groups.append({"dir": d, "label": f"{d} ({card})", "es": d == es, "ports": ports})
+    return groups
+
+
+def list_ports(_args=None):
+    return [p for g in port_groups() for p in g["ports"]]
+
+
+def port_results(_args=None):
+    """nome -> (resultado, data, segundos), do último teste de cada port."""
+    out = {}
+    for line in read_text(PORT_RESULTS, "").splitlines():
+        parts = line.split("|")
+        if len(parts) == 4:
+            out[parts[0]] = (parts[1], parts[2], parts[3])
+    return out
+
+
+def last_test(_args=None):
+    """Resultado do teste que acabou de rodar (o Sab.sh reabre a Sab depois)."""
+    lines = read_text(TEST_RESULT, "").splitlines()
+    if len(lines) < 3:
+        return None
+    os.remove(TEST_RESULT)
+    return {"nome": lines[0], "resultado": lines[1], "segundos": lines[2],
+            "relatorio": lines[3] if len(lines) > 3 else ""}
+
+
+def test_port(args):
+    path = args["path"]
+    if path not in list_ports():
+        return "Port não encontrado."
+    write_text(HANDOFF, "test:" + path)
+    return "ok"
+
+
 # --- Conflitos com outros scripts ---
 
 def usb_net_active(_args=None):
@@ -751,6 +820,7 @@ TOOLS = {
     "schedule_scan": schedule_scan, "last_scan": last_scan,
     "get_gamma": get_gamma, "set_gamma": set_gamma, "get_led": get_led, "set_led": set_led,
     "usb_net_active": usb_net_active, "handoff": handoff,
+    "list_ports": list_ports, "port_groups": port_groups, "port_results": port_results, "test_port": test_port,
     "retroarch_changes": retroarch_changes,
     "restore_retroarch": restore_retroarch,
     "usb_facts": usb_facts,

@@ -5,6 +5,12 @@ TELEGRAM = "t.me/r36sbr"
 
 # A versão em uso vem do arquivo VERSION; a lista abaixo é o histórico.
 NOVIDADES = [
+    ("1.7.0", "26/10/2026", [
+        "Card Testar ports: abre um port por 15 s e fecha sozinho; se ele fechar antes, gera um relatório em sab/logs/<port>/.",
+        "Ports listados por cartão (/roms2 ou /roms), indicando qual pasta o ES mostra (lida do es_systems.cfg).",
+        "Último resultado de cada port na lista e falhas como alerta no card.",
+        "Tela inicial com 10 cards em 4 linhas.",
+    ]),
     ("1.6.0", "26/10/2026", [
         "Recursos do dArkOSen dentro da Sab: overclock de CPU e GPU, gamma, cor do LED e ZRAM.",
         "Modo do processador unificado com o CPU Manager e o R36 Tuner (/etc/cpu-settings.conf).",
@@ -93,6 +99,14 @@ A Sab avisa quando um cartão passa de 90% de uso ou tem menos de 1 GB livre.
 # RetroArch
 Mostra o que foi mudado na configuração do RetroArch e restaura a de fábrica. Uma cópia da configuração atual fica guardada antes.
 
+# Testar ports
+Mostra os ports instalados separados por cartão: /roms2/ports (cartão de jogos) e /roms/ports (cartão do sistema). O ArkOS usa um ou outro para os jogos; a etiqueta "O ES MOSTRA" indica a pasta que aparece na lista de Ports (lida do es_systems.cfg). Ports na outra pasta estão instalados mas não aparecem no ES.
+Escolha um port e aperte A: a Sab fecha, o port abre como se fosse pelo ES e, depois de 15 segundos, é encerrado sozinho. A Sab volta com o resultado.
+Passou: o port ficou aberto os 15 segundos.
+Falhou: o port fechou antes. O relatório fica em sab/logs/<nome do port>/ (dentro de /roms2/ports/sab) com a saída do port, os logs da pasta dele, as mensagens do kernel e o estado do sistema.
+A lista mostra o último resultado de cada port, e as falhas viram alerta no card.
+Ports com menu próprio (como Daytona USA e NFSU1) passam quando o menu abre: o teste não aperta botões.
+
 # Ajuda
 Este manual, os cuidados, as novidades de cada versão e os créditos."""
 
@@ -125,6 +139,11 @@ Com a bateria fraca, carregue antes de usar o pendrive ou atualizar.
 
 # Cartões
 Cartões genéricos falham mais. Se um cartão aparecer como lento ou sem marca, mantenha backup dos seus saves.
+
+# Teste de ports
+O teste abre o port de verdade e o encerra à força depois de 15 segundos. Ports que gravam configuração ou save logo ao abrir podem perder o que estava sendo gravado; teste com o save já em backup.
+Durante o teste não aperte botões: o port recebe os comandos.
+Se o port travar a tela, segure o botão de ligar para reiniciar; o resultado não é gravado nesse caso.
 
 # Ao fechar
 Saia da Sab com B ou Select + Start, nunca desligando o console direto: ao sair, o dArkOS devolve as configurações de som e do processador."""

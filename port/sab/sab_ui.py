@@ -42,9 +42,11 @@ CARDS = [
     ("pendrive", "Pendrive USB", "usb", "818cf8", "4f46e5"),
     ("cartoes", "Cartões SD", "device-sd-card", "2dd4bf", "0284c7"),
     ("retroarch", "RetroArch", "device-gamepad-2", "c084fc", "7c3aed"),
+    ("testar", "Testar ports", "player-play", "34d399", "059669"),
     ("ajuda", "Ajuda", "help-circle", "60a5fa", "a78bfa"),
 ]
 COLS = 3
+RESUME = os.environ.get("SAB_RESUME", "")   # "testar": a Sab voltou de um teste de port
 
 import sab_help
 from sab_help import TELEGRAM
@@ -77,6 +79,10 @@ def about_findings():
     out.append(("info", "Comunidade R36S Brasil no Telegram: " + TELEGRAM))
     return out
 
+FAKE_PORTS = [{"dir": "/roms2/ports", "label": "/roms2/ports (cartão de jogos)", "es": True,
+               "ports": ["/roms2/ports/Daytona USA.sh", "/roms2/ports/NFSU1.sh", "/roms2/ports/Undertale.sh"]},
+              {"dir": "/roms/ports", "label": "/roms/ports (cartão do sistema)", "es": False,
+               "ports": ["/roms/ports/Blobby Volley 2.sh"]}]
 GAMMAS = [0.6, 0.8, 0.9, 1.0, 1.1, 1.2, 1.4, 1.6]
 GOV_NAMES = {"powersave": "Economia", "ondemand": "Equilibrado", "schedutil": "Equilibrado (kernel)",
              "performance": "Máximo"}
@@ -249,6 +255,7 @@ class App:
         self.home_check = None
         self.modal = None             # {"title","text","icon","buttons":[...], "sel"}
         self.reader = None            # texto longo com rolagem (Ajuda)
+        self.picker = None            # lista de ports para testar
         self.toast = None             # (texto, nível, até)
         self.busy = None              # texto enquanto uma tarefa roda
         self.held = {}                # direção -> próximo repeat
@@ -288,12 +295,14 @@ class App:
             return self._lento_rapido()
         if cid == "cartoes" and not FAKE:
             return self._cartoes()
+        if cid == "testar":
+            return self._testar()
         name = {"som": "sem_som", "tela": "atualizar", "pendrive": "pc"}.get(cid, cid)
         return D.check(name)
 
     def check_all(self):
         out = {}
-        todo = [c for c in CARDS if c[0] != "ajuda"]
+        todo = [c for c in CARDS if c[0] != "ajuda" and (not RESUME or c[0] == "testar")]
         self.warm.insert(0, "home")
         self.load_total = len(todo) + len(self.warm)
         for k, (cid, title, *_) in enumerate(todo):
@@ -357,6 +366,25 @@ class App:
                             f"ZRAM {z['zram_mb']} MB ({z['zram_usado_mb']} MB em uso)."))
         out.append(("ok", "Use \"Testar cartões\" se os jogos demoram para carregar."))
         return sab_checks.finish(out, acts, f)
+
+    def _testar(self):
+        groups = FAKE_PORTS if FAKE else sab.port_groups()
+        res = {} if FAKE else sab.port_results()
+        out = []
+        self.port_count = sum(len(g["ports"]) for g in groups)
+        for g in groups:
+            where = "o ES mostra esta pasta" if g["es"] else "fora do ES: não aparece na lista de Ports"
+            out.append(("ok" if g["es"] else "info", f"{len(g['ports'])} ports em {g['label']}; {where}."))
+        names = {os.path.basename(p)[:-3] for g in groups for p in g["ports"]}
+        fails = sorted(n for n, r in res.items() if r[0] == "falhou" and n in names)
+        oks = sum(1 for n, r in res.items() if r[0] == "ok" and n in names)
+        for n in fails:
+            out.append(("aviso", f"{n} falhou no teste de {res[n][1]}. Relatório em sab/logs/{n}/."))
+        if oks:
+            out.append(("ok", f"{oks} port(s) passaram no último teste."))
+        out.append(("info", "O teste abre o port por 15 s e fecha sozinho. Se ele fechar antes, é falha."))
+        return sab_checks.finish(out, [], {}) if not FAKE else {
+            "nivel": "aviso" if fails else "ok", "achados": out, "acoes": []}
 
     def _cartoes(self):
         out = []
@@ -447,6 +475,8 @@ class App:
                     A("Verificar e reparar o cartão de jogos", "device-sd-card", lambda: self.run_tool_toast("schedule_scan"),
                       confirm="Verificar e reparar o cartão de jogos?\nO aparelho reinicia, verifica o cartão e "
                               "volta sozinho. Leva alguns minutos.", danger=True)]
+        if cid == "testar":
+            return [A("Escolher o port", "player-play", self.open_picker), recheck]
         if cid == "ajuda":
             return [A("Manual", "book", lambda: self.read("Manual", "book", sab_help.MANUAL)),
                     A("Cuidados", "alert-triangle", lambda: self.read("Cuidados", "alert-triangle", sab_help.CUIDADOS)),
@@ -508,6 +538,114 @@ class App:
         self.modal = {"title": "Grupo R36S Brasil", "icon": "brand-telegram", "buttons": ["Fechar"], "sel": 0,
                       "text": "Aponte a câmera do celular para o código:", "image": "qr-telegram", "url": TELEGRAM}
 
+    # --- teste de ports ---
+
+    def open_picker(self):
+        groups = FAKE_PORTS if FAKE else sab.port_groups()
+        res = {} if FAKE else sab.port_results()
+        rows = []
+        for g in groups:
+            rows.append({"head": g["label"], "es": g["es"]})
+            for p in g["ports"]:
+                name = os.path.basename(p)[:-3]
+                rows.append({"path": p, "name": name, "res": res.get(name)})
+        if not any("path" in r for r in rows):
+            self.toast = ("Nenhum port instalado", "aviso", self.t + 3)
+            return
+        first = next(i for i, r in enumerate(rows) if "path" in r)
+        self.picker = {"rows": rows, "sel": first, "top": 0, "scroll": 0.0}
+
+    def picker_input(self, cmd):
+        pk = self.picker
+        ports = [i for i, r in enumerate(pk["rows"]) if "path" in r]
+        k = ports.index(pk["sel"])
+        step = {"up": -1, "down": 1, "left": -6, "right": 6}.get(cmd)
+        if step:
+            pk["sel"] = ports[max(0, min(len(ports) - 1, k + step))]
+        elif cmd == "back":
+            self.picker = None
+        elif cmd == "ok":
+            row = pk["rows"][pk["sel"]]
+            self.ask(f"Testar {row['name']}?\nA Sab fecha, o port abre por 15 segundos e fecha sozinho. "
+                     "Depois a Sab volta com o resultado.", lambda: self.start_test(row["path"]))
+
+    def start_test(self, path):
+        res = "ok" if FAKE else D.run("test_port", {"path": path})
+        if res == "ok":
+            self.running = False      # o Sab.sh roda o teste e reabre a Sab
+        else:
+            self.toast = (res, "aviso", self.t + 3.5)
+
+    def show_test_result(self):
+        r = None if FAKE else sab.last_test()
+        if not r:
+            return
+        if r["resultado"] == "ok":
+            text = f"{r['nome']} abriu e ficou rodando 15 segundos. Funcionou!"
+            icon = "check"
+        else:
+            rel = r["relatorio"].split("/sab/", 1)[-1] if r["relatorio"] else ""
+            text = (f"{r['nome']} fechou sozinho após {r['segundos']} s.\n"
+                    f"O relatório ficou em sab/{rel}" if rel else f"{r['nome']} fechou sozinho.")
+            icon = "alert-triangle"
+        self.modal = {"title": "Teste de port", "text": text, "icon": icon, "buttons": ["OK"], "sel": 0}
+
+    def draw_picker(self, dt):
+        g, pk = self.g, self.picker
+        g.rrect(0, 0, W, H, 0, (5, 7, 20, 190), feather=0)
+        mx, my, mw, mh = 24, 20, W - 48, H - 40
+        g.rrect(mx, my, mw, mh, 22, hexc("1b1f42"), hexc("15183a"))
+        g.stroke(mx, my, mw, mh, 22, (255, 255, 255, 25))
+        a1, a2 = self.accent
+        g.rrect(mx + 20, my + 16, 36, 36, 12, a1, a2)
+        g.icon("player-play", mx + 28, my + 24, 20, TEXT)
+        g.text("Bold", 18, "Escolha o port", mx + 68, my + 22, TEXT)
+        rows = pk["rows"]
+        hs = [34 if "head" in r else 40 for r in rows]
+        ty, th = my + 66, mh - 66 - 44
+        ys = [sum(hs[:i]) for i in range(len(rows))]
+        # rola para manter a linha escolhida visível (com o título do grupo)
+        sel_y, sel_h = ys[pk["sel"]], hs[pk["sel"]]
+        if sel_y - pk["top"] < 40:
+            pk["top"] = max(0, sel_y - 40)
+        elif sel_y + sel_h - pk["top"] > th:
+            pk["top"] = sel_y + sel_h - th
+        pk["scroll"] = approach(pk["scroll"], pk["top"], dt, 18)
+        g.clip(mx, ty, mw, th)
+        for i, r in enumerate(rows):
+            y = ty + ys[i] - pk["scroll"]
+            if y + hs[i] < ty or y > ty + th:
+                continue
+            if "head" in r:
+                g.text("SemiBold", 11, r["head"].upper(), mx + 30, y + 12, FAINT)
+                tag = "O ES MOSTRA" if r["es"] else "FORA DO ES"
+                tw = g.measure("Bold", 9, tag)[0] + 14
+                g.rrect(mx + mw - 40 - tw, y + 9, tw, 18, 9, alpha(LEVEL["ok" if r["es"] else "info"], 60))
+                g.text("Bold", 9, tag, mx + mw - 40 - tw / 2, y + 18.5, TEXT, "c", "m")
+                continue
+            on = i == pk["sel"]
+            if on:
+                g.rrect(mx + 16, y + 2, mw - 44, 36, 12, a1, a2)
+            g.text("SemiBold" if on else "Regular", 14, r["name"], mx + 30, y + 10, TEXT if on else (215, 222, 245, 255))
+            if r["res"]:
+                ok = r["res"][0] == "ok"
+                lab = ("Passou " if ok else "Falhou ") + r["res"][1].split(" ")[0]
+                c = LEVEL["ok" if ok else "aviso"]
+                lw = g.measure("SemiBold", 11, lab)[0]
+                g.circle(mx + mw - 60 - lw, y + 20, 4, c)
+                g.text("SemiBold", 11, lab, mx + mw - 50 - lw, y + 13, TEXT if on else c)
+        g.clip()
+        total = sum(hs)
+        if total > th:
+            bh = max(30, th * th / total)
+            by = ty + (th - bh) * min(1, pk["scroll"] / max(1, total - th))
+            g.rrect(mx + mw - 14, ty, 4, th, 2, (255, 255, 255, 18))
+            g.rrect(mx + mw - 14, by, 4, bh, 2, alpha(a1, 220))
+        self.btn_glyph(mx + 24, my + mh - 32, "A", TEXT)
+        g.text("Regular", 12, "Testar  ·  Cima/baixo: escolher  ·  Esquerda/direita: pular", mx + 50, my + mh - 30, MUTED)
+        self.btn_glyph(mx + mw - 110, my + mh - 32, "B", TEXT)
+        g.text("Regular", 12, "Voltar", mx + mw - 82, my + mh - 30, MUTED)
+
     def read(self, title, icon, text):
         self.reader = {"title": title, "icon": icon, "text": text, "scroll": 0.0, "top": 0}
 
@@ -539,17 +677,21 @@ class App:
             elif cmd == "back":
                 self.modal = None
             return
+        if self.picker:
+            self.picker_input(cmd)
+            return
         if self.page is None:
-            cols = COLS
+            cols, n = COLS, len(CARDS)
             r, c = divmod(self.sel, cols)
+            rows = (n + cols - 1) // cols
+            in_row = min(cols, n - r * cols)      # a última linha pode ter menos cards
             if cmd == "left":
-                self.sel = r * cols + (c - 1) % cols
+                self.sel = r * cols + (c - 1) % in_row
             elif cmd == "right":
-                self.sel = r * cols + (c + 1) % cols
-            elif cmd == "up":
-                self.sel = (self.sel - cols) % len(CARDS)
-            elif cmd == "down":
-                self.sel = (self.sel + cols) % len(CARDS)
+                self.sel = r * cols + (c + 1) % in_row
+            elif cmd in ("up", "down"):
+                r = (r + (1 if cmd == "down" else -1)) % rows
+                self.sel = min(r * cols + c, n - 1)
             elif cmd == "ok":
                 self.open_page(CARDS[self.sel][0])
             elif cmd == "back":
@@ -717,6 +859,7 @@ class App:
             "cartoes": "Info e velocidade",
             "retroarch": "Restaurar padrão",
             "ajuda": f"Manual · versão {sab_version()}",
+            "testar": f"{self.port_count} ports instalados" if getattr(self, "port_count", 0) else "Abre e fecha em 15 s",
         }[cid]
 
     def _home_summary(self):
@@ -747,7 +890,7 @@ class App:
             g.arc(29, 115, 6, 2.5, self.t * 360, self.t * 360 + 270, alpha(MUTED, 255 * fade))
             g.text("Regular", 13, "Dando uma olhada no aparelho...", 42, 105, alpha(MUTED, 255 * fade))
 
-        cw, ch, gap, x0, y0 = 192, 94, 10, 22, 136
+        cw, ch, gap, x0, y0 = 192, 68, 8, 22, 136
         col, row = self.sel % COLS, self.sel // COLS
         self.sel_x = approach(self.sel_x, x0 + col * (cw + gap), dt, 18)
         self.sel_y = approach(self.sel_y, y0 + row * (ch + gap), dt, 18)
@@ -777,17 +920,17 @@ class App:
             else:
                 g.rrect(bx, by, 46, 46, 14, alpha(hexc(c1), 255 * fade), alpha(hexc(c2), 255 * fade))
             g.icon(ic, bx + 10, by + 10, 26, alpha(TEXT, 255 * fade))
-            g.text("SemiBold", 14, title, x + 72, y + 24 + lift, alpha(TEXT, 255 * fade))
+            g.text("SemiBold", 14, title, x + 72, y + 12 + lift, alpha(TEXT, 255 * fade))
             if cid in self.alerts:
                 lvl, n = self.alerts[cid]
                 bc = LEVEL[lvl]
-                px_, py_ = x + cw - 18, y + 16 + lift
+                px_, py_ = x + cw - 18, y + 15 + lift
                 ring = 0.5 + 0.5 * math.sin(self.t * 4 + i)
                 g.sprite(("ring", lvl), 26, 26, 1, lambda ox, oy, bc=bc: g.circle(ox + 13, oy + 13, 13, alpha(bc, 90)),
                          px_ - 13, py_ - 13, 255 * ring * fade)
                 g.circle(px_, py_, 10, alpha(bc, 255 * fade))
                 g.text("Bold", 11, str(n), px_, py_ + 0.5, alpha(hexc("10142a"), 255 * fade), "c", "m")
-            g.text("Regular", 11, self.card_subtitle(cid), x + 72, y + 48 + lift,
+            g.text("Regular", 11, self.card_subtitle(cid), x + 72, y + 36 + lift,
                    alpha((235, 240, 255, 255) if on else MUTED, (230 if on else 255) * fade))
         self.draw_footer([("A", "Abrir", TEXT), ("B", "Sair", MUTED), ("SELECT + START", "Fechar", MUTED)])
 
@@ -906,6 +1049,8 @@ class App:
 
     def draw_overlays(self, dt):
         g = self.g
+        if self.picker:
+            self.draw_picker(dt)
         if self.busy:
             g.rrect(0, 0, W, H, 0, (5, 7, 20, 170), feather=0)
             g.circle(W / 2, H / 2 - 20, 30, (255, 255, 255, 20))
@@ -1090,6 +1235,10 @@ class App:
         g.text("Regular", 13, self.load_label, cx, by + 28, MUTED, "c", "m")
         if self.results and not self.warm and self.load_shown > 0.98:
             self.loading = False
+            if RESUME == "testar":
+                self.sel = next(i for i, c in enumerate(CARDS) if c[0] == "testar")
+                self.open_page("testar")
+                self.show_test_result()
 
     def prewarm(self):
         """Monta a geometria e o texto de uma página por quadro, fora da tela,
