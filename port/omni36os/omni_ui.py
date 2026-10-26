@@ -297,6 +297,18 @@ class Slider:
         self.shown = float(self.value)
 
 
+# ferramentas perigosas: (segundos de espera, segurar A, o que pode dar errado, como desfazer)
+BOOT_UNDO = ("Segure L1 ao ligar para pular o Omni36OS, ou B para o BaRT. Se a tela não ligar, só gravando "
+             "de novo o cartão do sistema (tenha um backup).")
+DANGER = {
+    "dArkOSen_dtb_patcher_v1.2.sh": (10, True, "Um DTB errado deixa a tela preta ou o console sem ligar.", BOOT_UNDO),
+    "60hz_display_timing_patcher.sh": (10, True, "A tela pode não aceitar o novo tempo e ficar preta.", BOOT_UNDO),
+    "Restore dArkOSen.sh": (10, True, "Troca o kernel e o ES pelos originais do dArkOSen: ajustes feitos depois "
+                                      "somem.", BOOT_UNDO),
+    "fix-sd2-mount.sh": (10, False, "Recompila os DTB do boot; se falhar no meio, o boot pode quebrar.", BOOT_UNDO),
+    "Enable Quick Mode.sh": (5, False, "Muda o que sobe no boot.", "Rode de novo para voltar ao modo normal."),
+    "Remove Kodi.sh": (5, False, "Apaga o Kodi e as configurações dele.", "Só reinstalando o Kodi."),
+}
 KIND_NAMES = {"nativo": "Nativo", "janela": "Janelas", "app": "App", "perigoso": "Cuidado"}
 HUB_NAMES = {"desligada": "Desligada (ES direto)", "sempre": "Omni36OS no boot", "alertas": "Só com alertas"}
 HOTKEY_NAMES = {"desligado": "Desligado", "ligado": "No menu do ES", "jogo": "Menu e jogos (beta)"}
@@ -932,10 +944,10 @@ class App:
 
         def go():
             if t["kind"] == "perigoso":
-                self.modal = {"title": "Tem certeza?", "icon": "alert-triangle", "sel": 1,
-                              "buttons": ["Abrir mesmo assim", "Cancelar"],
-                              "text": f"Última chance: {t['name']} mexe no boot. Continuar?",
-                              "fns": [lambda: self.run_tool(t), back]}
+                secs, hold, risk, undo = (DANGER.get(os.path.basename(t["path"])) or
+                                          (10, False, "Pode deixar o sistema instável.", ""))
+                self.warn(t["name"], t["desc"], lambda: self.run_tool(t), secs, hold, key=t["path"],
+                          risk=risk, undo=undo, back=back)
             else:
                 self.run_tool(t)
         self.modal = {"title": t["name"], "icon": "alert-triangle" if t["kind"] == "perigoso" else "adjustments",
@@ -1296,7 +1308,10 @@ class App:
                       "text": "Só reiniciar: o menu do console recarrega quando o Omni36OS fechar (ES travado ou "
                               "lista desatualizada).\nDesfazer o Omni36OS: tira o sistema próprio, o ícone e o logo "
                               "que o Omni36OS pôs no ES; ele volta para a lista de Ports.",
-                      "fns": [lambda: self.restore_es("restart_es"), lambda: self.restore_es("restore_es"),
+                      "fns": [lambda: self.restore_es("restart_es"), lambda: self.warn("Desfazer o Omni36OS no ES", "Tira o sistema próprio, a tela inicial, o atalho, o ícone e o logo "
+                                      "que o Omni36OS pôs no ES.", lambda: self.restore_es("restore_es"), 5,
+                                      key="restore_es", undo="Ligue de novo em Ajuda (Mostrar no console, "
+                                                               "Tela inicial, Atalho)."),
                               lambda: None]}
 
     def restore_es(self, tool):
@@ -1359,7 +1374,7 @@ class App:
             else:
                 self.ask(f"Importar {row['name']}?\nAs configurações atuais de {omni_backup.MODULES[module][0]} "
                          "são salvas antes, como \"antes-de-importar\".",
-                         lambda: self.backup_import(module, row["path"]))
+                         lambda: self.backup_import(module, row["path"]), danger=True)
         start = next((i for i, r in enumerate(rows) if r.get("ok")), None)   # o backup compatível
         if not self.show_list(f"Importar · {path}", "folder", rows, pick, "Abrir / importar", start):
             self.toast = ("Pasta vazia", "aviso", self.t + 3)
@@ -1385,14 +1400,125 @@ class App:
         self.reader = {"title": title, "icon": icon, "text": text, "scroll": 0.0, "top": 0}
 
     def ask(self, text, fn, danger=False):
+        if danger:
+            return self.warn("Atenção", text, fn, secs=5)
         self.modal = {"title": "Confirmar", "text": text, "icon": "alert-triangle" if danger else "info-circle",
                       "buttons": ["Sim, fazer", "Cancelar"], "sel": 1 if danger else 0, "fn": fn}
+
+    # --- aviso com contagem (estilo "opções perigosas" da Xiaomi) ---
+
+    def warn(self, title, text, fn, secs=10, hold=False, key=None, risk="", undo="", back=None):
+        """Continuar só acende depois de `secs` s; Cancelar começa escolhido. Com `hold`, ainda é
+        preciso segurar A por 3 s. Quem já passou pelo aviso de `key` nesta sessão não espera de novo."""
+        seen = getattr(self, "warned", set())
+        self.warned = seen
+        if key and key in seen:
+            secs, hold = 0, False
+        self.danger = {"title": title, "text": text, "risk": risk, "undo": undo, "fn": fn, "back": back,
+                       "secs": secs, "hold": hold, "t0": time.monotonic(), "sel": 1, "hold_t": None, "key": key,
+                       "nudge": -9}
+
+    def danger_left(self):
+        d = self.danger
+        return max(0.0, d["secs"] - (time.monotonic() - d["t0"]))
+
+    def danger_input(self, cmd):
+        d = self.danger
+        if cmd in ("left", "right"):
+            d["sel"] = 1 - d["sel"]
+        elif cmd == "back" or (cmd == "ok" and d["sel"] == 1):
+            self.danger = None
+            if d["back"]:
+                d["back"]()
+        elif cmd == "ok":
+            if self.danger_left() > 0:
+                d["nudge"] = time.monotonic()          # ainda não: o botão treme
+            elif d["hold"]:
+                d["hold_t"] = time.monotonic()         # começa a encher o anel; soltar antes de 3 s cancela
+            else:
+                self.danger_go()
+
+    def danger_go(self):
+        d = self.danger
+        self.danger = None
+        if d["key"]:
+            self.warned.add(d["key"])
+        d["fn"]()
+
+    def draw_danger(self, dt):
+        g, d = self.g, self.danger
+        red, red2 = hexc("ef4444"), hexc("b91c1c")
+        g.rrect(0, 0, W, H, 0, (40, 4, 10, 215), feather=0)
+        mx, my, mw, mh = 34, 34, W - 68, H - 68
+        g.glow(mx, my, mw, mh, 24, alpha(red, 70), 26)
+        g.rrect(mx, my, mw, mh, 24, MODAL_A, MODAL_B)
+        g.stroke(mx, my, mw, mh, 24, alpha(red, 120), 1.5)
+        g.circle(mx + 52, my + 52, 26, alpha(red, 60))
+        g.icon("alert-triangle", mx + 38, my + 38, 28, red)
+        g.text("Bold", 20, d["title"], mx + 92, my + 30, TEXT)
+        g.text("SemiBold", 11, "LEIA ANTES DE CONTINUAR", mx + 92, my + 58, red)
+        y = my + 96
+        for label, body, col in (("", d["text"], TEXT), ("O que pode dar errado", d["risk"], TEXT),
+                                 ("Como desfazer", d["undo"], TEXT)):
+            if not body:
+                continue
+            if label:
+                g.text("SemiBold", 11, label.upper(), mx + 28, y, FAINT)
+                y += 18
+            for para in body.split("\n"):
+                for line in g.wrap("Regular", 13, para, mw - 56):
+                    if y < my + mh - 110:
+                        g.text("Regular", 13, line, mx + 28, y, col)
+                    y += 19
+            y += 8
+        left = self.danger_left()
+        # segurar A: o anel enche em 3 s; soltar antes cancela
+        if d["hold_t"] is not None:
+            if not getattr(self, "ok_held", False):
+                d["hold_t"] = None
+            elif time.monotonic() - d["hold_t"] >= 3:
+                self.danger_go()
+                return
+        bw, by = (mw - 68) / 2, my + mh - 66
+        shake = 6 * math.sin((time.monotonic() - d["nudge"]) * 40) if time.monotonic() - d["nudge"] < 0.35 else 0
+        bx = mx + 28 + shake
+        ready = left <= 0
+        on = d["sel"] == 0
+        if ready:
+            g.rrect(bx, by, bw, 42, 15, red if on else alpha(red, 90), red2 if on else alpha(red2, 90))
+        else:
+            g.rrect(bx, by, bw, 42, 15, ink(14))
+            if on:
+                g.stroke(bx, by, bw, 42, 15, ink(60), 1.5)
+        if not ready:
+            label = f"Continuar ({int(left) + 1})"
+            # arco que fecha junto com a contagem
+            cx_, cy_ = bx + 26, by + 21
+            g.arc(cx_, cy_, 11, 3, -90, -90 + 360 * (1 - left / max(1, d["secs"])), alpha(red, 230))
+            g.text("SemiBold", 14, label, bx + bw / 2 + 10, by + 21.5, FAINT, "c", "m")
+        elif d["hold"]:
+            k = 0 if d["hold_t"] is None else min(1, (time.monotonic() - d["hold_t"]) / 3)
+            if k:
+                g.rrect(bx, by, bw * k, 42, 15, (255, 255, 255, 60))
+            g.text("SemiBold", 14, "Segure A por 3 s" if not k else f"Segurando... {int(k * 100)}%",
+                   bx + bw / 2, by + 21.5, ON_TEXT, "c", "m")
+        else:
+            g.text("SemiBold", 14, "Continuar", bx + bw / 2, by + 21.5, ON_TEXT, "c", "m")
+        cb = mx + 40 + bw
+        if d["sel"] == 1:
+            g.rrect(cb, by, bw, 42, 15, self.accent[0], self.accent[1])
+        else:
+            g.rrect(cb, by, bw, 42, 15, ink(22))
+        g.text("SemiBold", 14, "Cancelar", cb + bw / 2, by + 21.5, ON_TEXT if d["sel"] == 1 else TEXT, "c", "m")
 
     # --- entrada ---
 
     def handle(self, cmd):
         self.last_input = time.monotonic()
         if self.busy or self.loading:
+            return
+        if getattr(self, "danger", None):
+            self.danger_input(cmd)
             return
         if self.reader:
             r = self.reader
@@ -1549,9 +1675,11 @@ class App:
                 if not self.combo:
                     self.combo_used = False
             return
+        ok_b, back_b = (1, 0) if self.swap else (0, 1)
+        if b == ok_b:
+            self.ok_held = down
         if not down:
             return
-        ok_b, back_b = (1, 0) if self.swap else (0, 1)
         if b in (9, 10):
             self.handle("l1" if b == 9 else "r1")
         elif b == ok_b:
@@ -1869,6 +1997,8 @@ class App:
             self.draw_picker(dt)
         if getattr(self, "sheet", None):
             self.draw_sheet(dt)
+        if getattr(self, "danger", None):
+            self.draw_danger(dt)
         if self.busy:
             g.rrect(0, 0, W, H, 0, (5, 7, 20, 170), feather=0)
             g.circle(W / 2, H / 2 - 20, 30, ink(20))
@@ -2119,6 +2249,14 @@ class App:
                     continue
                 elif cmd == "quit":
                     self.running = False
+                elif cmd.startswith("warn:"):      # teste: abre o aviso sem rodar nada
+                    secs, hold, risk, undo = DANGER[cmd[5:]]
+                    self.warn(cmd[5:], "Teste do aviso.", lambda: setattr(self, "toast", ("teste: passou", "ok", self.t + 3.5)),
+                              secs, hold, risk=risk, undo=undo)
+                elif cmd in ("hold", "release"):
+                    self.ok_held = cmd == "hold"
+                    if cmd == "hold":
+                        self.handle("ok")
                 else:
                     self.handle(cmd)
             self.frame(dt)
@@ -2127,7 +2265,7 @@ class App:
                 self.prewarm()
             # Ritmo: 30 quadros/s em uso e 10 parado. A 60 quadros/s sem parar a
             # Omni36OS ocupava 70% de um núcleo e deixava o aparelho perto de 80 °C.
-            moving = (self.loading or self.busy or self.toast or 0.01 < self.page_anim < 0.99
+            moving = (self.loading or self.busy or getattr(self, "danger", None) or self.toast or 0.01 < self.page_anim < 0.99
                       or now - self.last_input < IDLE_AFTER)
             spare = 1 / (FPS_ACTIVE if moving else FPS_IDLE) - (time.monotonic() - now)
             if spare > 0:

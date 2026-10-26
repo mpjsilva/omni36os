@@ -5,6 +5,16 @@ TELEGRAM = "t.me/r36sbr"
 
 # A versão em uso vem do arquivo VERSION; a lista abaixo é o histórico.
 NOVIDADES = [
+    ("1.3.0", "26/10/2026", [
+        "Aviso com contagem antes do que é perigoso: tela vermelha dizendo o que a ação faz, o que pode dar "
+        "errado e como desfazer. Continuar só acende depois de 10 s (o que pode impedir o boot) ou 5 s (o resto); "
+        "Cancelar já começa escolhido.",
+        "Patch do DTB, Tela em 60 Hz e Restaurar o dArkOSen pedem ainda segurar A por 3 s. Passou uma vez, não "
+        "espera de novo até reiniciar.",
+        "O aviso também vale para desfazer o Omni36OS no ES, importar backup, consertar o cartão, restaurar o "
+        "RetroArch e o arquivo de boot.",
+        "Zerar últimos jogados guarda uma cópia (gamelist.xml.omni-bak) antes de apagar.",
+    ]),
     ("1.2.0", "26/10/2026", [
         "O Omni36OS é a tela inicial do console: liga direto na biblioteca de jogos (sistemas à esquerda, "
         "jogos à direita, A abre a ficha e joga).",
@@ -99,7 +109,7 @@ Com a tela inicial ligada, o console liga direto na lista de jogos. Esquerda/dir
 START abre as opções (os cards do Omni36OS); B ou START voltam para os jogos. SELECT abre Energia: abrir o EmulationStation, reiniciar ou desligar. O ES continua instalado como reserva: FN+SELECT também alterna entre os dois.
 
 # Ferramentas
-As ferramentas do menu Opções do dArkOSen, por categoria. "Nativo": reescrita no Omni36OS (copiar padrões, montar pendrive, backup, trapaças...). "Janelas": o script original roda, mas os menus, mensagens e o teclado aparecem no visual do Omni36OS; o sistema não é alterado para isso (só o script vê a troca). "App": programas com tela própria. "Cuidado": mexem no boot, no kernel ou no ES; pedem confirmação duas vezes.
+As ferramentas do menu Opções do dArkOSen, por categoria. "Nativo": reescrita no Omni36OS (copiar padrões, montar pendrive, backup, trapaças...). "Janelas": o script original roda, mas os menus, mensagens e o teclado aparecem no visual do Omni36OS; o sistema não é alterado para isso (só o script vê a troca). "App": programas com tela própria. "Perigoso": mexem no boot, no kernel ou no ES; abrem um aviso vermelho com contagem (10 s nas que podem impedir o boot, 5 s nas outras) e as três mais graves pedem segurar A por 3 s. Cancelar fica escolhido desde o início; depois de passar uma vez, a mesma ferramenta não espera de novo até reiniciar.
 
 # Jogos
 Lista os jogos que o ES mostra, lidos do es_systems.cfg e dos gamelist.xml (o Omni36OS só lê; quem grava é o ES). "Por sistema", "Favoritos", "Recentes" e "Mais jogados" abrem listas; L1/R1 pulam de letra em letra.

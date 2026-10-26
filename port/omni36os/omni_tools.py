@@ -132,6 +132,7 @@ def clear_last_played(_a=None):
                     lines = fh.readlines()
                 keep = [l for l in lines if "<lastplayed>" not in l and "<playcount>" not in l]
                 if len(keep) != len(lines):
+                    shutil.copy2(f, f + ".omni-bak")     # para desfazer: copie de volta
                     with open(f + ".tmp", "w", encoding="utf-8") as fh:
                         fh.writelines(keep)
                     os.replace(f + ".tmp", f)
