@@ -755,6 +755,89 @@ def restart_es_on_exit(_args=None):
     return "ok"
 
 
+# --- Tela inicial (hub) e atalho L3+R3 ---
+
+HUB_CONF = f"{HOME}/.config/sab/hub"          # desligada | sempre | alertas
+HOTKEY_CONF = f"{HOME}/.config/sab/atalho"    # ligado | desligado | jogo (também dentro dos jogos)
+HUB_DROPIN = "/etc/systemd/system/emulationstation.service.d/sab-hub.conf"
+HOTKEY_UNIT = "/etc/systemd/system/sab-atalho.service"
+HUB_MODES = ("desligada", "sempre", "alertas")
+HOTKEY_MODES = ("desligado", "ligado", "jogo")
+
+
+def _systemctl(*args):
+    return subprocess.run(["systemctl", *args], capture_output=True, text=True)
+
+
+def hub_alerts(_args=None):
+    """Checagem rápida do boot (menos de 1 s) para o modo "só com alertas"."""
+    out = []
+    cap = read_text("/sys/class/power_supply/battery/capacity", "100")
+    st = read_text("/sys/class/power_supply/battery/status", "")
+    if cap.isdigit() and int(cap) <= 20 and st != "Charging":
+        out.append(f"bateria em {cap}%")
+    if temp_c() >= 70:
+        out.append(f"temperatura {temp_c()} °C")
+    bad = [f for f in failed_services() if f not in KNOWN_FAILS or KNOWN_FAILS[f][1]]
+    if bad:
+        out.append("serviço com falha: " + ", ".join(bad))
+    for name, d in disk_facts().items():
+        if d["uso_pct"] >= 90 or d["livre_gb"] < 1:
+            out.append(f"cartão {name} quase cheio")
+    return out
+
+
+def get_hub(_args=None):
+    m = read_text(HUB_CONF, "")
+    return m if m in HUB_MODES and os.path.exists(HUB_DROPIN) else "desligada"
+
+
+def set_hub(args):
+    mode = args["mode"]
+    if mode not in HUB_MODES:
+        return "Modo inválido."
+    os.makedirs(os.path.dirname(HUB_CONF), exist_ok=True)
+    write_text(HUB_CONF, mode)
+    if mode == "desligada":
+        if os.path.exists(HUB_DROPIN):
+            os.remove(HUB_DROPIN)
+    else:
+        os.makedirs(os.path.dirname(HUB_DROPIN), exist_ok=True)
+        write_text(HUB_DROPIN, "# Sab: tela inicial do console (Ajuda > Tela inicial)\n[Service]\nExecStart=\n"
+                               f"ExecStart=/bin/bash {SAB_DIR}/hub.sh\n")
+    _systemctl("daemon-reload")     # vale no próximo boot; o ES aberto não é tocado
+    return {"desligada": "Tela inicial desligada: o console abre direto no ES",
+            "sempre": "A Sab abre no boot, antes do ES",
+            "alertas": "A Sab abre no boot só quando houver alerta"}[mode] + " (a partir do próximo boot)"
+
+
+def get_hotkey(_args=None):
+    m = read_text(HOTKEY_CONF, "")
+    return m if m in HOTKEY_MODES and os.path.exists(HOTKEY_UNIT) else "desligado"
+
+
+def set_hotkey(args):
+    mode = args["mode"]
+    if mode not in HOTKEY_MODES:
+        return "Modo inválido."
+    os.makedirs(os.path.dirname(HOTKEY_CONF), exist_ok=True)
+    write_text(HOTKEY_CONF, mode)
+    if mode == "desligado":
+        _systemctl("disable", "--now", "sab-atalho.service")
+        if os.path.exists(HOTKEY_UNIT):
+            os.remove(HOTKEY_UNIT)
+        _systemctl("daemon-reload")
+        return "Atalho L3+R3 desligado"
+    write_text(HOTKEY_UNIT, "[Unit]\nDescription=Sab: atalho L3+R3 abre a Sab\nAfter=emulationstation.service\n\n"
+                            f"[Service]\nExecStart=/usr/bin/python3 {SAB_DIR}/sab_atalho.py\nRestart=on-failure\n"
+                            "Nice=10\n\n[Install]\nWantedBy=multi-user.target\n")
+    _systemctl("daemon-reload")
+    _systemctl("enable", "sab-atalho.service")
+    _systemctl("restart", "sab-atalho.service")    # relê o modo
+    return ("Segure L3+R3 (aperte os dois analógicos) por 1 s para abrir a Sab"
+            + (", também dentro dos jogos (experimental)" if mode == "jogo" else ""))
+
+
 # --- Conflitos com outros scripts ---
 
 def usb_net_active(_args=None):
@@ -807,6 +890,8 @@ def restore_es(_args=None):
     res = set_mode({"mode": "port"})
     if res.startswith("Não"):
         return res
+    set_hub({"mode": "desligada"})
+    set_hotkey({"mode": "desligado"})
     write_text(ES_CLEAN, "1")
     return "ES restaurado: a Sab volta para Ports quando fechar"
 
@@ -958,7 +1043,7 @@ TOOLS = {
     "schedule_scan": schedule_scan, "last_scan": last_scan,
     "get_gamma": get_gamma, "set_gamma": set_gamma, "get_led": get_led, "set_led": set_led,
     "usb_net_active": usb_net_active, "handoff": handoff,
-    "list_ports": list_ports, "port_groups": port_groups, "port_results": port_results, "get_mode": get_mode, "set_mode": set_mode, "restart_es": restart_es, "restore_es": restore_es, "clear_port_alerts": clear_port_alerts, "test_port": test_port,
+    "list_ports": list_ports, "port_groups": port_groups, "port_results": port_results, "get_mode": get_mode, "set_mode": set_mode, "restart_es": restart_es, "restore_es": restore_es, "hub_alerts": hub_alerts, "get_hub": get_hub, "set_hub": set_hub, "get_hotkey": get_hotkey, "set_hotkey": set_hotkey, "clear_port_alerts": clear_port_alerts, "test_port": test_port,
     "retroarch_changes": retroarch_changes,
     "restore_retroarch": restore_retroarch,
     "usb_facts": usb_facts,

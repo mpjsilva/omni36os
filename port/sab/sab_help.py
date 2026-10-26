@@ -5,6 +5,13 @@ TELEGRAM = "t.me/r36sbr"
 
 # A versão em uso vem do arquivo VERSION; a lista abaixo é o histórico.
 NOVIDADES = [
+    ("1.11.0-hub", "26/10/2026", [
+        "Ajuda > Tela inicial do console: a Sab abre no boot, antes do ES (sempre ou só com alertas). B na tela "
+        "inicial vai para o ES (Jogar); sair do ES volta para a Sab.",
+        "Ajuda > Atalho L3+R3: segurar os dois analógicos por 1 s abre a Sab no menu do ES; no modo beta, "
+        "também por cima dos jogos (o jogo fica congelado até a Sab fechar).",
+        "Segurança no boot: segurar B abre o BaRT do dArkOSen, segurar L1 pula a Sab, e se a Sab falhar o ES sobe sozinho.",
+    ]),
     ("1.10.0", "26/10/2026", [
         "As ferramentas do dArkOSen abertas pela Sab devolvem a Sab quando fecham, no mesmo card.",
         "Novas ferramentas: teste de controle e conserto dos atalhos (Verificar), informações do sistema e "
@@ -167,7 +174,9 @@ Só configurações: saves, estados, cores, shaders, temas e bancos de dados fic
 
 # Ajuda
 Este manual, os cuidados, as novidades de cada versão e os créditos.
-"Restaurar o ES": "Só reiniciar" recarrega o menu do console quando a Sab fecha (para um ES travado ou lista desatualizada). "Desfazer a Sab" tira o sistema próprio, o ícone, a descrição e o logo que a Sab pôs no ES, e ela volta para a lista de Ports."""
+"Tela inicial do console": Desligada (o console abre no ES, como sempre), Sab no boot (a Sab abre antes do ES; B na tela inicial vai para o ES e sair do ES volta para a Sab) ou Só com alertas (a Sab só abre no boot se a bateria estiver fraca, o console quente, um serviço falhando ou um cartão cheio). Vale a partir do próximo boot. No boot, segure B para o BaRT do dArkOSen ou L1 para pular a Sab.
+"Atalho L3+R3": segure os dois analógicos apertados por 1 s. No menu do ES, a Sab abre e o ES volta quando ela fecha. Em "Menu e jogos (beta)", também dentro de um jogo: o jogo congela, a Sab abre por cima e o jogo continua quando ela fecha (alguns emuladores não soltam a tela; aí o jogo volta na hora). Por cima de um jogo, testes de port e ferramentas de tela cheia ficam bloqueados.
+"Restaurar o ES": "Só reiniciar" recarrega o menu do console quando a Sab fecha (para um ES travado ou lista desatualizada). "Desfazer a Sab" tira o sistema próprio, o ícone, a descrição e o logo que a Sab pôs no ES (inclusive a tela inicial e o atalho), e ela volta para a lista de Ports."""
 
 CUIDADOS = """# Antes de qualquer coisa
 Faça backup do cartão do sistema no PC de vez em quando. Uma imagem do cartão inteiro salva você de quase qualquer problema.

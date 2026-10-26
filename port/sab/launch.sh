@@ -4,7 +4,8 @@
 # Launcher de verdade. O ES chega aqui por um atalho: Ports/Sab.sh (modo port)
 # ou <cartão>/sab/Sab.sh (modo sistema, entrada própria no menu do ES).
 # Roda como qualquer port: não para o ES, que volta para a tela de onde a Sab
-# foi aberta quando ela fecha.
+# foi aberta quando ela fecha. Também é chamado pelo hub.sh (tela inicial) e
+# pelo sab_atalho.py (L3+R3); aí SAB_HUB diz de onde: boot, atalho, saida, jogo.
 
 SAB_DIR="$(cd "$(dirname "$(readlink -f "$0")")" && pwd)"
 cd "$SAB_DIR"
@@ -12,7 +13,7 @@ RESUME=""
 
 while true; do
   sudo rm -f /tmp/sab-next
-  sudo SAB_RESUME="$RESUME" SDL_GAMECONTROLLERCONFIG_FILE=/opt/inttools/gamecontrollerdb.txt \
+  sudo SAB_HUB="$SAB_HUB" SAB_RESUME="$RESUME" SDL_GAMECONTROLLERCONFIG_FILE=/opt/inttools/gamecontrollerdb.txt \
     python3 sab_ui.py > /tmp/sab.log 2>&1
   [ -f /tmp/sab-next ] || break
   next="$(cat /tmp/sab-next)"
@@ -51,7 +52,15 @@ esac
 # Troca do modo, importação do backup do ES ou arte nova: o ES relê tudo.
 # Para, aplica a arte e sobe de novo num job à parte do systemd: com o ES
 # aberto ele reescreveria o gamelist.xml, e o job não morre junto com ele.
-if [ -f /tmp/sab-restart-es ]; then
+# Por cima de um jogo congelado (atalho no jogo): deixa para a próxima vez.
+[ "$SAB_HUB" = jogo ] && exit 0
+if [ -f /tmp/sab-restart-es ] && [ "$SAB_HUB" = atalho ]; then
+  # o job do atalho já parou o ES e vai subir ele: só aplicar a arte
+  sudo rm -f /tmp/sab-restart-es
+  mkdir -p "$(dirname "$ART_MARK")"
+  if [ -f /tmp/sab-es-clean ]; then echo off > "$ART_MARK"; else echo "$ART_VER" > "$ART_MARK"; fi
+  sudo python3 es_art.py
+elif [ -f /tmp/sab-restart-es ]; then
   sudo rm -f /tmp/sab-restart-es
   mkdir -p "$(dirname "$ART_MARK")"
   if [ -f /tmp/sab-es-clean ]; then echo off > "$ART_MARK"; else echo "$ART_VER" > "$ART_MARK"; fi

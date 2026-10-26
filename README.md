@@ -21,6 +21,14 @@ Na primeira execução a Sab pergunta onde quer aparecer:
 
 Para trocar depois: **Ajuda > Mostrar no console**. Ao fechar a Sab, o ES reinicia uma vez para aplicar a troca, o ícone e a descrição.
 
+## Tela inicial e atalho (branch `hub`)
+
+- **Ajuda > Tela inicial do console**: um drop-in em `/etc/systemd/system/emulationstation.service.d/sab-hub.conf` troca o `ExecStart` do ES por `port/sab/hub.sh`. A ordem fica boot → Sab → (B: Jogar) → ES → (sair do ES ou L3+R3) → Sab. Desligar apaga o drop-in. Vale no próximo boot.
+  - Segurar **B** no boot mantém o BaRT do dArkOSen; **L1** pula a Sab; se a Sab cair ao abrir, o ES sobe direto e o próximo boot pula a Sab.
+  - Um restart do serviço (troca de modo, importação do ES) vai direto ao ES (`/dev/shm/sab-hub-booted`).
+  - "Só com alertas" roda `sab.hub_alerts()` (bateria ≤ 20%, ≥ 70 °C, serviço com falha, cartão cheio) em ~0,5 s.
+- **Ajuda > Atalho L3+R3**: serviço `sab-atalho.service` (`port/sab/sab_atalho.py`) lê o `/dev/input` do controle. No menu do ES, fecha o ES (com o hub) ou para o ES num job do systemd (sem o hub) e abre a Sab. No modo beta, num jogo, congela os processos do jogo (`SIGSTOP`), abre a Sab e descongela ao fechar.
+
 ## Telas
 
 | | | |

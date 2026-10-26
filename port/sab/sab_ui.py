@@ -59,6 +59,7 @@ def card_info(cid):
         return (cid, *SUBPAGES[cid][:4])
     return next(c for c in CARDS if c[0] == cid)
 FPS_ACTIVE, FPS_IDLE, IDLE_AFTER = 30, 10, 4.0   # quadros/s; segundos sem botão até ficar parado
+HUB = os.environ.get("SAB_HUB", "")         # boot/atalho/saida: tela inicial; jogo: por cima de um jogo
 RESUME = os.environ.get("SAB_RESUME", "")   # "testar": a Sab voltou de um teste de port
 
 import sab_help
@@ -150,7 +151,8 @@ class Data:
         if FAKE:
             return {"brilho": 40, "volume": 60, "gov": "ondemand", "govs": ["powersave", "ondemand", "performance"],
                     "part": "roms2", "pendrive": False, "cpu_max": 1296, "cpu_freqs": [1296, 1416, 1512],
-                    "gpu_max": 520, "gpu_freqs": [400, 480, 520, 600], "gamma": 1.0, "led": "verde"}[what]
+                    "gpu_max": 520, "gpu_freqs": [400, 480, 520, 600], "gamma": 1.0, "led": "verde",
+                    "hub": "desligada", "atalho": "desligado"}[what]
         if what == "brilho":
             return sab.get_brightness()
         if what == "volume":
@@ -175,6 +177,10 @@ class Data:
             return sab.get_gamma()
         if what == "led":
             return sab.get_led()
+        if what == "hub":
+            return sab.get_hub()
+        if what == "atalho":
+            return sab.get_hotkey()
 
     def set(self, what, value):
         if FAKE:
@@ -195,6 +201,10 @@ class Data:
             return sab.set_gamma({"value": value})
         if what == "led":
             return sab.set_led({"color": value})
+        if what == "hub":
+            return sab.set_hub({"mode": value})
+        if what == "atalho":
+            return sab.set_hotkey({"mode": value})
 
     def run(self, tool, args=None):
         if FAKE:
@@ -224,6 +234,10 @@ class Slider:
         self.label, self.icon, self.key, self.step, self.lo = label, icon, key, step, lo
         self.value = D.get(key)
         self.shown = float(self.value)
+
+
+HUB_NAMES = {"desligada": "Desligada (ES direto)", "sempre": "Sab no boot", "alertas": "Só com alertas"}
+HOTKEY_NAMES = {"desligado": "Desligado", "ligado": "No menu do ES", "jogo": "Menu e jogos (beta)"}
 
 
 class Choice:
@@ -557,6 +571,8 @@ class App:
             mode = "Sistema no console" if not FAKE and sab.get_mode() == "sistema" else "Lista de Ports"
             return [subpage(A("Backup", "device-floppy", lambda: self.open_page("backup")), "backup"),
                     A(f"Mostrar no console: {mode}", "device-tv", self.ask_mode),
+                    Choice("Tela inicial do console", "power", "hub", list(HUB_NAMES), HUB_NAMES),
+                    Choice("Atalho L3+R3", "device-gamepad-2", "atalho", list(HOTKEY_NAMES), HOTKEY_NAMES),
                     A("Manual", "book", lambda: self.read("Manual", "book", sab_help.MANUAL)),
                     A("Cuidados", "alert-triangle", lambda: self.read("Cuidados", "alert-triangle", sab_help.CUIDADOS)),
                     A("Novidades", "tag", lambda: self.read(f"Novidades · Sab {sab_version()}", "tag",
@@ -592,7 +608,15 @@ class App:
             self.modal = {"title": title, "text": str(res), "icon": "info-circle", "buttons": ["OK"], "sel": 0}
         self.worker(lambda: D.run(tool), done, busy="Lendo...")
 
+    def busy_game(self):
+        if HUB == "jogo":
+            self.toast = ("Feche o jogo antes: a Sab está por cima dele", "aviso", self.t + 3.5)
+            return True
+        return False
+
     def handoff(self, tool):
+        if self.busy_game():
+            return
         res = "ok" if FAKE else D.run("handoff", {"tool": tool, "card": self.page or ""})
         if res == "ok":
             self.running = False      # o Sab.sh abre a ferramenta
@@ -711,6 +735,8 @@ class App:
     # --- teste de ports ---
 
     def open_picker(self):
+        if self.busy_game():
+            return
         groups = FAKE_PORTS if FAKE else sab.port_groups()
         res = {} if FAKE else sab.port_results()
         rows = []
@@ -755,6 +781,8 @@ class App:
     # --- modo de exibição (port ou sistema no ES) ---
 
     def ask_mode(self, first=False):
+        if not first and self.busy_game():
+            return
         cur = None if FAKE else sab.get_mode()
         text = ("Onde a Sab deve aparecer no console?\n" if first else "") + \
             ("Lista de Ports: junto com os outros ports.\n"
@@ -955,6 +983,8 @@ class App:
                 self.toast = (str(res) + ": fique de olho na temperatura", "aviso", self.t + 3.5)
             if it.key == "gov":
                 self.status = D.status()
+            if it.key in ("hub", "atalho") and isinstance(res, str):
+                self.toast = (res, "ok", self.t + 4)
         elif isinstance(it, Action) and cmd == "ok":
             if it.confirm:
                 self.ask(it.confirm, it.fn, it.danger)
@@ -1172,7 +1202,8 @@ class App:
                 g.text("Bold", 11, str(n), px_, py_ + 0.5, alpha(hexc("10142a"), 255 * fade), "c", "m")
             g.text("Regular", 11, self.card_subtitle(cid), x + 72, y + ch / 2 + 1 + lift,
                    alpha((235, 240, 255, 255) if on else MUTED, (230 if on else 255) * fade))
-        self.draw_footer([("A", "Abrir", TEXT), ("B", "Sair", MUTED), ("SELECT + START", "Fechar", MUTED)])
+        leave = {"jogo": "Voltar ao jogo", "": "Sair"}.get(HUB, "Jogar")   # hub: sair da Sab abre o ES
+        self.draw_footer([("A", "Abrir", TEXT), ("B", leave, MUTED), ("SELECT + START", "Fechar", MUTED)])
 
     def draw_page(self, dt, fade):
         g = self.g
