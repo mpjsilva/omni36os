@@ -834,7 +834,7 @@ def set_hotkey(args):
     _systemctl("daemon-reload")
     _systemctl("enable", "omni36os-atalho.service")
     _systemctl("restart", "omni36os-atalho.service")    # relê o modo
-    return ("Segure L3+R3 ou FN+SELECT por 1 s para alternar entre o Omni36OS e o ES"
+    return ("Segure L3+R3 por 1 s para alternar entre o Omni36OS e o ES"
             + (", também dentro dos jogos (experimental)" if mode == "jogo" else ""))
 
 

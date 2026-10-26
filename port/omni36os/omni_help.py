@@ -7,7 +7,8 @@ TELEGRAM = "t.me/r36sbr"
 NOVIDADES = [
     ("1.3.1", "26/10/2026", [
         "Lista de ferramentas mais limpa: sem as etiquetas Nativo/Janelas/App.",
-        "START+SELECT juntos não fecham mais o Omni36OS (para ir ao ES: SELECT > Abrir o ES, ou FN+SELECT).",
+        "FN+SELECT não alterna mais entre o Omni36OS e o ES (no ES só esmaecia a tela); use SELECT > Abrir o ES.",
+        "START+SELECT juntos não fecham mais o Omni36OS (para ir ao ES: SELECT > Abrir o ES).",
         "Jogos só abrem pela lista da tela inicial; no card Jogos do menu a ficha é só para consultar.",
     ]),
     ("1.3.0", "26/10/2026", [
@@ -111,7 +112,7 @@ Mostra o que foi mudado na configuração do RetroArch e restaura a de fábrica.
 
 # Biblioteca (tela inicial)
 Com a tela inicial ligada, o console liga direto na lista de jogos. Esquerda/direita trocam de sistema (Favoritos e Recentes vêm primeiro), cima/baixo escolhem o jogo, L1/R1 pulam de letra. A abre a ficha do jogo; "Jogar" abre e, ao fechar o jogo, a lista volta no mesmo lugar.
-START abre as opções (os cards do Omni36OS); B ou START voltam para os jogos. SELECT abre Energia: abrir o EmulationStation, reiniciar ou desligar. O ES continua instalado como reserva: FN+SELECT também alterna entre os dois.
+START abre as opções (os cards do Omni36OS); B ou START voltam para os jogos. SELECT abre Energia: abrir o EmulationStation, reiniciar ou desligar. O ES continua instalado como reserva.
 
 # Ferramentas
 As ferramentas do menu Opções do dArkOSen, por categoria. Parte delas foi reescrita e roda aqui dentro; as outras rodam o script original, com os menus, mensagens e o teclado no visual do Omni36OS (o sistema não é alterado para isso). Programas com tela própria abrem como no ES. "Perigoso": mexem no boot, no kernel ou no ES; abrem um aviso vermelho com contagem (10 s nas que podem impedir o boot, 5 s nas outras) e as três mais graves pedem segurar A por 3 s. Cancelar fica escolhido desde o início; depois de passar uma vez, a mesma ferramenta não espera de novo até reiniciar.
@@ -152,7 +153,7 @@ Só configurações: saves, estados, cores, shaders, temas e bancos de dados fic
 Este manual, os cuidados, as novidades de cada versão e os créditos.
 "Tema": escuro ou claro, vale na hora e fica salvo.
 "Tela inicial do console": Desligada (o console abre no ES, como sempre), Omni36OS no boot (o Omni36OS abre antes do ES; B na tela inicial vai para o ES e sair do ES volta para o Omni36OS) ou Só com alertas (o Omni36OS só abre no boot se a bateria estiver fraca, o console quente, um serviço falhando ou um cartão cheio). Vale a partir do próximo boot. No boot, segure B para o BaRT do dArkOSen ou L1 para pular o Omni36OS.
-"Atalho L3+R3 / FN+SELECT": segure L3+R3 (os dois analógicos) ou FN+SELECT por 1 s para alternar: do ES para o Omni36OS e do Omni36OS de volta. No menu do ES, o Omni36OS abre e o ES volta quando ele fecha. Em "Menu e jogos (beta)", também dentro de um jogo: o jogo congela, o Omni36OS abre por cima e o jogo continua quando ele fecha (alguns emuladores não soltam a tela; aí o jogo volta na hora). Por cima de um jogo, testes de port e ferramentas de tela cheia ficam bloqueados.
+"Atalho L3+R3": segure L3+R3 (os dois analógicos) por 1 s para alternar: do ES para o Omni36OS e do Omni36OS de volta. No menu do ES, o Omni36OS abre e o ES volta quando ele fecha. Em "Menu e jogos (beta)", também dentro de um jogo: o jogo congela, o Omni36OS abre por cima e o jogo continua quando ele fecha (alguns emuladores não soltam a tela; aí o jogo volta na hora). Por cima de um jogo, testes de port e ferramentas de tela cheia ficam bloqueados.
 "Restaurar o ES": "Só reiniciar" recarrega o menu do console quando o Omni36OS fecha (para um ES travado ou lista desatualizada). "Desfazer o Omni36OS" tira o sistema próprio, o ícone, a descrição e o logo que o Omni36OS pôs no ES (inclusive a tela inicial e o atalho), e ele volta para a lista de Ports."""
 
 CUIDADOS = """# Antes de qualquer coisa

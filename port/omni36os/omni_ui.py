@@ -723,7 +723,7 @@ class App:
                     A(f"Mostrar no console: {mode}", "device-tv", self.ask_mode),
                     Choice("Tema", "sun", "tema", list(THEMES), {"escuro": "Escuro", "claro": "Claro"}),
                     Choice("Tela inicial do console", "power", "hub", list(HUB_NAMES), HUB_NAMES),
-                    Choice("Atalho L3+R3 / FN+SELECT", "device-gamepad-2", "atalho", list(HOTKEY_NAMES), HOTKEY_NAMES),
+                    Choice("Atalho L3+R3", "device-gamepad-2", "atalho", list(HOTKEY_NAMES), HOTKEY_NAMES),
                     A("Manual", "book", lambda: self.read("Manual", "book", omni_help.MANUAL)),
                     A("Cuidados", "alert-triangle", lambda: self.read("Cuidados", "alert-triangle", omni_help.CUIDADOS)),
                     A("Novidades", "tag", lambda: self.read(f"Novidades · Omni36OS {omni_version()}", "tag",

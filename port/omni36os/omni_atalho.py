@@ -1,4 +1,4 @@
-"""Atalho global do Omni36OS: segurar L3+R3 (os dois analógicos) ou FN+SELECT por
+"""Atalho global do Omni36OS: segurar L3+R3 (os dois analógicos) por
 1 s alterna entre o Omni36OS e o que estiver na tela (ES ou jogo).
 
 Roda como serviço (omni36os-atalho.service, ligado em Ajuda > Atalho L3+R3).
@@ -20,8 +20,8 @@ import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 PAD = "/dev/input/by-path/platform-odroidgo3-joypad-event-joystick"
-# L3+R3 (b14 e b15 no gamecontrollerdb do R36S) e FN+SELECT (708 e 704)
-COMBOS = ({706, 707}, {708, 704})
+# L3+R3 (b14 e b15 no gamecontrollerdb do R36S). FN+SELECT saiu: o ES usa o FN e só esmaecia a tela
+COMBOS = ({706, 707},)
 WATCH = set().union(*COMBOS)
 HOLD = 1.0
 EV_KEY = 1
