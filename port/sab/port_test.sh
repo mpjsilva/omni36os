@@ -18,6 +18,14 @@ sudo dmesg -c > /dev/null 2>&1           # o relatório mostra só o que o port 
 START=$(date +%s)
 STAMP_START="$(date '+%Y-%m-%d %H:%M:%S')"
 
+# A Sab relaxa os clocks para não esquentar; o port roda como no ES (perfmax
+# "performance"). A Sab volta a relaxar quando reabre.
+for g in /sys/devices/system/cpu/cpufreq/policy0/scaling_governor \
+         /sys/devices/platform/ff400000.gpu/devfreq/ff400000.gpu/governor \
+         /sys/devices/platform/dmc/devfreq/dmc/governor; do
+  echo performance | sudo tee "$g" > /dev/null 2>&1
+done
+
 # setsid: o port e tudo que ele abrir ficam num grupo só, para encerrar junto
 setsid nice -n -19 bash "$PORT" > "$OUT" 2>&1 < /dev/null &
 PID=$!

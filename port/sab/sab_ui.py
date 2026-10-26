@@ -46,6 +46,7 @@ CARDS = [
     ("ajuda", "Ajuda", "help-circle", "60a5fa", "a78bfa"),
 ]
 COLS = 3
+FPS_ACTIVE, FPS_IDLE, IDLE_AFTER = 30, 10, 4.0   # quadros/s; segundos sem botão até ficar parado
 RESUME = os.environ.get("SAB_RESUME", "")   # "testar": a Sab voltou de um teste de port
 
 import sab_help
@@ -196,6 +197,7 @@ D = Data()
 if not FAKE:
     try:
         sab.migrate_cpu_settings()   # modo do processador de versões antigas
+        sab.relax_clocks()           # o perfmax do ES deixou tudo no máximo
     except OSError:
         pass
 
@@ -241,6 +243,7 @@ class App:
         self.g = gfx.Gfx()
         self.swap = swapped_ab()
         self.running = True
+        self.last_input = time.monotonic()
         self.t = 0.0
         self.sel = 0
         self.sel_x, self.sel_y = 0.0, 0.0
@@ -656,6 +659,7 @@ class App:
     # --- entrada ---
 
     def handle(self, cmd):
+        self.last_input = time.monotonic()
         if self.busy or self.loading:
             return
         if self.reader:
@@ -1296,8 +1300,13 @@ class App:
             self.g.present()
             if self.loading:
                 self.prewarm()
-            if FAKE or os.environ.get("SDL_VIDEODRIVER") == "offscreen":
-                time.sleep(1 / 60)
+            # Ritmo: 30 quadros/s em uso e 10 parado. A 60 quadros/s sem parar a
+            # Sab ocupava 70% de um núcleo e deixava o aparelho perto de 80 °C.
+            moving = (self.loading or self.busy or self.toast or 0.01 < self.page_anim < 0.99
+                      or now - self.last_input < IDLE_AFTER)
+            spare = 1 / (FPS_ACTIVE if moving else FPS_IDLE) - (time.monotonic() - now)
+            if spare > 0:
+                time.sleep(spare)
         gfx.SDL_Quit()
 
 

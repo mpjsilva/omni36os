@@ -5,6 +5,11 @@ TELEGRAM = "t.me/r36sbr"
 
 # A versão em uso vem do arquivo VERSION; a lista abaixo é o histórico.
 NOVIDADES = [
+    ("1.7.1", "26/10/2026", [
+        "Menos calor: a Sab desenha 30 quadros/s em uso e 10 parada (antes eram 60 sem parar).",
+        "Ao abrir, a Sab devolve CPU, GPU e RAM ao modo automático (o ES deixa tudo no máximo para ports).",
+        "O teste de port continua rodando o jogo com tudo no máximo, como o ES.",
+    ]),
     ("1.7.0", "26/10/2026", [
         "Card Testar ports: abre um port por 15 s e fecha sozinho; se ele fechar antes, gera um relatório em sab/logs/<port>/.",
         "Ports listados por cartão (/roms2 ou /roms), indicando qual pasta o ES mostra (lida do es_systems.cfg).",

@@ -374,6 +374,21 @@ def set_preferred_governor(args):
     return f"Processador: {name} ao voltar para o menu"
 
 
+def relax_clocks(_args=None):
+    """O ES roda o perfmax ao abrir qualquer port, a Sab inclusive: CPU, GPU e
+    RAM ficam travadas no máximo enquanto ela está aberta, só esquentando. Um
+    menu não precisa disso; o perfnorm volta o modo escolhido quando a Sab fecha."""
+    for path, gov in ((f"{CPUFREQ}/scaling_governor", "ondemand"),
+                      (f"{GPU_DEV}/governor", "simple_ondemand"),
+                      ("/sys/class/devfreq/dmc/governor", "dmc_ondemand")):
+        try:
+            if gov in read_text(path.rsplit("/", 1)[0] + ("/scaling_available_governors" if "cpufreq" in path
+                                                          else "/available_governors"), ""):
+                write_text(path, gov)
+        except OSError:
+            pass
+
+
 # --- Overclock (CPU e GPU) ---
 
 def cpu_freqs(_args=None):
