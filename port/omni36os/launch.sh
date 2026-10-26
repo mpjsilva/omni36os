@@ -24,6 +24,18 @@ while true; do
       bash "$OMNI_DIR/port_test.sh" "${next#test:}"
       RESUME="testar"
       continue ;;
+    # Jogo aberto pelo card Jogos: o mesmo comando do ES (emulador, core e
+    # governador escolhidos lá), e o Omni36OS volta no card Jogos
+    game$'\t'*)
+      IFS=$'\t' read -r _ sys rom <<< "$next"
+      cmd="$(python3 -c 'import sys, omni_games; print(omni_games.command(sys.argv[1], sys.argv[2]) or "")' "$sys" "$rom")"
+      if [ -n "$cmd" ] && [ -e "$rom" ]; then
+        sudo chmod 666 /dev/tty1
+        bash -c "$cmd" > /tmp/omni36os-game.log 2>&1
+        printf "\033c" > /dev/tty1
+      fi
+      RESUME="jogos"
+      continue ;;
     # Ferramentas de tela cheia do dArkOSen: rodam como no menu Opções do ES
     # e, quando fecham, o Omni36OS volta no card de onde foram abertas
     tool:*:/opt/system/*)

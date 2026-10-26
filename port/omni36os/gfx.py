@@ -405,6 +405,35 @@ class Gfx:
 
     # --- camadas (transições) ---
 
+    def picture(self, path, x, y, w, h, a=255):
+        """Imagem de qualquer pasta (capa de jogo), encaixada em w x h sem distorcer.
+        Guarda poucas: capas são grandes e a memória do R36S é curta."""
+        pics = self.__dict__.setdefault("pics", {})
+        hit = pics.get(path)
+        if hit is None:
+            if len(pics) >= 6:
+                old = next(iter(pics))
+                if pics[old][0]:
+                    SDL_DestroyTexture(pics[old][0])
+                del pics[old]
+            SDL_SetHint(b"SDL_RENDER_SCALE_QUALITY", b"1")
+            surf = IMG_Load(path.encode())
+            tex = SDL_CreateTextureFromSurface(self.r, surf) if surf else 0
+            if surf:
+                SDL_FreeSurface(surf)
+            tw, th = C.c_int(0), C.c_int(0)
+            if tex:
+                SDL_QueryTexture(tex, None, None, C.byref(tw), C.byref(th))
+            hit = pics[path] = (tex, tw.value, th.value)
+        tex, tw, th = hit
+        if not tex or not tw or not th:
+            return False
+        k = min(w / tw, h / th)
+        dw, dh = tw * k, th * k
+        SDL_SetTextureAlphaMod(tex, int(max(0, min(255, a))))
+        SDL_RenderCopyF(self.r, tex, None, C.byref(FRect(x + (w - dw) / 2, y + (h - dh) / 2, dw, dh)))
+        return True
+
     def flush(self):
         """Esquece geometria e sprites (troca de tema: as cores mudaram)."""
         for t in self.sprites.values():

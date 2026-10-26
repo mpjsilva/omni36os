@@ -24,6 +24,7 @@ if not FAKE:
     import omni
     import omni_backup
     import omni_checks
+    import omni_games
 
 # --- paleta ---
 
@@ -80,7 +81,7 @@ CARDS = [
     ("tela", "Tela e sistema", "sun", "fbbf24", "f97316"),
     ("desempenho", "Desempenho", "gauge", "fb7185", "e11d48"),
     ("pendrive", "Pendrive USB", "usb", "818cf8", "4f46e5"),
-    ("retroarch", "RetroArch", "device-gamepad-2", "c084fc", "7c3aed"),
+    ("jogos", "Jogos", "device-gamepad-2", "c084fc", "7c3aed"),
     ("testar", "Testar ports", "player-play", "34d399", "059669"),
     ("ajuda", "Ajuda", "help-circle", "60a5fa", "a78bfa"),
 ]
@@ -88,7 +89,8 @@ COLS = 3
 # Páginas abertas de dentro de outro card: B volta para o card de origem e os
 # alertas delas aparecem no ponto do card de origem.
 SUBPAGES = {"cartoes": ("Cartões SD", "device-sd-card", "2dd4bf", "0284c7", "desempenho"),
-            "backup": ("Backup", "device-floppy", "60a5fa", "a78bfa", "ajuda")}
+            "backup": ("Backup", "device-floppy", "60a5fa", "a78bfa", "ajuda"),
+            "retroarch": ("RetroArch", "adjustments", "c084fc", "7c3aed", "ajuda")}
 PARENT = {cid: v[4] for cid, v in SUBPAGES.items()}
 
 
@@ -131,6 +133,18 @@ def about_findings():
         pass
     out.append(("info", "Comunidade R36S Brasil no Telegram: " + TELEGRAM))
     return out
+
+FAKE_GAMES = [
+    {"name": "snes", "full": "Super NES", "path": "/roms2/snes", "n_unknown": 0, "unknown": [], "games": [
+        {"path": "/roms2/snes/Chrono Trigger.sfc", "name": "Chrono Trigger", "size": 4194304, "fav": 1,
+         "plays": 12, "time": 18400, "last": "20261024T201000",
+         "desc": "Crono e os amigos viajam no tempo para impedir o fim do mundo."},
+        {"path": "/roms2/snes/Super Mario World.sfc", "name": "Super Mario World", "size": 524288, "plays": 3,
+         "time": 3600, "last": "20261020T101000"},
+        {"path": "/roms2/snes/Zelda.sfc", "name": "The Legend of Zelda: A Link to the Past", "size": 1048576}]},
+    {"name": "psx", "full": "PlayStation", "path": "/roms2/psx", "n_unknown": 2, "unknown": ["leia.txt.bak", "x.zip"],
+     "games": [{"path": "/roms2/psx/Crash.chd", "name": "Crash Bandicoot", "size": 420000000, "fav": 1}]},
+]
 
 FAKE_PORTS = [{"dir": "/roms2/ports", "label": "/roms2/ports (cartão de jogos)", "es": True,
                "ports": ["/roms2/ports/Daytona USA.sh", "/roms2/ports/NFSU1.sh", "/roms2/ports/Undertale.sh"]}]
@@ -382,6 +396,8 @@ class App:
             return self._testar()
         if cid == "backup":
             return self._backup()
+        if cid == "jogos":
+            return self._jogos()
         name = {"som": "sem_som", "tela": "atualizar", "pendrive": "pc"}.get(cid, cid)
         return D.check(name)
 
@@ -486,6 +502,57 @@ class App:
         out.append(("info", "O teste abre o port por 15 s e fecha sozinho. Se ele fechar antes, é falha."))
         return omni_checks.finish(out, [], {}) if not FAKE else {
             "nivel": "aviso" if fails else "ok", "achados": out, "acoes": []}
+
+    def games(self, force=False):
+        if FAKE:
+            self.games_idx = FAKE_GAMES
+        elif force or not getattr(self, "games_idx", None):
+            self.games_idx = omni_games.index(force)
+        return self.games_idx
+
+    def _jogos(self):
+        G = omni_games if not FAKE else None
+        idx = self.games(force=getattr(self, "games_reindex", False))
+        self.games_reindex = False
+        games = [g for s in idx for g in s["games"]]
+        total = sum(g["size"] for g in games)
+        self.game_count = len(games)
+        size = (G.human_size(total) if G else f"{total / 1e9:.1f} GB")
+        out = [("ok", f"{len(games)} jogos em {sum(1 for s in idx if s['games'])} sistemas · {size}.")]
+        if FAKE:
+            out += [("problema", "PlayStation: falta a BIOS scph5501.bin (em /roms2/bios). Sem ela os jogos não abrem."),
+                    ("aviso", "PlayStation: 2 arquivo(s) que o ES não mostra (extensão errada ou pasta trocada)."),
+                    ("info", "Último jogado: Chrono Trigger (Super NES), 24/10/2026.")]
+            return {"nivel": "problema", "achados": out, "acoes": []}
+        sm = G.summary(idx)
+        if sm["ultimo"]:
+            last = max((g["last"] for g in games if g.get("last")), default="")
+            out.append(("info", f"Último jogado: {sm['ultimo'][0]} ({sm['ultimo'][1]}), {G.human_date(last)}."))
+        for s, missing, odd in G.bios_check(idx):
+            if missing:
+                out.append(("problema", f"{s['full']}: falta a BIOS {', '.join(missing)} (em {G.bios_dir()}). "
+                                        "Sem ela os jogos não abrem."))
+            if odd:
+                out.append(("aviso", f"{s['full']}: BIOS {', '.join(odd)} com versão desconhecida; se der erro, "
+                                     "troque por uma conhecida."))
+        for s in idx:
+            if s["n_unknown"]:
+                cut = lambda n: n if len(n) <= 22 else n[:20] + "…"
+                ex = ", ".join(cut(os.path.basename(u)) for u in s["unknown"][:2])
+                out.append(("aviso", f"{s['full']}: {s['n_unknown']} arquivo(s) que o ES não mostra ({ex}...). "
+                                     "Extensão errada ou pasta trocada."))
+        dups = G.duplicates(idx)
+        if dups:
+            out.append(("info", f"{len(dups)} jogo(s) parecem repetidos (mesmo nome, outra versão). "
+                                "Veja em \"Repetidos\"."))
+        big = max((s for s in idx if s["games"]), key=lambda s: sum(g["size"] for g in s["games"]), default=None)
+        if big:
+            out.append(("info", f"O que mais ocupa: {big['full']}, "
+                                f"{G.human_size(sum(g['size'] for g in big['games']))}."))
+        nc = sum(n for _s, n in G.no_cover(idx))
+        if nc:
+            out.append(("info", f"{nc} jogo(s) sem capa no ES."))
+        return omni_checks.finish(out, [], {})
 
     def _backup(self):
         if FAKE:
@@ -608,6 +675,13 @@ class App:
                     A("Verificar e reparar o cartão de jogos", "device-sd-card", lambda: self.run_tool_toast("schedule_scan"),
                       confirm="Verificar e reparar o cartão de jogos?\nO aparelho reinicia, verifica o cartão e "
                               "volta sozinho. Leva alguns minutos.", danger=True)]
+        if cid == "jogos":
+            return [A("Por sistema", "device-gamepad-2", self.open_systems),
+                    A("Favoritos", "check", lambda: self.open_games("Favoritos", self.pick("fav"))),
+                    A("Recentes", "clock", lambda: self.open_games("Recentes", self.pick("recent"))),
+                    A("Mais jogados", "gauge", lambda: self.open_games("Mais jogados", self.pick("most"))),
+                    A("Repetidos", "alert-triangle", self.open_dups),
+                    A("Atualizar a lista", "refresh", self.reindex_games)]
         if cid == "testar":
             return [A("Escolher o port", "player-play", self.open_picker),
                     A("Limpar avisos de falha", "check", lambda: self.run_tool_toast("clear_port_alerts")), recheck]
@@ -618,10 +692,11 @@ class App:
         if cid == "ajuda":
             mode = "Sistema no console" if not FAKE and omni.get_mode() == "sistema" else "Lista de Ports"
             return [subpage(A("Backup", "device-floppy", lambda: self.open_page("backup")), "backup"),
+                    subpage(A("RetroArch", "adjustments", lambda: self.open_page("retroarch")), "retroarch"),
                     A(f"Mostrar no console: {mode}", "device-tv", self.ask_mode),
                     Choice("Tema", "sun", "tema", list(THEMES), {"escuro": "Escuro", "claro": "Claro"}),
                     Choice("Tela inicial do console", "power", "hub", list(HUB_NAMES), HUB_NAMES),
-                    Choice("Atalho L3+R3", "device-gamepad-2", "atalho", list(HOTKEY_NAMES), HOTKEY_NAMES),
+                    Choice("Atalho L3+R3 / FN+SELECT", "device-gamepad-2", "atalho", list(HOTKEY_NAMES), HOTKEY_NAMES),
                     A("Manual", "book", lambda: self.read("Manual", "book", omni_help.MANUAL)),
                     A("Cuidados", "alert-triangle", lambda: self.read("Cuidados", "alert-triangle", omni_help.CUIDADOS)),
                     A("Novidades", "tag", lambda: self.read(f"Novidades · Omni36OS {omni_version()}", "tag",
@@ -711,11 +786,23 @@ class App:
         pk = self.picker
         items = [i for i, r in enumerate(pk["rows"]) if "name" in r]
         k = items.index(pk["sel"])
+        if pk.get("letters") and cmd in ("l1", "r1"):     # pula para a próxima/anterior letra
+            first = lambda i: (pk["rows"][i]["name"][:1] or " ").upper()
+            cur = first(pk["sel"])
+            if cmd == "r1":
+                nxt = next((i for i in items[k:] if first(i) != cur), items[-1])
+            else:
+                prev = [i for i in items[:k] if first(i) != cur]
+                nxt = next((i for i in items if prev and first(i) == first(prev[-1])), items[0])
+            pk["sel"] = nxt
+            return
         step = {"up": -1, "down": 1, "left": -6, "right": 6, "l1": -6, "r1": 6}.get(cmd)
         if step:
             pk["sel"] = items[max(0, min(len(items) - 1, k + step))]
         elif cmd == "back":
             self.picker = None
+            if pk.get("on_back"):
+                pk["on_back"]()
         elif cmd == "ok":
             pk["on_ok"](pk["rows"][pk["sel"]])
 
@@ -776,10 +863,143 @@ class App:
             g.rrect(mx + mw - 14, ty, 4, th, 2, ink(18))
             g.rrect(mx + mw - 14, by, 4, bh, 2, alpha(a1, 220))
         self.btn_glyph(mx + 24, my + mh - 32, "A", TEXT)
-        g.text("Regular", 12, f"{pk['ok_label']}  ·  Cima/baixo: escolher  ·  Esquerda/direita: pular",
+        g.text("Regular", 12, f"{pk['ok_label']}  ·  " + ("L1/R1: letra" if pk.get("letters") else
+                                                          "Esquerda/direita: pular"),
                mx + 50, my + mh - 30, MUTED)
         self.btn_glyph(mx + mw - 110, my + mh - 32, "B", TEXT)
         g.text("Regular", 12, "Voltar", mx + mw - 82, my + mh - 30, MUTED)
+
+    # --- jogos ---
+
+    def pick(self, what):
+        idx = self.games()
+        if FAKE:
+            pairs = [(s, g) for s in idx for g in s["games"]]
+            return {"fav": [p for p in pairs if p[1].get("fav")], "recent": [p for p in pairs if p[1].get("last")],
+                    "most": [p for p in pairs if p[1].get("time")]}[what]
+        return {"fav": omni_games.favorites, "recent": omni_games.recent, "most": omni_games.most_played}[what](idx)
+
+    def open_systems(self, start=None):
+        idx = [s for s in self.games() if s["games"]]
+        rows = [{"name": s["full"], "right": (f"{len(s['games'])} jogos", MUTED), "sys": s} for s in idx]
+        if not self.show_list("Jogos por sistema", "device-gamepad-2", rows,
+                              lambda r: self.open_games(r["sys"]["full"], [(r["sys"], g) for g in r["sys"]["games"]],
+                                                        back=lambda k=rows.index(r): self.open_systems(k)),
+                              "Ver os jogos", start):
+            self.toast = ("Nenhum jogo encontrado nas pastas do ES", "aviso", self.t + 3)
+
+    def open_games(self, title, pairs, back=None, start=None):
+        mixed = len({s["name"] for s, _g in pairs}) > 1
+        rows = []
+        for s, g in pairs:
+            right = None
+            if mixed:
+                right = (s["full"], MUTED)
+            elif g.get("fav"):
+                right = ("Favorito", LEVEL["aviso"])
+            rows.append({"name": g["name"], "right": right, "pair": (s, g)})
+        reopen = lambda k: self.open_games(title, pairs, back, k)
+        if not self.show_list(title, "device-gamepad-2", rows,
+                              lambda r: self.open_sheet(*r["pair"], back=lambda k=rows.index(r): reopen(k)),
+                              "Ver o jogo", start):
+            self.toast = ("Nada aqui ainda", "info", self.t + 3)
+            return
+        self.picker["letters"] = not mixed and title not in ("Recentes", "Mais jogados")
+        self.picker["on_back"] = back
+
+    def open_dups(self):
+        idx = self.games()
+        dups = [] if FAKE else omni_games.duplicates(idx)
+        rows = []
+        for s, gs in dups:
+            rows.append({"head": f"{s['full']} · {gs[0]['name']}"})
+            rows += [{"name": os.path.basename(g["path"]), "pair": (s, g),
+                      "right": (omni_games.human_size(g["size"]), MUTED)} for g in gs]
+        if not self.show_list("Jogos repetidos", "alert-triangle", rows,
+                              lambda r: self.open_sheet(*r["pair"], back=self.open_dups), "Ver o jogo"):
+            self.toast = ("Nenhum jogo repetido", "ok", self.t + 3)
+
+    def reindex_games(self):
+        self.games_reindex = True
+        self.worker(lambda: self._jogos(), lambda res: (self.set_result("jogos", res), self.reload_findings(),
+                                                       setattr(self, "toast", ("Lista atualizada", "ok",
+                                                                               self.t + 3))),
+                    busy="Lendo as pastas de jogos...")
+
+    def open_sheet(self, s, g, back=None):
+        self.picker = None
+        self.sheet = {"s": s, "g": g, "sel": 0, "back": back}
+
+    def sheet_input(self, cmd):
+        sh = self.sheet
+        if cmd in ("left", "right"):
+            sh["sel"] = 1 - sh["sel"]
+        elif cmd == "back" or (cmd == "ok" and sh["sel"] == 1):
+            self.sheet = None
+            if sh["back"]:
+                sh["back"]()
+        elif cmd == "ok":
+            self.play(sh["s"], sh["g"])
+
+    def play(self, s, g):
+        if self.busy_game():
+            return
+        if FAKE:
+            self.toast = (f"Abriria {g['name']}", "ok", self.t + 3)
+            return
+        omni_games.play(s["name"], g["path"])
+        self.running = False          # o launch.sh abre o jogo e reabre o Omni36OS no card Jogos
+
+    def draw_sheet(self, dt):
+        g, sh = self.g, self.sheet
+        s, game = sh["s"], sh["g"]
+        G = omni_games if not FAKE else None
+        g.rrect(0, 0, W, H, 0, (5, 7, 20, 190), feather=0)
+        mx, my, mw, mh = 28, 24, W - 56, H - 48
+        g.rrect(mx, my, mw, mh, 22, MODAL_A, MODAL_B)
+        g.stroke(mx, my, mw, mh, 22, ink(25))
+        a1, a2 = self.accent
+        cx, cy, cw, ch = mx + 22, my + 22, 210, mh - 100
+        g.rrect(cx, cy, cw, ch, 16, ink(14))
+        cover = game.get("cover")
+        if not (cover and os.path.exists(cover) and g.picture(cover, cx + 8, cy + 8, cw - 16, ch - 16)):
+            g.rrect(cx + cw / 2 - 40, cy + ch / 2 - 40, 80, 80, 24, a1, a2)
+            g.icon("device-gamepad-2", cx + cw / 2 - 22, cy + ch / 2 - 22, 44, ON_TEXT)
+        tx, tw = cx + cw + 22, mw - cw - 66
+        y = cy + 2
+        for line in g.wrap("Bold", 18, game["name"], tw)[:3]:
+            g.text("Bold", 18, line, tx, y, TEXT)
+            y += 24
+        g.text("SemiBold", 12, s["full"].upper(), tx, y + 4, alpha(a1, 255))
+        y += 30
+        facts = [f"{os.path.basename(game['path'])}" + (f" · {G.human_size(game['size'])}" if G else "")]
+        if game.get("plays") or game.get("time"):
+            facts.append(f"Jogado {game.get('plays', 0)} vez(es)" +
+                         (f" · {G.human_time(game['time'])}" if G and game.get("time") else ""))
+        if game.get("last") and G:
+            facts.append(f"Última vez: {G.human_date(game['last'])}")
+        if game.get("fav"):
+            facts.append("Favorito no ES")
+        for f in facts:
+            for line in g.wrap("Regular", 12, f, tw)[:2]:
+                g.text("Regular", 12, line, tx, y, MUTED)
+                y += 18
+        desc = game.get("desc")
+        if desc:
+            y += 8
+            room = int((my + mh - 70 - y) // 18)
+            lines = g.wrap("Regular", 12, " ".join(desc.split()), tw)
+            for line in lines[:max(0, room)]:
+                g.text("Regular", 12, line, tx, y, TEXT)
+                y += 18
+        bw, by = (mw - 56) / 2, my + mh - 58
+        for k, label in enumerate(("Jogar", "Voltar")):
+            bx = mx + 22 + k * (bw + 12)
+            if k == sh["sel"]:
+                g.rrect(bx, by, bw, 38, 14, a1, a2)
+            else:
+                g.rrect(bx, by, bw, 38, 14, ink(22))
+            g.text("SemiBold", 13, label, bx + bw / 2, by + 19.5, ON_TEXT if k == sh["sel"] else TEXT, "c", "m")
 
     # --- teste de ports ---
 
@@ -982,6 +1202,9 @@ class App:
             elif cmd == "back":
                 self.modal = None
             return
+        if getattr(self, "sheet", None):
+            self.sheet_input(cmd)
+            return
         if self.picker:
             self.picker_input(cmd)
             return
@@ -1177,6 +1400,7 @@ class App:
             "pendrive": "Cabo no PC",
             "cartoes": "Info e velocidade",
             "retroarch": "Restaurar padrão",
+            "jogos": f"{self.game_count} jogos" if getattr(self, "game_count", 0) else "Biblioteca",
             "ajuda": f"Manual · versão {omni_version()}",
             "testar": f"{self.port_count} ports instalados" if getattr(self, "port_count", 0) else "Abre e fecha em 15 s",
         }[cid]
@@ -1408,6 +1632,8 @@ class App:
         g = self.g
         if self.picker:
             self.draw_picker(dt)
+        if getattr(self, "sheet", None):
+            self.draw_sheet(dt)
         if self.busy:
             g.rrect(0, 0, W, H, 0, (5, 7, 20, 170), feather=0)
             g.circle(W / 2, H / 2 - 20, 30, ink(20))
@@ -1597,6 +1823,9 @@ class App:
                 self.show_test_result()
             elif RESUME in [c[0] for c in CARDS]:    # voltou de uma ferramenta do dArkOSen
                 self.sel = next(i for i, c in enumerate(CARDS) if c[0] == RESUME)
+                self.open_page(RESUME)
+            elif RESUME in SUBPAGES:                 # ferramenta aberta de uma subpágina (ex.: RetroArch)
+                self.sel = next(i for i, c in enumerate(CARDS) if c[0] == PARENT[RESUME])
                 self.open_page(RESUME)
             elif not FAKE and omni.get_mode() is None:   # primeira execução
                 self.ask_mode(first=True)

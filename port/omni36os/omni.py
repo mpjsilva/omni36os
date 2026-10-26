@@ -827,14 +827,14 @@ def set_hotkey(args):
         if os.path.exists(HOTKEY_UNIT):
             os.remove(HOTKEY_UNIT)
         _systemctl("daemon-reload")
-        return "Atalho L3+R3 desligado"
+        return "Atalho desligado"
     write_text(HOTKEY_UNIT, "[Unit]\nDescription=Omni36OS: atalho L3+R3 abre o Omni36OS\nAfter=emulationstation.service\n\n"
                             f"[Service]\nExecStart=/usr/bin/python3 {OMNI_DIR}/omni_atalho.py\nRestart=on-failure\n"
                             "Nice=10\n\n[Install]\nWantedBy=multi-user.target\n")
     _systemctl("daemon-reload")
     _systemctl("enable", "omni36os-atalho.service")
     _systemctl("restart", "omni36os-atalho.service")    # relê o modo
-    return ("Segure L3+R3 (aperte os dois analógicos) por 1 s para abrir o Omni36OS"
+    return ("Segure L3+R3 ou FN+SELECT por 1 s para alternar entre o Omni36OS e o ES"
             + (", também dentro dos jogos (experimental)" if mode == "jogo" else ""))
 
 

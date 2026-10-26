@@ -5,6 +5,15 @@ TELEGRAM = "t.me/r36sbr"
 
 # A versão em uso vem do arquivo VERSION; a lista abaixo é o histórico.
 NOVIDADES = [
+    ("1.1.0", "26/10/2026", [
+        "Card Jogos: os jogos que o ES mostra, por sistema, com favoritos, recentes, mais jogados e repetidos. "
+        "L1/R1 pulam de letra em letra.",
+        "Ficha do jogo com capa, descrição, tempo de jogo e o botão Jogar: abre com o mesmo emulador, core e "
+        "governador do ES, e o Omni36OS volta no card Jogos quando o jogo fecha.",
+        "Diagnóstico da biblioteca: BIOS que faltam, arquivos que o ES não mostra, jogos repetidos e sem capa.",
+        "RetroArch foi para Ajuda > RetroArch.",
+        "FN+SELECT (ou L3+R3) alterna entre o Omni36OS e o ES.",
+    ]),
     ("1.0.0", "26/10/2026", [
         "Primeira versão do Omni36OS, nascido da Sab 1.10: tudo que ela fazia (verificação, bateria, som, tela, "
         "desempenho, cartões, pendrive, RetroArch, teste de ports, backup) com nome, ícone e pastas próprios.",
@@ -73,9 +82,14 @@ Marca, tamanho, espaço livre e velocidade dos cartões. "Testar velocidade" lev
 O Omni36OS avisa quando um cartão passa de 90% de uso ou tem menos de 1 GB livre.
 "Verificar e reparar o cartão de jogos" reinicia o aparelho e roda o reparo do dArkOSen (fsck.exfat) com o cartão desmontado. Depois o resultado aparece neste card, e o log fica em /boot/sd2_scan.log.
 
-# RetroArch
+# RetroArch (Ajuda > RetroArch)
 Mostra o que foi mudado na configuração do RetroArch e restaura a de fábrica. Uma cópia da configuração atual fica guardada antes.
 "Gerenciador do RetroArch" e "Restaurar opções dos cores" abrem as ferramentas do dArkOSen (o Omni36OS volta quando elas fecham).
+
+# Jogos
+Lista os jogos que o ES mostra, lidos do es_systems.cfg e dos gamelist.xml (o Omni36OS só lê; quem grava é o ES). "Por sistema", "Favoritos", "Recentes" e "Mais jogados" abrem listas; L1/R1 pulam de letra em letra.
+A ficha do jogo mostra a capa, a descrição, o tempo de jogo e o arquivo. "Jogar" abre o jogo com o mesmo emulador, core e governador escolhidos no ES; quando o jogo fecha, o Omni36OS volta no card Jogos. Jogos abertos daqui não somam no contador de vezes do ES.
+O diagnóstico aponta BIOS que faltam na pasta de BIOS do RetroArch (sem elas o jogo não abre), BIOS com versão desconhecida, arquivos que o ES não mostra (extensão errada ou pasta trocada), jogos repetidos e jogos sem capa. "Atualizar a lista" relê as pastas (a lista também se atualiza sozinha quando uma pasta muda).
 
 # Testar ports
 Mostra os ports da pasta que o ES exibe na lista de Ports. O ArkOS guarda os jogos em /roms2 (cartão de jogos) ou em /roms (cartão do sistema); o Omni36OS lê qual está em uso no es_systems.cfg e ignora a outra.
@@ -108,7 +122,7 @@ Só configurações: saves, estados, cores, shaders, temas e bancos de dados fic
 Este manual, os cuidados, as novidades de cada versão e os créditos.
 "Tema": escuro ou claro, vale na hora e fica salvo.
 "Tela inicial do console": Desligada (o console abre no ES, como sempre), Omni36OS no boot (o Omni36OS abre antes do ES; B na tela inicial vai para o ES e sair do ES volta para o Omni36OS) ou Só com alertas (o Omni36OS só abre no boot se a bateria estiver fraca, o console quente, um serviço falhando ou um cartão cheio). Vale a partir do próximo boot. No boot, segure B para o BaRT do dArkOSen ou L1 para pular o Omni36OS.
-"Atalho L3+R3": segure os dois analógicos apertados por 1 s. No menu do ES, o Omni36OS abre e o ES volta quando ele fecha. Em "Menu e jogos (beta)", também dentro de um jogo: o jogo congela, o Omni36OS abre por cima e o jogo continua quando ele fecha (alguns emuladores não soltam a tela; aí o jogo volta na hora). Por cima de um jogo, testes de port e ferramentas de tela cheia ficam bloqueados.
+"Atalho L3+R3 / FN+SELECT": segure L3+R3 (os dois analógicos) ou FN+SELECT por 1 s para alternar: do ES para o Omni36OS e do Omni36OS de volta. No menu do ES, o Omni36OS abre e o ES volta quando ele fecha. Em "Menu e jogos (beta)", também dentro de um jogo: o jogo congela, o Omni36OS abre por cima e o jogo continua quando ele fecha (alguns emuladores não soltam a tela; aí o jogo volta na hora). Por cima de um jogo, testes de port e ferramentas de tela cheia ficam bloqueados.
 "Restaurar o ES": "Só reiniciar" recarrega o menu do console quando o Omni36OS fecha (para um ES travado ou lista desatualizada). "Desfazer o Omni36OS" tira o sistema próprio, o ícone, a descrição e o logo que o Omni36OS pôs no ES (inclusive a tela inicial e o atalho), e ele volta para a lista de Ports."""
 
 CUIDADOS = """# Antes de qualquer coisa

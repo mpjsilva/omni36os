@@ -1,4 +1,5 @@
-"""Atalho global do Omni36OS: segurar L3+R3 (os dois analógicos) por 1 s abre o Omni36OS.
+"""Atalho global do Omni36OS: segurar L3+R3 (os dois analógicos) ou FN+SELECT por
+1 s alterna entre o Omni36OS e o que estiver na tela (ES ou jogo).
 
 Roda como serviço (omni36os-atalho.service, ligado em Ajuda > Atalho L3+R3).
 - No menu do ES: com a tela inicial ligada, fecha o ES e o hub.sh abre o Omni36OS
@@ -19,7 +20,9 @@ import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 PAD = "/dev/input/by-path/platform-odroidgo3-joypad-event-joystick"
-COMBO = {706, 707}            # L3 e R3 (b14 e b15 no gamecontrollerdb do R36S)
+# L3+R3 (b14 e b15 no gamecontrollerdb do R36S) e FN+SELECT (708 e 704)
+COMBOS = ({706, 707}, {708, 704})
+WATCH = set().union(*COMBOS)
 HOLD = 1.0
 EV_KEY = 1
 EVENT = struct.Struct("llHHi")   # timeval (64 bits no aarch64), tipo, código, valor
@@ -80,10 +83,18 @@ def as_ark(cmd, **env):
 
 
 def open_sab():
-    if pgrep("-f", "omni_ui.py"):
-        return                                   # já aberto
+    ui = pgrep("-f", "python3 omni_ui.py")
+    if ui:                                       # já aberto: fecha e volta para o ES ou o jogo
+        signal_all(ui, signal.SIGTERM)
+        return
     es = pgrep("-x", "emulationstation")
     if not es:
+        # jogo aberto pelo card Jogos (sem o ES): o jogo é filho do launch.sh do hub
+        hosts = pgrep("-f", f"{HERE}/launch.sh")
+        tree = children()
+        game = [p for h in hosts for p in descendants(h, tree)]
+        if game and mode() == "jogo":
+            freeze_and_open(game)
         return
     game = descendants(es[0], children())
     if not game:                                 # menu do ES
@@ -98,8 +109,11 @@ def open_sab():
                             "bash", "-c", f"systemctl stop emulationstation; {launch}; "
                                           "systemctl start emulationstation"])
         return
-    if mode() != "jogo":
-        return
+    if mode() == "jogo":
+        freeze_and_open(game)
+
+
+def freeze_and_open(game):
     signal_all(game, signal.SIGSTOP)
     try:
         subprocess.run(as_ark(["bash", f"{HERE}/launch.sh"], OMNI_HUB="jogo"), timeout=3600)
@@ -118,10 +132,10 @@ def main():
             data = os.read(fd, EVENT.size * 64)
             for k in range(0, len(data) - EVENT.size + 1, EVENT.size):
                 _s, _us, typ, code, val = EVENT.unpack_from(data, k)
-                if typ != EV_KEY or code not in COMBO:
+                if typ != EV_KEY or code not in WATCH:
                     continue
                 (down.add if val else down.discard)(code)
-                since = time.monotonic() if down == COMBO else None
+                since = time.monotonic() if down in COMBOS else None
         if since is not None and time.monotonic() - since >= HOLD:
             since, down = None, set()
             if mode() != "desligado":
