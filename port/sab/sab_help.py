@@ -5,6 +5,11 @@ TELEGRAM = "t.me/r36sbr"
 
 # A versão em uso vem do arquivo VERSION; a lista abaixo é o histórico.
 NOVIDADES = [
+    ("1.9.2", "26/10/2026", [
+        "Ícone novo (R36S Brasil) no cabeçalho, no loading e no menu do ES.",
+        "No ES, a entrada da Sab ganha ícone, descrição e favorito; no modo sistema, o logo do sistema no tema.",
+        "A arte é aplicada com o ES parado (ele reinicia uma vez quando a Sab fecha após a atualização).",
+    ]),
     ("1.9.1", "26/10/2026", [
         "L1/R1 rolam o diagnóstico (painel da esquerda) quando ele não cabe na tela.",
         "No manual e nas listas, L1/R1 pulam de bloco em bloco.",
@@ -138,7 +143,7 @@ Ports com menu próprio (como Daytona USA e NFSU1) passam quando o menu abre: o 
 Na primeira vez que abre, a Sab pergunta onde aparecer:
 Lista de Ports: junto com os outros ports (o atalho Sab.sh fica na pasta de ports).
 Sistema no console: uma entrada própria "Sab" no menu principal do console (o atalho fica em /roms2/sab/ e sai da lista de Ports).
-Para trocar depois: Ajuda > Mostrar no console. A troca muda o es_systems.cfg (com backup em es_systems.cfg.sab-bak) e o ES reinicia quando a Sab fecha.
+Para trocar depois: Ajuda > Mostrar no console. A troca muda o es_systems.cfg (com backup em es_systems.cfg.sab-bak) e o ES reinicia quando a Sab fecha. Nessa hora a Sab também põe o ícone e a descrição dela na lista do ES e o logo do sistema no tema ativo (pasta sab/ do tema).
 Se o seu tema não tiver arte para "Sab", o ES mostra o nome em texto.
 
 # Backup

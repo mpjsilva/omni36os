@@ -30,8 +30,17 @@ while true; do
   break
 done
 
-# Troca do modo de exibição ou importação do backup do ES: o ES relê tudo
+# Ícone e descrição da Sab no ES: aplicados uma vez por versão da arte
+ART_MARK="$HOME/.config/sab/arte-es"
+ART_VER="1"
+[ "$(cat "$ART_MARK" 2>/dev/null)" = "$ART_VER" ] || sudo touch /tmp/sab-restart-es
+
+# Troca do modo, importação do backup do ES ou arte nova: o ES relê tudo.
+# Para, aplica a arte e sobe de novo num job à parte do systemd: com o ES
+# aberto ele reescreveria o gamelist.xml, e o job não morre junto com ele.
 if [ -f /tmp/sab-restart-es ]; then
   sudo rm -f /tmp/sab-restart-es
-  sudo systemctl restart emulationstation
+  mkdir -p "$(dirname "$ART_MARK")" && echo "$ART_VER" > "$ART_MARK"
+  sudo systemd-run --no-block --collect --unit="sab-es-$$" bash -c \
+    "systemctl stop emulationstation; cd '$SAB_DIR' && python3 es_art.py; systemctl start emulationstation"
 fi

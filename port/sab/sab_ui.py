@@ -1009,9 +1009,7 @@ class App:
             self.status, self.status_at = D.status(), self.t
         s = self.status
         # marca
-        a1, a2 = self.accent
-        g.rrect(22, 18, 30, 30, 10, a1, a2)
-        g.text("ExtraBold", 17, "S", 37, 33, TEXT, "c", "m")
+        g.image("logo-64", 22, 18, 30, smooth=True)
         g.text("Bold", 20, "sab", 62, 18, TEXT)
         g.text("Regular", 11, "assistente do R36S", 104, 26, MUTED)
         # pílula de estado
@@ -1464,8 +1462,7 @@ class App:
         a1, a2 = self.accent
         cx, cy = W / 2, H / 2 - 40
         g.glow(cx - 40, cy - 40, 80, 80, 24, alpha(a1, 90), 20)
-        g.rrect(cx - 40, cy - 40, 80, 80, 24, a1, a2)
-        g.text("ExtraBold", 44, "S", cx, cy + 1, TEXT, "c", "m")
+        g.image("logo-160", cx - 40, cy - 40, 80, smooth=True)
         g.arc(cx, cy, 62, 4, self.t * 300 % 360, self.t * 300 % 360 + 260, alpha(a1, 230))
         g.text("Bold", 24, "sab", cx, cy + 82, TEXT, "c", "m")
         bw, by = 300, cy + 124

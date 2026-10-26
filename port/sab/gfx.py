@@ -387,12 +387,12 @@ class Gfx:
         SDL_SetTextureAlphaMod(tex, int(max(0, min(255, c[3]))))
         SDL_RenderCopyF(self.r, tex, None, C.byref(FRect(x, y, size, size)))
 
-    def image(self, name, x, y, size):
-        """PNG de assets/ (sem tingir), quadrado de `size` px, sem suavizar (QR code)."""
-        key = ("img", name)
+    def image(self, name, x, y, size, smooth=False, a=255):
+        """PNG de assets/ (sem tingir), quadrado de `size` px; sem suavizar por padrão (QR code)."""
+        key = ("img", name, smooth)
         tex = self.icons.get(key)
         if tex is None:
-            SDL_SetHint(b"SDL_RENDER_SCALE_QUALITY", b"0")
+            SDL_SetHint(b"SDL_RENDER_SCALE_QUALITY", b"1" if smooth else b"0")
             surf = IMG_Load(os.path.join(HERE, "assets", f"{name}.png").encode())
             tex = SDL_CreateTextureFromSurface(self.r, surf) if surf else 0
             if surf:
@@ -400,6 +400,7 @@ class Gfx:
             SDL_SetHint(b"SDL_RENDER_SCALE_QUALITY", b"1")
             self.icons[key] = tex
         if tex:
+            SDL_SetTextureAlphaMod(tex, int(max(0, min(255, a))))
             SDL_RenderCopyF(self.r, tex, None, C.byref(FRect(x, y, size, size)))
 
     # --- camadas (transições) ---
