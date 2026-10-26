@@ -670,6 +670,91 @@ def test_port(args):
     return "ok"
 
 
+# --- Modo de exibição: port (lista de Ports) ou sistema (entrada própria no ES) ---
+
+MODE_FILE = f"{HOME}/.config/sab/modo"
+RESTART_ES = "/tmp/sab-restart-es"     # o launch.sh reinicia o ES quando a Sab fecha
+ES_MARK, ES_MARK_END = "<!-- Sab: sistema próprio no ES -->", "<!-- /Sab -->"
+WRAPPER = """#!/bin/bash
+# Sab: atalho para o launcher de verdade (sab/launch.sh). Ver Ajuda > Mostrar no ES.
+exec bash "{launch}"
+"""
+
+
+def get_mode(_args=None):
+    m = read_text(MODE_FILE, "")
+    return m if m in ("port", "sistema") else None
+
+
+def system_dir():
+    """Pasta do sistema "Sab" no ES, ao lado da pasta de ports (ex.: /roms2/sab)."""
+    return os.path.join(os.path.dirname(es_ports_dir()), "sab")
+
+
+def _write_wrapper(path):
+    write_text(path, WRAPPER.format(launch=os.path.join(SAB_DIR, "launch.sh")))
+    os.chmod(path, 0o755)
+
+
+def _es_block():
+    return (f"\t{ES_MARK}\n\t<system>\n\t\t<name>sab</name>\n\t\t<fullname>Sab</fullname>\n"
+            f"\t\t<path>{system_dir()}/</path>\n\t\t<extension>.sh .SH</extension>\n"
+            "\t\t<command>sudo perfmax %GOVERNOR% %ROM%; nice -n -19 %ROM%; sudo perfnorm</command>\n"
+            "\t\t<platform>pc</platform>\n\t\t<theme>sab</theme>\n\t</system>\n"
+            f"\t{ES_MARK_END}\n")
+
+
+def _es_without_block(text):
+    if ES_MARK not in text:
+        return text
+    a = text.index(ES_MARK)
+    a = text.rfind("\n", 0, a) + 1
+    b = text.index(ES_MARK_END) + len(ES_MARK_END)
+    if text[b:b + 1] == "\n":
+        b += 1
+    return text[:a] + text[b:]
+
+
+def set_mode(args):
+    mode = args["mode"]
+    ports_link = os.path.join(es_ports_dir(), "Sab.sh")
+    sysdir = system_dir()
+    text = (read(ES_SYSTEMS) or b"").decode()     # cru: read_text cortaria o fim do arquivo
+    if "</systemList>" not in text:
+        return "Não achei o es_systems.cfg do ES."
+    if not os.path.exists(ES_SYSTEMS + ".sab-bak"):
+        shutil.copy2(ES_SYSTEMS, ES_SYSTEMS + ".sab-bak")
+    text = _es_without_block(text)
+    if mode == "sistema":
+        os.makedirs(sysdir, exist_ok=True)
+        _write_wrapper(os.path.join(sysdir, "Sab.sh"))
+        text = text.replace("</systemList>", _es_block() + "</systemList>", 1)
+        if os.path.exists(ports_link):
+            os.remove(ports_link)
+    else:
+        _write_wrapper(ports_link)
+        if os.path.isdir(sysdir):
+            shutil.rmtree(sysdir, ignore_errors=True)
+    write_text(ES_SYSTEMS, text)
+    os.makedirs(os.path.dirname(MODE_FILE), exist_ok=True)
+    write_text(MODE_FILE, mode)
+    write_text(RESTART_ES, "1")
+    return ("A Sab vai aparecer como sistema no menu do ES" if mode == "sistema"
+            else "A Sab vai aparecer na lista de Ports")
+
+
+def remember_mode(args):
+    """Primeira execução em modo port: só guarda a escolha (nada a mudar no ES)."""
+    os.makedirs(os.path.dirname(MODE_FILE), exist_ok=True)
+    write_text(MODE_FILE, args["mode"])
+    return "ok"
+
+
+def restart_es_on_exit(_args=None):
+    write_text(RESTART_ES, "1")
+    return "ok"
+
+
 # --- Conflitos com outros scripts ---
 
 def usb_net_active(_args=None):
@@ -849,7 +934,7 @@ TOOLS = {
     "schedule_scan": schedule_scan, "last_scan": last_scan,
     "get_gamma": get_gamma, "set_gamma": set_gamma, "get_led": get_led, "set_led": set_led,
     "usb_net_active": usb_net_active, "handoff": handoff,
-    "list_ports": list_ports, "port_groups": port_groups, "port_results": port_results, "clear_port_alerts": clear_port_alerts, "test_port": test_port,
+    "list_ports": list_ports, "port_groups": port_groups, "port_results": port_results, "get_mode": get_mode, "set_mode": set_mode, "clear_port_alerts": clear_port_alerts, "test_port": test_port,
     "retroarch_changes": retroarch_changes,
     "restore_retroarch": restore_retroarch,
     "usb_facts": usb_facts,

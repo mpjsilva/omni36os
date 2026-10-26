@@ -5,6 +5,12 @@ TELEGRAM = "t.me/r36sbr"
 
 # A versão em uso vem do arquivo VERSION; a lista abaixo é o histórico.
 NOVIDADES = [
+    ("1.9.0", "26/10/2026", [
+        "Na primeira execução a Sab pergunta onde aparecer: na lista de Ports ou como sistema próprio no menu do ES.",
+        "Ajuda > Mostrar no ES: troca entre os dois modos (o ES reinicia quando a Sab fecha).",
+        "Ajuda > Backup: exportar e importar as configurações da Sab, do RetroArch, dos emuladores standalone e do ES.",
+        "Importar navega pelas pastas e mostra de qual módulo é cada backup; antes de importar, o atual é salvo.",
+    ]),
     ("1.8.1", "26/10/2026", [
         "Testar ports: \"Limpar avisos de falha\" tira o alerta do card; o resultado continua na lista até um novo teste.",
         "A lista de ports mostra só a pasta que o ES exibe (lida do es_systems.cfg).",
@@ -123,6 +129,24 @@ A lista mostra o último resultado de cada port, e as falhas viram alerta no car
 "Limpar avisos de falha" tira o alerta do card depois que você já viu as falhas. O resultado continua na lista até o port ser testado de novo; se o novo teste falhar, o aviso volta.
 Ports com menu próprio (como Daytona USA e NFSU1) passam quando o menu abre: o teste não aperta botões.
 
+# Mostrar no ES (port ou sistema)
+Na primeira vez que abre, a Sab pergunta onde aparecer:
+Lista de Ports: junto com os outros ports (o atalho Sab.sh fica na pasta de ports).
+Sistema no ES: uma entrada própria "Sab" no menu principal do ES (o atalho fica em /roms2/sab/ e sai da lista de Ports).
+Para trocar depois: Ajuda > Mostrar no ES. A troca muda o es_systems.cfg (com backup em es_systems.cfg.sab-bak) e o ES reinicia quando a Sab fecha.
+Se o seu tema não tiver arte para "Sab", o ES mostra o nome em texto.
+
+# Backup
+Ajuda > Backup > escolha o módulo > Exportar ou Importar.
+Sab: resultados dos testes de ports e os ajustes de processador, GPU, RAM e gamma. O modo de exibição não entra: ele depende do ES de cada console.
+RetroArch: retroarch.cfg, opções dos cores, configurações por jogo/core, remapeamentos, playlists e overlays (RetroArch e RetroArch32).
+Emuladores standalone: DuckStation, Flycast, GZDoom, LZDoom, ECWolf, Mupen64Plus, PPSSPP, ScummVM, DraStic e retrorun.
+EmulationStation: es_settings.cfg, controles, coleções, gamelists e scripts.
+Exportar grava um .tar.gz em /roms2/backup/sab (no cartão de jogos: dá para copiar pelo modo pendrive). O caminho completo aparece ao terminar.
+Importar abre a pasta dos backups; navegue pelas pastas com A ("..": voltar). Cada arquivo mostra de qual módulo é, e só o backup do módulo certo pode ser importado.
+Antes de importar, a Sab salva o que está valendo agora como "...-antes-de-importar.tar.gz".
+Só configurações: saves, estados, cores, shaders, temas e bancos de dados ficam de fora.
+
 # Ajuda
 Este manual, os cuidados, as novidades de cada versão e os créditos."""
 
@@ -160,6 +184,11 @@ Cartões genéricos falham mais. Se um cartão aparecer como lento ou sem marca,
 O teste abre o port de verdade e o encerra à força depois de 15 segundos. Ports que gravam configuração ou save logo ao abrir podem perder o que estava sendo gravado; teste com o save já em backup.
 Durante o teste não aperte botões: o port recebe os comandos.
 Se o port travar a tela, segure o botão de ligar para reiniciar; o resultado não é gravado nesse caso.
+
+# Backup e importação
+Importar substitui as configurações do módulo pelas do arquivo. Use backups da mesma versão do dArkOS: configurações de outra versão podem não funcionar.
+Depois de importar o EmulationStation, o ES reinicia quando a Sab fechar; não desligue o console nessa hora.
+Guarde cópias dos backups fora do console (no PC, pelo pendrive).
 
 # Ao fechar
 Saia da Sab com B ou Select + Start, nunca desligando o console direto: ao sair, o dArkOS devolve as configurações de som e do processador."""

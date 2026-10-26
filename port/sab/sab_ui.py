@@ -22,6 +22,7 @@ from gfx import W, H, hexc, mix, alpha
 FAKE = os.environ.get("SAB_FAKE") == "1"
 if not FAKE:
     import sab
+    import sab_backup
     import sab_checks
 
 # --- paleta ---
@@ -47,7 +48,8 @@ CARDS = [
 COLS = 3
 # Páginas abertas de dentro de outro card: B volta para o card de origem e os
 # alertas delas aparecem no ponto do card de origem.
-SUBPAGES = {"cartoes": ("Cartões SD", "device-sd-card", "2dd4bf", "0284c7", "desempenho")}
+SUBPAGES = {"cartoes": ("Cartões SD", "device-sd-card", "2dd4bf", "0284c7", "desempenho"),
+            "backup": ("Backup", "device-floppy", "60a5fa", "a78bfa", "ajuda")}
 PARENT = {cid: v[4] for cid, v in SUBPAGES.items()}
 
 
@@ -314,6 +316,8 @@ class App:
             return self._cartoes()
         if cid == "testar":
             return self._testar()
+        if cid == "backup":
+            return self._backup()
         name = {"som": "sem_som", "tela": "atualizar", "pendrive": "pc"}.get(cid, cid)
         return D.check(name)
 
@@ -416,6 +420,19 @@ class App:
         out.append(("info", "O teste abre o port por 15 s e fecha sozinho. Se ele fechar antes, é falha."))
         return sab_checks.finish(out, [], {}) if not FAKE else {
             "nivel": "aviso" if fails else "ok", "achados": out, "acoes": []}
+
+    def _backup(self):
+        if FAKE:
+            return {"nivel": "ok", "acoes": [], "achados": [("info", "Os backups ficam em /roms2/backup/sab.")]}
+        out = [("info", f"Os backups ficam em {sab_backup.backup_dir()} (dá para copiar pelo pendrive).")]
+        last = sab_backup.last_backups()
+        for mod, (name, *_x) in sab_backup.MODULES.items():
+            if mod in last:
+                out.append(("ok", f"{name}: último backup em {last[mod][1]}."))
+            else:
+                out.append(("info", f"{name}: nenhum backup ainda."))
+        out.append(("info", "Só configurações: saves, estados, cores, temas e bancos de dados ficam de fora."))
+        return sab_checks.finish(out, [], {})
 
     def _cartoes(self):
         out = []
@@ -522,8 +539,15 @@ class App:
         if cid == "testar":
             return [A("Escolher o port", "player-play", self.open_picker),
                     A("Limpar avisos de falha", "check", lambda: self.run_tool_toast("clear_port_alerts")), recheck]
+        if cid == "backup":
+            return [A(name, icon, lambda m=mod: self.backup_menu(m)) for mod, name, icon in (
+                ("sab", "Sab", "help-circle"), ("retroarch", "RetroArch", "device-gamepad-2"),
+                ("standalone", "Emuladores standalone", "cpu"), ("es", "EmulationStation", "device-tv"))]
         if cid == "ajuda":
-            return [A("Manual", "book", lambda: self.read("Manual", "book", sab_help.MANUAL)),
+            mode = "Sistema no ES" if not FAKE and sab.get_mode() == "sistema" else "Lista de Ports"
+            return [subpage(A("Backup", "device-floppy", lambda: self.open_page("backup")), "backup"),
+                    A(f"Mostrar no ES: {mode}", "device-tv", self.ask_mode),
+                    A("Manual", "book", lambda: self.read("Manual", "book", sab_help.MANUAL)),
                     A("Cuidados", "alert-triangle", lambda: self.read("Cuidados", "alert-triangle", sab_help.CUIDADOS)),
                     A("Novidades", "tag", lambda: self.read(f"Novidades · Sab {sab_version()}", "tag",
                                                           sab_help.novidades_text())),
@@ -583,57 +607,30 @@ class App:
         self.modal = {"title": "Grupo R36S Brasil", "icon": "brand-telegram", "buttons": ["Fechar"], "sel": 0,
                       "text": "Aponte a câmera do celular para o código:", "image": "qr-telegram", "url": TELEGRAM}
 
-    # --- teste de ports ---
+    # --- lista com rolagem (ports para testar, arquivos de backup) ---
 
-    def open_picker(self):
-        groups = FAKE_PORTS if FAKE else sab.port_groups()
-        res = {} if FAKE else sab.port_results()
-        rows = []
-        for g in groups:
-            rows.append({"head": g["label"], "es": g["es"]})
-            for p in g["ports"]:
-                name = os.path.basename(p)[:-3]
-                rows.append({"path": p, "name": name, "res": res.get(name)})
-        if not any("path" in r for r in rows):
-            self.toast = ("Nenhum port instalado", "aviso", self.t + 3)
-            return
-        first = next(i for i, r in enumerate(rows) if "path" in r)
-        self.picker = {"rows": rows, "sel": first, "top": 0, "scroll": 0.0}
+    def show_list(self, title, icon, rows, on_ok, ok_label, start=None):
+        """rows: {"head", "tag", "tagc"} (título de grupo) ou {"name", "right", "icon", ...}.
+        on_ok(row) roda no A; start é a linha escolhida ao abrir (padrão: a primeira)."""
+        items = [i for i, r in enumerate(rows) if "name" in r]
+        if not items:
+            return False
+        self.picker = {"title": title, "icon": icon, "rows": rows,
+                       "sel": start if start in items else items[0], "top": 0,
+                       "scroll": 0.0, "on_ok": on_ok, "ok_label": ok_label}
+        return True
 
     def picker_input(self, cmd):
         pk = self.picker
-        ports = [i for i, r in enumerate(pk["rows"]) if "path" in r]
-        k = ports.index(pk["sel"])
+        items = [i for i, r in enumerate(pk["rows"]) if "name" in r]
+        k = items.index(pk["sel"])
         step = {"up": -1, "down": 1, "left": -6, "right": 6}.get(cmd)
         if step:
-            pk["sel"] = ports[max(0, min(len(ports) - 1, k + step))]
+            pk["sel"] = items[max(0, min(len(items) - 1, k + step))]
         elif cmd == "back":
             self.picker = None
         elif cmd == "ok":
-            row = pk["rows"][pk["sel"]]
-            self.ask(f"Testar {row['name']}?\nA Sab fecha, o port abre por 15 segundos e fecha sozinho. "
-                     "Depois a Sab volta com o resultado.", lambda: self.start_test(row["path"]))
-
-    def start_test(self, path):
-        res = "ok" if FAKE else D.run("test_port", {"path": path})
-        if res == "ok":
-            self.running = False      # o Sab.sh roda o teste e reabre a Sab
-        else:
-            self.toast = (res, "aviso", self.t + 3.5)
-
-    def show_test_result(self):
-        r = None if FAKE else sab.last_test()
-        if not r:
-            return
-        if r["resultado"] == "ok":
-            text = f"{r['nome']} abriu e ficou rodando 15 segundos. Funcionou!"
-            icon = "check"
-        else:
-            rel = r["relatorio"].split("/sab/", 1)[-1] if r["relatorio"] else ""
-            text = (f"{r['nome']} fechou sozinho após {r['segundos']} s.\n"
-                    f"O relatório ficou em sab/{rel}" if rel else f"{r['nome']} fechou sozinho.")
-            icon = "alert-triangle"
-        self.modal = {"title": "Teste de port", "text": text, "icon": icon, "buttons": ["OK"], "sel": 0}
+            pk["on_ok"](pk["rows"][pk["sel"]])
 
     def draw_picker(self, dt):
         g, pk = self.g, self.picker
@@ -643,8 +640,11 @@ class App:
         g.stroke(mx, my, mw, mh, 22, (255, 255, 255, 25))
         a1, a2 = self.accent
         g.rrect(mx + 20, my + 16, 36, 36, 12, a1, a2)
-        g.icon("player-play", mx + 28, my + 24, 20, TEXT)
-        g.text("Bold", 18, "Escolha o port", mx + 68, my + 22, TEXT)
+        g.icon(pk["icon"], mx + 28, my + 24, 20, TEXT)
+        title = pk["title"]
+        while g.measure("Bold", 18, title)[0] > mw - 100 and len(title) > 8:
+            title = "…" + title[2:]          # caminhos longos: mostra o fim
+        g.text("Bold", 18, title, mx + 68, my + 22, TEXT)
         rows = pk["rows"]
         hs = [34 if "head" in r else 40 for r in rows]
         ty, th = my + 66, mh - 66 - 44
@@ -663,19 +663,21 @@ class App:
                 continue
             if "head" in r:
                 g.text("SemiBold", 11, r["head"].upper(), mx + 30, y + 12, FAINT)
-                tag = "O ES MOSTRA" if r["es"] else "FORA DO ES"
-                tw = g.measure("Bold", 9, tag)[0] + 14
-                g.rrect(mx + mw - 40 - tw, y + 9, tw, 18, 9, alpha(LEVEL["ok" if r["es"] else "info"], 60))
-                g.text("Bold", 9, tag, mx + mw - 40 - tw / 2, y + 18.5, TEXT, "c", "m")
+                if r.get("tag"):
+                    tw = g.measure("Bold", 9, r["tag"])[0] + 14
+                    g.rrect(mx + mw - 40 - tw, y + 9, tw, 18, 9, alpha(r["tagc"], 60))
+                    g.text("Bold", 9, r["tag"], mx + mw - 40 - tw / 2, y + 18.5, TEXT, "c", "m")
                 continue
             on = i == pk["sel"]
             if on:
                 g.rrect(mx + 16, y + 2, mw - 44, 36, 12, a1, a2)
-            g.text("SemiBold" if on else "Regular", 14, r["name"], mx + 30, y + 10, TEXT if on else (215, 222, 245, 255))
-            if r["res"]:
-                ok = r["res"][0] == "ok"
-                lab = ("Passou " if ok else "Falhou ") + r["res"][1].split(" ")[0]
-                c = LEVEL["ok" if ok else "aviso"]
+            x = mx + 30
+            if r.get("icon"):
+                g.icon(r["icon"], x, y + 11, 18, TEXT if on else MUTED)
+                x += 28
+            g.text("SemiBold" if on else "Regular", 14, r["name"], x, y + 10, TEXT if on else (215, 222, 245, 255))
+            if r.get("right"):
+                lab, c = r["right"]
                 lw = g.measure("SemiBold", 11, lab)[0]
                 g.circle(mx + mw - 60 - lw, y + 20, 4, c)
                 g.text("SemiBold", 11, lab, mx + mw - 50 - lw, y + 13, TEXT if on else c)
@@ -687,9 +689,154 @@ class App:
             g.rrect(mx + mw - 14, ty, 4, th, 2, (255, 255, 255, 18))
             g.rrect(mx + mw - 14, by, 4, bh, 2, alpha(a1, 220))
         self.btn_glyph(mx + 24, my + mh - 32, "A", TEXT)
-        g.text("Regular", 12, "Testar  ·  Cima/baixo: escolher  ·  Esquerda/direita: pular", mx + 50, my + mh - 30, MUTED)
+        g.text("Regular", 12, f"{pk['ok_label']}  ·  Cima/baixo: escolher  ·  Esquerda/direita: pular",
+               mx + 50, my + mh - 30, MUTED)
         self.btn_glyph(mx + mw - 110, my + mh - 32, "B", TEXT)
         g.text("Regular", 12, "Voltar", mx + mw - 82, my + mh - 30, MUTED)
+
+    # --- teste de ports ---
+
+    def open_picker(self):
+        groups = FAKE_PORTS if FAKE else sab.port_groups()
+        res = {} if FAKE else sab.port_results()
+        rows = []
+        for g in groups:
+            rows.append({"head": g["label"], "tag": "O ES MOSTRA", "tagc": LEVEL["ok"]})
+            for p in g["ports"]:
+                name = os.path.basename(p)[:-3]
+                r = res.get(name)
+                right = None
+                if r:
+                    ok = r[0] == "ok"
+                    right = (("Passou " if ok else "Falhou ") + r[1].split(" ")[0], LEVEL["ok" if ok else "aviso"])
+                rows.append({"name": name, "path": p, "right": right})
+
+        def pick(row):
+            self.ask(f"Testar {row['name']}?\nA Sab fecha, o port abre por 15 segundos e fecha sozinho. "
+                     "Depois a Sab volta com o resultado.", lambda: self.start_test(row["path"]))
+        if not self.show_list("Escolha o port", "player-play", rows, pick, "Testar"):
+            self.toast = ("Nenhum port instalado", "aviso", self.t + 3)
+
+    def start_test(self, path):
+        res = "ok" if FAKE else D.run("test_port", {"path": path})
+        if res == "ok":
+            self.running = False      # o launch.sh roda o teste e reabre a Sab
+        else:
+            self.toast = (res, "aviso", self.t + 3.5)
+
+    def show_test_result(self):
+        r = None if FAKE else sab.last_test()
+        if not r:
+            return
+        if r["resultado"] == "ok":
+            text = f"{r['nome']} abriu e ficou rodando 15 segundos. Funcionou!"
+            icon = "check"
+        else:
+            rel = r["relatorio"].split("/sab/", 1)[-1] if r["relatorio"] else ""
+            text = (f"{r['nome']} fechou sozinho após {r['segundos']} s.\n"
+                    f"O relatório ficou em sab/{rel}" if rel else f"{r['nome']} fechou sozinho.")
+            icon = "alert-triangle"
+        self.modal = {"title": "Teste de port", "text": text, "icon": icon, "buttons": ["OK"], "sel": 0}
+
+    # --- modo de exibição (port ou sistema no ES) ---
+
+    def ask_mode(self, first=False):
+        cur = None if FAKE else sab.get_mode()
+        text = ("Onde a Sab deve aparecer no ES?\n" if first else "") + \
+            ("Lista de Ports: junto com os outros ports.\n"
+             "Sistema: uma entrada própria no menu principal do ES.\n"
+             "Trocar reinicia o ES quando a Sab fechar. Dá para mudar depois em Ajuda.")
+        self.modal = {"title": "Como mostrar a Sab", "text": text, "icon": "help-circle",
+                      "buttons": ["Lista de Ports", "Sistema no ES"], "sel": 1 if cur == "sistema" else 0,
+                      "fns": [lambda: self.choose_mode("port", first), lambda: self.choose_mode("sistema", first)]}
+
+    def choose_mode(self, mode, first):
+        if FAKE:
+            return
+        cur = sab.get_mode() or "port"
+        if mode == cur:          # nada muda no ES; só guarda a escolha
+            sab.remember_mode({"mode": mode})
+            if not first:
+                self.toast = ("A Sab já está assim", "ok", self.t + 3)
+            return
+        res = D.run("set_mode", {"mode": mode})
+        self.modal = {"title": "Pronto", "icon": "check", "buttons": ["Fechar a Sab"], "sel": 0,
+                      "text": res + ".\nO ES reinicia quando a Sab fechar.", "fns": [self.quit]}
+
+    def quit(self):
+        self.running = False
+
+    # --- backup ---
+
+    def backup_menu(self, module):
+        name = sab_backup.MODULES[module][0]
+        where = sab_backup.backup_dir()
+        self.modal = {"title": f"Backup · {name}", "icon": "device-floppy", "buttons": ["Exportar", "Importar"],
+                      "sel": 0, "text": f"Exportar salva as configurações de {name} em:\n{where}\n"
+                                        "Importar abre as pastas para escolher o arquivo.",
+                      "fns": [lambda: self.backup_export(module), lambda: self.backup_browse(module, where)]}
+
+    def backup_export(self, module):
+        def done(res):
+            if isinstance(res, Exception):
+                self.toast = (f"Erro: {res}", "problema", self.t + 4)
+                return
+            path, info = res
+            if not path:
+                self.toast = (info, "aviso", self.t + 3.5)
+                return
+            self.modal = {"title": "Backup salvo", "icon": "check", "buttons": ["OK"], "sel": 0,
+                          "text": f"{info} salvos em:\n{path}"}
+            self.reload_findings()
+        self.worker(lambda: sab_backup.export(module), done, busy="Exportando...")
+
+    def backup_browse(self, module, path):
+        path, entries = sab_backup.browse(path)
+        rows = [{"head": path}]
+        for e in entries:
+            if e["dir"]:
+                rows.append({"name": e["name"], "path": e["path"], "dir": True,
+                             "icon": "arrow-back-up" if e["name"] == ".." else "folder"})
+            else:
+                m = sab_backup.manifest(e["path"]) or {}
+                mod = m.get("module")
+                ok = mod == module
+                right = (m.get("date", "").split(" ")[0] if ok else
+                         (sab_backup.MODULES.get(mod, ("não é backup da Sab",))[0] if mod else "não é backup da Sab"),
+                         LEVEL["ok" if ok else "info"])
+                rows.append({"name": e["name"], "path": e["path"], "dir": False, "ok": ok,
+                             "icon": "device-floppy", "right": right})
+
+        def pick(row):
+            if row["dir"]:
+                self.backup_browse(module, row["path"])
+            elif not row["ok"]:
+                self.toast = (f"Este arquivo não é um backup de {sab_backup.MODULES[module][0]}", "aviso",
+                              self.t + 3.5)
+            else:
+                self.ask(f"Importar {row['name']}?\nAs configurações atuais de {sab_backup.MODULES[module][0]} "
+                         "são salvas antes, como \"antes-de-importar\".",
+                         lambda: self.backup_import(module, row["path"]))
+        start = next((i for i, r in enumerate(rows) if r.get("ok")), None)   # o backup compatível
+        if not self.show_list(f"Importar · {path}", "folder", rows, pick, "Abrir / importar", start):
+            self.toast = ("Pasta vazia", "aviso", self.t + 3)
+
+    def backup_import(self, module, path):
+        def done(res):
+            self.picker = None
+            if isinstance(res, Exception):
+                self.toast = (f"Erro: {res}", "problema", self.t + 4)
+                return
+            text = str(res)
+            if module == "es" and "restaurado" in text:
+                sab.restart_es_on_exit()
+                text += ".\nO ES reinicia quando a Sab fechar, para ler as configurações."
+            elif module == "retroarch" and "restaurado" in text:
+                text += ".\nVale a partir do próximo jogo aberto no RetroArch."
+            self.modal = {"title": "Importação", "icon": "device-floppy", "buttons": ["OK"], "sel": 0,
+                          "text": text}
+            self.reload_findings()
+        self.worker(lambda: sab_backup.import_(module, path), done, busy="Importando...")
 
     def read(self, title, icon, text):
         self.reader = {"title": title, "icon": icon, "text": text, "scroll": 0.0, "top": 0}
@@ -718,7 +865,9 @@ class App:
                 m["sel"] = 1 - m["sel"]
             elif cmd == "ok":
                 self.modal = None
-                if m["sel"] == 0 and m.get("fn"):
+                if m.get("fns"):
+                    m["fns"][m["sel"]]()
+                elif m["sel"] == 0 and m.get("fn"):
                     m["fn"]()
             elif cmd == "back":
                 self.modal = None
@@ -1293,6 +1442,8 @@ class App:
                 self.sel = next(i for i, c in enumerate(CARDS) if c[0] == "testar")
                 self.open_page("testar")
                 self.show_test_result()
+            elif not FAKE and sab.get_mode() is None:   # primeira execução
+                self.ask_mode(first=True)
 
     def prewarm(self):
         """Monta a geometria e o texto de uma página por quadro, fora da tela,
