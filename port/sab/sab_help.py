@@ -5,6 +5,10 @@ TELEGRAM = "t.me/r36sbr"
 
 # A versão em uso vem do arquivo VERSION; a lista abaixo é o histórico.
 NOVIDADES = [
+    ("1.9.1", "26/10/2026", [
+        "L1/R1 rolam o diagnóstico (painel da esquerda) quando ele não cabe na tela.",
+        "No manual e nas listas, L1/R1 pulam de bloco em bloco.",
+    ]),
     ("1.9.0", "26/10/2026", [
         "Na primeira execução a Sab pergunta onde aparecer: na lista de Ports ou como sistema próprio no menu do ES.",
         "Ajuda > Mostrar no console: troca entre os dois modos (o ES reinicia quando a Sab fecha).",
@@ -70,6 +74,7 @@ Ela não usa internet nem inteligência artificial: são verificações e script
 # Como usar
 Direcional ou analógico: andar pelos cards e opções.
 A: abrir ou confirmar. B: voltar. Select + Start: fechar a Sab.
+L1/R1: rolam o diagnóstico (painel da esquerda) quando ele não cabe; "L1: N acima" e "R1: mais N" mostram o que está escondido. No manual e nas listas, L1/R1 pulam de bloco em bloco.
 Nas opções de valor (volume, brilho, modo do processador), use esquerda e direita.
 Se os seus botões A e B forem trocados no ES, a Sab segue a mesma troca.
 

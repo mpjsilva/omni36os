@@ -274,6 +274,8 @@ class App:
         self.home_check = None
         self.modal = None             # {"title","text","icon","buttons":[...], "sel"}
         self.reader = None            # texto longo com rolagem (Ajuda)
+        self.find_top = self.find_max = 0   # rolagem do diagnóstico (L1/R1)
+        self.find_scroll = 0.0
         self.picker = None            # lista de ports para testar
         self.toast = None             # (texto, nível, até)
         self.busy = None              # texto enquanto uma tarefa roda
@@ -366,6 +368,7 @@ class App:
         self.page = self.last_page = cid
         self.items, self.item_sel, self.item_y, self.item_h = self.build_items(cid), 0, 0.0, 0.0
         self.findings, self.info = None, []
+        self.find_top, self.find_max, self.find_scroll = 0, 0, 0.0
         if cid in self.results:       # já verificado no carregamento
             self._got_findings(self.results[cid])
         else:
@@ -624,7 +627,7 @@ class App:
         pk = self.picker
         items = [i for i, r in enumerate(pk["rows"]) if "name" in r]
         k = items.index(pk["sel"])
-        step = {"up": -1, "down": 1, "left": -6, "right": 6}.get(cmd)
+        step = {"up": -1, "down": 1, "left": -6, "right": 6, "l1": -6, "r1": 6}.get(cmd)
         if step:
             pk["sel"] = items[max(0, min(len(items) - 1, k + step))]
         elif cmd == "back":
@@ -853,7 +856,7 @@ class App:
             return
         if self.reader:
             r = self.reader
-            step = {"up": -1, "down": 1, "left": -8, "right": 8}.get(cmd)
+            step = {"up": -1, "down": 1, "left": -8, "right": 8, "l1": -8, "r1": 8}.get(cmd)
             if step:
                 r["top"] = max(0, min(r.get("max", 0), r["top"] + step))
             elif cmd in ("back", "ok"):
@@ -893,6 +896,9 @@ class App:
                 self.running = False
             return
         it = self.items[self.item_sel] if self.items else None
+        if cmd in ("l1", "r1"):           # rola o diagnóstico (painel da esquerda)
+            self.find_top = max(0, min(self.find_max, self.find_top + (1 if cmd == "r1" else -1)))
+            return
         if cmd == "up":
             self.item_sel = (self.item_sel - 1) % len(self.items)
         elif cmd == "down":
@@ -951,7 +957,8 @@ class App:
                     if not rep:
                         self.direction(keys[sym], down, now)
                 elif down and not rep:
-                    self.handle({13: "ok", 27: "back", 8: "back"}.get(sym, ""))
+                    self.handle({13: "ok", 27: "back", 8: "back",
+                                 0x4000004B: "l1", 0x4000004E: "r1"}.get(sym, ""))   # PageUp/PageDown
         for d, nxt in list(self.held.items()):
             if now >= nxt:
                 self.handle(d)
@@ -965,7 +972,7 @@ class App:
             self.held.pop(d, None)
 
     def button(self, b, down, now):
-        # SDL: 0 A (direita no R36S), 1 B (baixo), 4 back, 6 start, 11-14 direcional
+        # SDL: 0 A (direita no R36S), 1 B (baixo), 4 back, 6 start, 9 L1, 10 R1, 11-14 direcional
         dpad = {11: "up", 12: "down", 13: "left", 14: "right"}
         if b in dpad:
             self.direction(dpad[b], down, now)
@@ -978,7 +985,9 @@ class App:
         if not down:
             return
         ok_b, back_b = (1, 0) if self.swap else (0, 1)
-        if b == ok_b:
+        if b in (9, 10):
+            self.handle("l1" if b == 9 else "r1")
+        elif b == ok_b:
             self.handle("ok")
         elif b == back_b:
             self.handle("back")
@@ -1169,22 +1178,47 @@ class App:
                 sh = 0.5 + 0.5 * math.sin(self.t * 4 - k)
                 g.rrect(px + 18, yy, pw - 36, 38, 12, (255, 255, 255, (10 + 12 * sh) * fade))
         else:
-            yy = py + 40
-            for k, (lvl, txt) in enumerate(f["achados"]):
+            # Altura de cada item; se não couberem todos, L1/R1 rolam um item por vez.
+            top, bottom = py + 40, py + ph - 12
+            blocks = []
+            for lvl, txt in f["achados"]:
                 lines = g.wrap("Regular", 13, txt, pw - 74)
-                bh = max(40, 14 + 19 * len(lines))
-                if yy + bh > py + ph - 30:
-                    # os alertas vêm primeiro: o que fica de fora é só ok/info
-                    g.text("Medium", 12, f"+ {len(f['achados']) - k} item(ns) ok ou informativo(s)",
-                           px + 18, py + ph - 26, alpha(FAINT, a))
+                blocks.append((lvl, lines, max(40, 14 + 19 * len(lines))))
+            offs = [0]
+            for *_x, bh in blocks:
+                offs.append(offs[-1] + bh + 8)
+            room = bottom - top
+            if offs[-1] - 8 > room:
+                bottom -= 18                          # espaço para "R1: mais N"
+                room = bottom - top
+            # o último início que ainda mostra o fim da lista
+            self.find_max = next((k for k in range(len(blocks)) if offs[-1] - 8 - offs[k] <= room),
+                                 len(blocks) - 1) if blocks else 0
+            self.find_top = min(self.find_top, self.find_max)
+            self.find_scroll = approach(self.find_scroll, offs[self.find_top], dt, 16)
+            if abs(self.find_scroll - offs[self.find_top]) < 0.5:
+                self.find_scroll = float(offs[self.find_top])
+            sc = round(self.find_scroll)              # inteiro: menos geometria nova
+            g.clip(px, top, pw, bottom - top)
+            # itens que não aparecem inteiros embaixo (o de cima pode aparecer cortado)
+            below = sum(1 for k, b in enumerate(blocks) if top + offs[k] - sc + b[2] > bottom + 2)
+            for k, (lvl, lines, bh) in enumerate(blocks):
+                yy = top + offs[k] - sc
+                if yy + bh < top:
+                    continue
+                if yy >= bottom:
                     break
                 c = LEVEL[lvl]
                 g.rrect(px + 12, yy, pw - 24, bh, 12, alpha(c, 22 * fade))
                 g.circle(px + 32, yy + 20, 11, alpha(c, 230 * fade))
                 g.icon(LEVEL_ICON[lvl], px + 24, yy + 12, 16, alpha(hexc("10142a"), a))
-                for k, line in enumerate(lines):
-                    g.text("Regular", 13, line, px + 52, yy + 8 + 19 * k, alpha(TEXT, a))
-                yy += bh + 8
+                for n, line in enumerate(lines):
+                    g.text("Regular", 13, line, px + 52, yy + 8 + 19 * n, alpha(TEXT, a))
+            g.clip(px, py, pw, ph)
+            if self.find_top > 0:
+                g.text("Medium", 11, f"L1: {self.find_top} acima", px + pw - 18, py + 14, alpha(FAINT, a), "r")
+            if below:
+                g.text("Medium", 12, f"R1: mais {below} item(ns)", px + 18, py + ph - 24, alpha(FAINT, a))
         g.clip()
 
         # controles (direita)
@@ -1248,6 +1282,8 @@ class App:
         hints = [("A", "Confirmar", TEXT), ("B", "Voltar", MUTED)]
         if isinstance(it, (Slider, Choice)):
             hints.insert(1, ("LR", "Ajustar", MUTED))
+        if f and self.find_max > 0:
+            hints.append(("L1 / R1", "Rolar", MUTED))
         self.draw_footer(hints)
 
     def draw_overlays(self, dt):
