@@ -1148,11 +1148,13 @@ class App:
 
     def open_sheet(self, s, g, back=None):
         self.picker = None
-        self.sheet = {"s": s, "g": g, "sel": 0, "back": back}
+        # só a biblioteca joga; no menu do START a ficha é só para ver
+        playable = self.view == "lib" and back is None
+        self.sheet = {"s": s, "g": g, "sel": 0 if playable else 1, "back": back, "play": playable}
 
     def sheet_input(self, cmd):
         sh = self.sheet
-        if cmd in ("left", "right"):
+        if cmd in ("left", "right") and sh["play"]:
             sh["sel"] = 1 - sh["sel"]
         elif cmd == "back" or (cmd == "ok" and sh["sel"] == 1):
             self.sheet = None
@@ -1219,7 +1221,11 @@ class App:
                 y += 18
         bw, by = (mw - 56) / 2, my + mh - 58
         for k, label in enumerate(("Jogar", "Voltar")):
-            bx = mx + 22 + k * (bw + 12)
+            if not sh["play"] and k == 0:
+                continue
+            bx = mx + 22 + k * (bw + 12) if sh["play"] else mx + 22
+            if not sh["play"]:
+                bw = mw - 44
             if k == sh["sel"]:
                 g.rrect(bx, by, bw, 38, 14, a1, a2)
             else:
@@ -1666,8 +1672,6 @@ class App:
             if down:
                 self.combo.add(b)
                 self.combo_used = getattr(self, "combo_used", False) or {4, 6} <= self.combo
-                if {4, 6} <= self.combo:
-                    self.running = False      # SELECT+START: fecha (no sistema, abre o ES)
             else:
                 if not getattr(self, "combo_used", False) and self.combo == {b}:
                     self.handle("start" if b == 6 else "select")

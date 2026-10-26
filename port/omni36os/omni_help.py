@@ -5,6 +5,10 @@ TELEGRAM = "t.me/r36sbr"
 
 # A versão em uso vem do arquivo VERSION; a lista abaixo é o histórico.
 NOVIDADES = [
+    ("1.3.1", "26/10/2026", [
+        "START+SELECT juntos não fecham mais o Omni36OS (para ir ao ES: SELECT > Abrir o ES, ou FN+SELECT).",
+        "Jogos só abrem pela lista da tela inicial; no card Jogos do menu a ficha é só para consultar.",
+    ]),
     ("1.3.0", "26/10/2026", [
         "Aviso com contagem antes do que é perigoso: tela vermelha dizendo o que a ação faz, o que pode dar "
         "errado e como desfazer. Continuar só acende depois de 10 s (o que pode impedir o boot) ou 5 s (o resto); "
@@ -113,7 +117,7 @@ As ferramentas do menu Opções do dArkOSen, por categoria. "Nativo": reescrita 
 
 # Jogos
 Lista os jogos que o ES mostra, lidos do es_systems.cfg e dos gamelist.xml (o Omni36OS só lê; quem grava é o ES). "Por sistema", "Favoritos", "Recentes" e "Mais jogados" abrem listas; L1/R1 pulam de letra em letra.
-A ficha do jogo mostra a capa, a descrição, o tempo de jogo e o arquivo. "Jogar" abre o jogo com o mesmo emulador, core e governador escolhidos no ES; quando o jogo fecha, o Omni36OS volta no card Jogos. Jogos abertos daqui não somam no contador de vezes do ES.
+A ficha do jogo mostra a capa, a descrição, o tempo de jogo e o arquivo. Aqui ela é só para consultar: jogar é pela lista de jogos da tela inicial, que usa o mesmo emulador, core e governador escolhidos no ES. Jogos abertos daqui não somam no contador de vezes do ES.
 O diagnóstico aponta BIOS que faltam na pasta de BIOS do RetroArch (sem elas o jogo não abre), BIOS com versão desconhecida, arquivos que o ES não mostra (extensão errada ou pasta trocada), jogos repetidos e jogos sem capa. "Atualizar a lista" relê as pastas (a lista também se atualiza sozinha quando uma pasta muda).
 
 # Testar ports
