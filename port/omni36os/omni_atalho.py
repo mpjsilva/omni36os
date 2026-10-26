@@ -79,7 +79,7 @@ def signal_all(pids, sig):
 def as_ark(cmd, **env):
     e = {"HOME": USER.pw_dir, "USER": "ark", "PATH": "/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin",
          "SDL_VIDEO_EGL_DRIVER": "libEGL.so", "XDG_RUNTIME_DIR": f"/run/user/{USER.pw_uid}", **env}
-    return ["runuser", "-u", "ark", "--", "env", *[f"{k}={v}" for k, v in e.items()], *cmd]
+    return ["sudo", "-u", "ark", "-H", "env", *[f"{k}={v}" for k, v in e.items()], *cmd]   # não há runuser
 
 
 def open_sab():

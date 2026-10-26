@@ -5,6 +5,14 @@ TELEGRAM = "t.me/r36sbr"
 
 # A versão em uso vem do arquivo VERSION; a lista abaixo é o histórico.
 NOVIDADES = [
+    ("1.2.0", "26/10/2026", [
+        "O Omni36OS é a tela inicial do console: liga direto na biblioteca de jogos (sistemas à esquerda, "
+        "jogos à direita, A abre a ficha e joga).",
+        "START abre as opções (os cards); B volta para os jogos. SELECT abre Energia: abrir o ES, reiniciar, desligar.",
+        "Card Ferramentas: as 47 ferramentas do menu Opções do dArkOSen. 13 reescritas aqui dentro; as outras "
+        "abrem com as janelas do Omni36OS (menus, mensagens, teclado na tela) no lugar das janelas de terminal.",
+        "Ferramentas que mexem no boot ficam em Perigoso, com aviso duplo.",
+    ]),
     ("1.1.0", "26/10/2026", [
         "Card Jogos: os jogos que o ES mostra, por sistema, com favoritos, recentes, mais jogados e repetidos. "
         "L1/R1 pulam de letra em letra.",
@@ -85,6 +93,13 @@ O Omni36OS avisa quando um cartão passa de 90% de uso ou tem menos de 1 GB livr
 # RetroArch (Ajuda > RetroArch)
 Mostra o que foi mudado na configuração do RetroArch e restaura a de fábrica. Uma cópia da configuração atual fica guardada antes.
 "Gerenciador do RetroArch" e "Restaurar opções dos cores" abrem as ferramentas do dArkOSen (o Omni36OS volta quando elas fecham).
+
+# Biblioteca (tela inicial)
+Com a tela inicial ligada, o console liga direto na lista de jogos. Esquerda/direita trocam de sistema (Favoritos e Recentes vêm primeiro), cima/baixo escolhem o jogo, L1/R1 pulam de letra. A abre a ficha do jogo; "Jogar" abre e, ao fechar o jogo, a lista volta no mesmo lugar.
+START abre as opções (os cards do Omni36OS); B ou START voltam para os jogos. SELECT abre Energia: abrir o EmulationStation, reiniciar ou desligar. O ES continua instalado como reserva: FN+SELECT também alterna entre os dois.
+
+# Ferramentas
+As ferramentas do menu Opções do dArkOSen, por categoria. "Nativo": reescrita no Omni36OS (copiar padrões, montar pendrive, backup, trapaças...). "Janelas": o script original roda, mas os menus, mensagens e o teclado aparecem no visual do Omni36OS; o sistema não é alterado para isso (só o script vê a troca). "App": programas com tela própria. "Cuidado": mexem no boot, no kernel ou no ES; pedem confirmação duas vezes.
 
 # Jogos
 Lista os jogos que o ES mostra, lidos do es_systems.cfg e dos gamelist.xml (o Omni36OS só lê; quem grava é o ES). "Por sistema", "Favoritos", "Recentes" e "Mais jogados" abrem listas; L1/R1 pulam de letra em letra.

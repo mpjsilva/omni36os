@@ -838,6 +838,16 @@ def set_hotkey(args):
             + (", também dentro dos jogos (experimental)" if mode == "jogo" else ""))
 
 
+def power(args):
+    """Reiniciar ou desligar (menu Energia da biblioteca)."""
+    what = args["what"]
+    if what not in ("reboot", "poweroff"):
+        return "Opção inválida."
+    os.sync()
+    subprocess.Popen(["systemctl", what])
+    return "ok"
+
+
 # --- Conflitos com outros scripts ---
 
 def usb_net_active(_args=None):
@@ -1043,7 +1053,7 @@ TOOLS = {
     "schedule_scan": schedule_scan, "last_scan": last_scan,
     "get_gamma": get_gamma, "set_gamma": set_gamma, "get_led": get_led, "set_led": set_led,
     "usb_net_active": usb_net_active, "handoff": handoff,
-    "list_ports": list_ports, "port_groups": port_groups, "port_results": port_results, "get_mode": get_mode, "set_mode": set_mode, "restart_es": restart_es, "restore_es": restore_es, "hub_alerts": hub_alerts, "get_hub": get_hub, "set_hub": set_hub, "get_hotkey": get_hotkey, "set_hotkey": set_hotkey, "clear_port_alerts": clear_port_alerts, "test_port": test_port,
+    "list_ports": list_ports, "port_groups": port_groups, "port_results": port_results, "get_mode": get_mode, "set_mode": set_mode, "restart_es": restart_es, "restore_es": restore_es, "power": power, "hub_alerts": hub_alerts, "get_hub": get_hub, "set_hub": set_hub, "get_hotkey": get_hotkey, "set_hotkey": set_hotkey, "clear_port_alerts": clear_port_alerts, "test_port": test_port,
     "retroarch_changes": retroarch_changes,
     "restore_retroarch": restore_retroarch,
     "usb_facts": usb_facts,

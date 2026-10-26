@@ -34,7 +34,7 @@ while true; do
         bash -c "$cmd" > /tmp/omni36os-game.log 2>&1
         printf "\033c" > /dev/tty1
       fi
-      RESUME="jogos"
+      RESUME="biblioteca"
       continue ;;
     # Ferramentas de tela cheia do dArkOSen: rodam como no menu Opções do ES
     # e, quando fecham, o Omni36OS volta no card de onde foram abertas
@@ -42,12 +42,7 @@ while true; do
       rest="${next#tool:}"
       RESUME="${rest%%:*}"
       tool="${rest#*:}"
-      if [ -f "$tool" ]; then
-        sudo chmod 666 /dev/tty1
-        bash "$tool" 2>&1 > /dev/tty1
-        printf "\033c" > /dev/tty1
-        sudo pkill -f gptokeyb 2>/dev/null
-      fi
+      [ -f "$tool" ] && bash "$OMNI_DIR/run_tool.sh" "$tool"
       continue ;;
   esac
   break
