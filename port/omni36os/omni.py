@@ -857,44 +857,52 @@ def power(args):
 
 # --- Botão de power ---
 
-# O ogage do dArkOSen chama o finish.sh a cada toque no power. Ligado, o finish.sh passa
-# antes pelo power_button.py (menu de energia; FN + power = pânico); se ele falhar ou não
-# tratar o toque, o original (guardado em finish.sh.omni36os-orig) desliga como sempre.
-FINISH = "/usr/local/bin/finish.sh"
+# No toque curto do power o ogage do dArkOSen chama o pause.sh (suspende, ou desliga com a
+# opção "trocar power e suspender"; o finish.sh é de outro gatilho e fica como está). Ligado,
+# o pause.sh passa antes pelo power_button.py (menu de energia; FN + power = pânico); se ele
+# falhar ou não tratar o toque, o original (guardado em pause.sh.omni36os-orig) roda como sempre.
+PAUSE = "/usr/local/bin/pause.sh"
+PAUSE_ORIG = PAUSE + ".omni36os-orig"
+FINISH = "/usr/local/bin/finish.sh"          # a 1.4.0 trocava este por engano
 FINISH_ORIG = FINISH + ".omni36os-orig"
-FINISH_MARK = "# Omni36OS: botão de power"
-FINISH_WRAP = f"""#!/bin/bash
-{FINISH_MARK}. Original em {FINISH_ORIG}; Ajuda > Botão de power desfaz.
+POWER_MARK = "# Omni36OS: botão de power"
+POWER_WRAP = f"""#!/bin/bash
+{POWER_MARK}. Original em {PAUSE_ORIG}; Ajuda > Botão de power desfaz.
 H={OMNI_DIR}/power_button.py
 if [ -f "$H" ] && timeout 8 python3 -B "$H"; then exit 0; fi
-exec bash {FINISH_ORIG}
+exec bash {PAUSE_ORIG}
 """
-POWER_NAMES = {"desligar": "Desligar direto", "menu": "Menu de energia"}
+POWER_NAMES = {"desligar": "Como no dArkOSen", "menu": "Menu de energia"}
+
+
+def _unwrap(path, orig):
+    if POWER_MARK in read_text(path, "") and os.path.exists(orig):
+        shutil.copy2(orig, path + ".tmp")
+        os.replace(path + ".tmp", path)
+        os.remove(orig)
 
 
 def get_power_button(_args=None):
-    return "menu" if FINISH_MARK in read_text(FINISH, "") else "desligar"
+    return "menu" if POWER_MARK in read_text(PAUSE, "") else "desligar"
 
 
 def set_power_button(args):
     mode = args["mode"]
     if mode not in POWER_NAMES:
         return "Modo inválido."
-    cur = read_text(FINISH, "")
+    _unwrap(FINISH, FINISH_ORIG)
+    cur = read_text(PAUSE, "")
     if mode == "menu":
-        if FINISH_MARK not in cur:
+        if POWER_MARK not in cur:
             if not cur.startswith("#!"):
-                return "Não achei o finish.sh do dArkOSen: o botão de power fica como está."
-            shutil.copy2(FINISH, FINISH_ORIG)
-            write_text(FINISH + ".tmp", FINISH_WRAP)
-            os.chmod(FINISH + ".tmp", 0o755)
-            os.replace(FINISH + ".tmp", FINISH)
+                return "Não achei o pause.sh do dArkOSen: o botão de power fica como está."
+            shutil.copy2(PAUSE, PAUSE_ORIG)
+            write_text(PAUSE + ".tmp", POWER_WRAP)
+            os.chmod(PAUSE + ".tmp", 0o755)
+            os.replace(PAUSE + ".tmp", PAUSE)
         return "Power: menu de energia. FN + power: pânico"
-    if FINISH_MARK in cur and os.path.exists(FINISH_ORIG):
-        shutil.copy2(FINISH_ORIG, FINISH + ".tmp")
-        os.replace(FINISH + ".tmp", FINISH)
-        os.remove(FINISH_ORIG)
-    return "Power: desliga direto, como no dArkOSen"
+    _unwrap(PAUSE, PAUSE_ORIG)
+    return "Power: como no dArkOSen"
 
 
 # --- Conflitos com outros scripts ---
