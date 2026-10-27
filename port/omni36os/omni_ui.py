@@ -102,6 +102,7 @@ FPS_ACTIVE, FPS_IDLE, IDLE_AFTER = 30, 10, 4.0   # quadros/s; segundos sem botã
 LIB_POS = "/tmp/omni36os-biblioteca.json"
 HUB = os.environ.get("OMNI_HUB", "")         # boot/atalho/saida: tela inicial; jogo: por cima de um jogo
 POWER_PRESS = "/dev/shm/omni36os-power-press"   # power_button.py: menu pedido pelo botão de power
+POWER_PENDING = "/dev/shm/omni36os-power-pending"
 POWER_FLAG = "/dev/shm/omni36os-power-menu"     # abrir já no menu de energia
 PANIC_MSG = "/dev/shm/omni36os-panic-msg"
 RESUME = os.environ.get("OMNI_RESUME", "")   # "testar": o Omni36OS voltou de um teste de port
@@ -383,6 +384,14 @@ class App:
         self.want_power = self.want_msg = False
         self.msg_t = -9.0
         signal.signal(signal.SIGUSR1, lambda *_: setattr(self, "want_power", True))
+        try:
+            if os.environ.get("SDL_VIDEODRIVER") == "offscreen":
+                raise OSError("teste fora da tela")
+            with open("/dev/shm/omni36os-ui-pid", "w") as f:   # o power_button.py só sinaliza este
+                f.write(str(os.getpid()))
+            os.chmod("/dev/shm/omni36os-ui-pid", 0o666)
+        except OSError:
+            pass
         signal.signal(signal.SIGUSR2, lambda *_: setattr(self, "want_msg", True))
         self.busy = None              # texto enquanto uma tarefa roda
         self.held = {}                # direção -> próximo repeat
@@ -1103,16 +1112,32 @@ class App:
             except OSError:
                 pass
 
+        def back():
+            done()
+            if getattr(self, "power_return", False):
+                self.quit()           # volta para o ES ou para o jogo (que descongela)
+
         def go(r):
             self.picker = None
+            if r["do"] == "cancel":
+                return back()
             done()
             if r["do"] == "es":
                 self.quit()           # no sistema (tela inicial), sair do Omni36OS abre o ES
             elif r["do"] != "cancel" and not FAKE:
                 omni.power({"what": r["do"]})
         self.show_list("Energia", "power", rows, go, "Escolher")
-        if self.picker:
-            self.picker["on_back"] = done
+        if self.picker and button:
+            self.picker["on_back"] = back
+            for path in (POWER_PRESS, POWER_PENDING):   # o menu está na tela: outro toque desliga
+                try:
+                    if path == POWER_PRESS:
+                        with open(path, "w") as f:
+                            f.write(str(time.time()))
+                    else:
+                        os.remove(path)
+                except OSError:
+                    pass
 
     def power_check(self):
         """Sinais do power_button.py: USR1 abre o menu de energia, USR2 mostra o aviso do pânico."""
@@ -2247,8 +2272,12 @@ class App:
             elif not FAKE and omni.get_mode() is None:   # primeira execução
                 self.ask_mode(first=True)
             try:
+                os.remove(POWER_PRESS)                   # de um menu que não fechou direito
+            except OSError:
+                pass
+            try:
                 if time.time() - os.path.getmtime(POWER_FLAG) < 60:
-                    self.want_power = True
+                    self.want_power = self.power_return = True   # aberto pelo power no ES ou num jogo
                 os.remove(POWER_FLAG)
             except OSError:
                 pass

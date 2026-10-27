@@ -24,12 +24,14 @@ import omni_atalho as at   # noqa: E402
 PAD = at.PAD
 FN = 708
 EVIOCGKEY = (2 << 30) | (96 << 16) | (ord("E") << 8) | 0x18   # 96 bytes = KEY_MAX 0x2ff
-PRESS = "/dev/shm/omni36os-power-press"        # menu pedido e ainda não fechado
+PRESS = "/dev/shm/omni36os-power-press"        # o Omni36OS grava quando o menu está na tela
+PENDING = "/dev/shm/omni36os-power-pending"    # menu pedido, ainda abrindo (o ES fechando, o Omni36OS carregando)
 MENU_FLAG = "/dev/shm/omni36os-power-menu"     # o Omni36OS abre direto no menu de energia
+UI_PID = "/dev/shm/omni36os-ui-pid"
 PANIC_LAST = "/dev/shm/omni36os-panic-last"
 PANIC_MSG = "/dev/shm/omni36os-panic-msg"
 SWAP = "/home/ark/.config/.SWAPPOWERANDSUSPEND"
-PRESS_WINDOW = 20
+PENDING_WINDOW = 25   # toques enquanto o menu abre são ignorados; depois disso, tenta de novo
 
 
 def fn_held():
@@ -67,20 +69,14 @@ def cmdline(pid):
 
 
 def ui_pids():
-    """Só o python do Omni36OS (o sudo em volta repassaria o sinal) e só se ele já roda o código
-    atual: um Omni36OS aberto antes da atualização morreria com o SIGUSR1."""
-    code = os.path.getmtime(os.path.join(HERE, "omni_ui.py"))
-    out = []
-    for p in at.pgrep("-f", "python3 -B omni_ui.py|python3 omni_ui.py"):
-        try:
-            with open(f"/proc/{p}/comm") as f:
-                if not f.read().startswith("python"):
-                    continue
-            if os.stat(f"/proc/{p}").st_mtime >= code:
-                out.append(p)
-        except OSError:
-            pass
-    return out
+    """O python do Omni36OS que entende o botão (ele grava o pid em UI_PID ao abrir). Um Omni36OS
+    de antes da atualização morreria com o SIGUSR1; o sudo em volta repassaria o sinal."""
+    try:
+        pid = int(open(UI_PID).read().strip())
+        with open(f"/proc/{pid}/cmdline", "rb") as f:
+            return [pid] if b"omni_ui.py" in f.read() else []
+    except (OSError, ValueError):
+        return []
 
 
 def ui_any():
@@ -176,8 +172,10 @@ def panic():
 
 def menu():
     """0 se o menu de energia vai abrir; 1 para o finish.sh desligar."""
-    if time.time() - stamp(PRESS) < PRESS_WINDOW:
-        return 1                           # segundo toque com o menu pedido: desliga
+    if os.path.exists(PRESS) and ui_pids():
+        return 1                           # toque com o menu na tela: desliga
+    if time.time() - stamp(PENDING) < PENDING_WINDOW:
+        return 0                           # o menu ainda está abrindo: não desligar por engano
     if os.path.exists(SWAP):
         return 1                           # o dArkOSen está com power = suspender: respeita
     ui = ui_pids()
@@ -185,7 +183,7 @@ def menu():
         return 1                           # Omni36OS de antes da atualização: desliga como sempre
     game = front()
     if ui:                                 # Omni36OS na tela (sozinho ou por cima de um jogo congelado)
-        put(PRESS, str(time.time()))
+        put(PENDING, str(time.time()))
         for p in ui:
             os.kill(p, signal.SIGUSR1)
         return 0
@@ -193,14 +191,14 @@ def menu():
     if game:
         # o jogo congela e o Omni36OS abre por cima, já no menu; se ele não pegar a tela, o jogo
         # volta e um segundo toque desliga
-        put(PRESS, str(time.time()))
+        put(PENDING, str(time.time()))
         put(MENU_FLAG, str(time.time()))
         subprocess.run(["systemd-run", "--no-block", "--collect", "--unit", f"omni36os-power-menu-{int(time.time())}",
                         "/usr/bin/python3", os.path.abspath(__file__), "--freeze"])
         return 0
     if es and at.pgrep("-f", f"{HERE}/hub.sh"):
         # menu do ES com a tela inicial ligada: o ES grava e sai, o hub abre o Omni36OS no menu
-        put(PRESS, str(time.time()))
+        put(PENDING, str(time.time()))
         put(MENU_FLAG, str(time.time()))
         with open(at.HUB_OPEN, "w"):
             pass
