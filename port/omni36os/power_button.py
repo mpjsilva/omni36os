@@ -30,7 +30,6 @@ MENU_FLAG = "/dev/shm/omni36os-power-menu"     # o Omni36OS abre direto no menu 
 UI_PID = "/dev/shm/omni36os-ui-pid"
 PANIC_LAST = "/dev/shm/omni36os-panic-last"
 PANIC_MSG = "/dev/shm/omni36os-panic-msg"
-SWAP = "/home/ark/.config/.SWAPPOWERANDSUSPEND"
 PENDING_WINDOW = 25   # toques enquanto o menu abre são ignorados; depois disso, tenta de novo
 
 
@@ -176,8 +175,6 @@ def menu():
         return 1                           # toque com o menu na tela: desliga
     if time.time() - stamp(PENDING) < PENDING_WINDOW:
         return 0                           # o menu ainda está abrindo: não desligar por engano
-    if os.path.exists(SWAP):
-        return 1                           # o dArkOSen está com power = suspender: respeita
     ui = ui_pids()
     if ui_any() and not ui:
         return 1                           # Omni36OS de antes da atualização: desliga como sempre
