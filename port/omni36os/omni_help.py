@@ -134,7 +134,7 @@ O diagnóstico aponta BIOS que faltam na pasta de BIOS do RetroArch (sem elas o 
 Mostra os ports da pasta que o ES exibe na lista de Ports. O ArkOS guarda os jogos em /roms2 (cartão de jogos) ou em /roms (cartão do sistema); o Omni36OS lê qual está em uso no es_systems.cfg e ignora a outra.
 Escolha um port e aperte A: o Omni36OS fecha, o port abre como se fosse pelo ES e, depois de 15 segundos, é encerrado sozinho. O Omni36OS volta com o resultado.
 Passou: o port ficou aberto os 15 segundos.
-Falhou: o port fechou antes. O relatório fica em omni36os/logs/<nome do port>/ (dentro de /roms2/ports/omni36os) com a saída do port, os logs da pasta dele, as mensagens do kernel e o estado do sistema.
+Falhou: o port fechou antes. O relatório fica em omni36os/logs/<nome do port>/ (dentro de /opt/omni36os) com a saída do port, os logs da pasta dele, as mensagens do kernel e o estado do sistema.
 A lista mostra o último resultado de cada port, e as falhas viram alerta no card.
 "Limpar avisos de falha" tira o alerta do card depois que você já viu as falhas. O resultado continua na lista até o port ser testado de novo; se o novo teste falhar, o aviso volta.
 Ports com menu próprio (como Daytona USA e NFSU1) passam quando o menu abre: o teste não aperta botões.

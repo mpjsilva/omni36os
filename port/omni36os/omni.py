@@ -897,6 +897,7 @@ def set_power_button(args):
             if not cur.startswith("#!"):
                 return "Não achei o pause.sh do dArkOSen: o botão de power fica como está."
             shutil.copy2(PAUSE, PAUSE_ORIG)
+        if cur != POWER_WRAP:                # também quando o Omni36OS muda de pasta
             write_text(PAUSE + ".tmp", POWER_WRAP)
             os.chmod(PAUSE + ".tmp", 0o755)
             os.replace(PAUSE + ".tmp", PAUSE)
