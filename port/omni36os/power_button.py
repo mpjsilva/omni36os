@@ -2,10 +2,10 @@
 power; com o botão ligado em Ajuda, aquele finish.sh chama este arquivo antes do original.
 
 - FN + power: modo pânico. Fecha o que estiver na tela (jogo, port, ferramenta) e volta ao
-  Omni36OS ou ao ES, com o processador sem overclock e o brilho e o som em níveis normais.
+  Omni36OS, com o processador sem overclock e o brilho e o som em níveis normais.
   Duas vezes em menos de 10 s: grava tudo e reinicia.
-- Power sozinho: abre o menu de energia do Omni36OS (o dele, se estiver na tela; por cima
-  do jogo, que congela; ou fechando o menu do ES, com a tela inicial ligada).
+- Power sozinho: abre o menu de energia do Omni36OS (o dele, se estiver na tela, ou por cima
+  do jogo, que congela).
 - Saída 0: tratado aqui. Qualquer outra saída (ou erro): o finish.sh roda o original, que
   desliga com segurança. Um segundo toque enquanto o menu não abriu também desliga.
 """
@@ -25,7 +25,7 @@ PAD = at.PAD
 FN = 708
 EVIOCGKEY = (2 << 30) | (96 << 16) | (ord("E") << 8) | 0x18   # 96 bytes = KEY_MAX 0x2ff
 PRESS = "/dev/shm/omni36os-power-press"        # o Omni36OS grava quando o menu está na tela
-PENDING = "/dev/shm/omni36os-power-pending"    # menu pedido, ainda abrindo (o ES fechando, o Omni36OS carregando)
+PENDING = "/dev/shm/omni36os-power-pending"    # menu pedido, ainda abrindo (o Omni36OS carregando)
 MENU_FLAG = "/dev/shm/omni36os-power-menu"     # o Omni36OS abre direto no menu de energia
 UI_PID = "/dev/shm/omni36os-ui-pid"
 PANIC_LAST = "/dev/shm/omni36os-panic-last"
@@ -59,14 +59,6 @@ def put(path, text):
     os.chmod(path, 0o666)   # o Omni36OS apaga
 
 
-def cmdline(pid):
-    try:
-        with open(f"/proc/{pid}/cmdline", "rb") as f:
-            return f.read().replace(b"\0", b" ").decode(errors="ignore")
-    except OSError:
-        return ""
-
-
 def ui_pids():
     """O python do Omni36OS que entende o botão (ele grava o pid em UI_PID ao abrir). Um Omni36OS
     de antes da atualização morreria com o SIGUSR1; o sudo em volta repassaria o sinal."""
@@ -84,28 +76,14 @@ def ui_any():
 
 def front():
     """Os processos do que está na tela, fora o Omni36OS: jogo, port ou ferramenta."""
-    tree = at.children()
-    hosts = at.pgrep("-f", f"{HERE}/launch.sh") + at.pgrep("-x", "emulationstation")
-    out = []
-    for h in hosts:
-        for p in at.descendants(h, tree):
-            c = cmdline(p)
-            if "omni_ui.py" in c or "launch.sh" in c or "power_button" in c:
-                continue
-            out.append(p)
-    return out
+    return at.game_pids()
 
 
 def close_front():
     pids = front()
     if not pids:
         return False
-    at.signal_all(pids, signal.SIGCONT)      # congelados por cima: precisam acordar para morrer
-    at.signal_all(pids, signal.SIGTERM)
-    end = time.monotonic() + 2.5
-    while time.monotonic() < end and any(os.path.exists(f"/proc/{p}") for p in pids):
-        time.sleep(0.1)
-    at.signal_all(pids, signal.SIGKILL)
+    at.close_game(pids)
     try:
         with open("/dev/tty1", "w") as t:
             t.write("\033c")
@@ -141,11 +119,13 @@ def calm():
 
 
 def safe(what):
-    """Como o finish.sh original: fecha o ES (ele grava as listas), desmonta o /boot e grava tudo."""
+    """Como o finish.sh original: fecha o Omni36OS, desmonta o /boot e grava tudo."""
     os.sync()
     subprocess.run(["systemd-run", "--no-block", "--collect", "--unit", f"omni36os-power-{int(time.time())}",
-                    "bash", "-c", "systemctl stop emulationstation; mountpoint -q /boot && umount /boot; "
-                                  f"sync; systemctl {what}"])
+                    "bash", "-c", "systemctl stop omni36os-launcher; "
+                                  f"/usr/local/bin/omni36os-tela {'reiniciando' if what == 'reboot' else 'desligando'}; "
+                                  "mountpoint -q /boot && umount /boot; "
+                                  f"sync; sleep 1; systemctl {what}"])
 
 
 def panic():
@@ -184,7 +164,6 @@ def menu():
         for p in ui:
             os.kill(p, signal.SIGUSR1)
         return 0
-    es = at.pgrep("-x", "emulationstation")
     if game:
         # o jogo congela e o Omni36OS abre por cima, já no menu; se ele não pegar a tela, o jogo
         # volta e um segundo toque desliga
@@ -192,15 +171,6 @@ def menu():
         put(MENU_FLAG, str(time.time()))
         subprocess.run(["systemd-run", "--no-block", "--collect", "--unit", f"omni36os-power-menu-{int(time.time())}",
                         "/usr/bin/python3", os.path.abspath(__file__), "--freeze"])
-        return 0
-    if es and at.pgrep("-f", f"{HERE}/hub.sh"):
-        # menu do ES com a tela inicial ligada: o ES grava e sai, o hub abre o Omni36OS no menu
-        put(PENDING, str(time.time()))
-        put(MENU_FLAG, str(time.time()))
-        with open(at.HUB_OPEN, "w"):
-            pass
-        os.chown(at.HUB_OPEN, at.USER.pw_uid, at.USER.pw_gid)
-        os.kill(es[0], signal.SIGTERM)
         return 0
     return 1
 

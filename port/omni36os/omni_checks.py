@@ -16,21 +16,14 @@ import omni
 
 TEMP_QUENTE = 75      # °C: acima disso o aparelho está aquecendo
 BATERIA_BAIXA = 20    # %
-SD_LENTO = 10         # MB/s de escrita
 
 # --- Ações (o único jeito de uma verificação mudar algo no aparelho) ---
 
 ACTIONS = {
     "economizar_bateria": ("Ativar modo economia",
                            lambda: omni.set_preferred_governor({"governor": "powersave"})),
-    "modo_desempenho": ("Ativar desempenho máximo",
-                        lambda: omni.set_preferred_governor({"governor": "performance"})),
-    "modo_equilibrado": ("Voltar ao modo equilibrado",
-                         lambda: omni.set_preferred_governor({"governor": "ondemand"})),
     "baixar_brilho": ("Baixar o brilho para 30%", lambda: omni.set_screen_brightness({"value": 30})),
     "restaurar_audio": ("Restaurar o áudio do sistema", omni.restore_audio),
-    "volume_60": ("Colocar o volume em 60%", lambda: omni.set_system_volume({"value": 60})),
-    "restaurar_retroarch": ("Restaurar o RetroArch de fábrica", omni.restore_retroarch),
     "ligar_pendrive": ("Ligar o modo pendrive (reinicia)", omni.usb_on),
     "desligar_pendrive": ("Desligar o modo pendrive (reinicia)", omni.usb_off),
     "fix_dmc": ("Consertar o ajuste da RAM", omni.fix_dmc),
@@ -77,7 +70,7 @@ def audio_facts():
         "volume_pct": omni.get_volume(),
         "saida_audio": route,
         "saida_esperada": omni.device_alsa_path(),
-        # O perfmax do dArkOS apaga o .asoundrc ao abrir qualquer port (o Omni36OS
+        # O perfmax do Omni36OS apaga o .asoundrc ao abrir qualquer port (o Omni36OS
         # inclusive) e o perfnorm o devolve ao sair: ausente é o normal aqui.
         "asoundrc_padrao": asound is None or backup is None or asound == backup,
     }
@@ -98,16 +91,23 @@ def sd_facts():
     return {"cartoes": cards}
 
 
-def speed_facts():
-    facts = {}
-    for name, path in (("sistema", "/roms"), ("jogos", "/roms2")):
+def velocidade():
+    """Testar velocidade (card Cartões SD): escreve e lê um arquivo em cada cartão."""
+    out = []
+    for card, path in (("sistema", "/roms"), ("jogos", "/roms2")):
         if not os.path.ismount(path):
             continue
+        f = {}
         for line in omni.test_microsd_speed({"path": path}).splitlines():
             if "Escrita" in line or "Leitura" in line:
-                key = "escrita" if "Escrita" in line else "leitura"
-                facts[f"{name}_{key}_mbs"] = float(line.split(":")[1].split()[0])
-    return facts
+                f["w" if "Escrita" in line else "r"] = float(line.split(":")[1].split()[0])
+        if "w" not in f:
+            continue
+        if f["w"] < 10:
+            out.append(("problema", f"Cartão de {card} lento: {f['w']} MB/s de escrita. Vale trocar por um melhor."))
+        else:
+            out.append(("ok", f"Cartão de {card}: {f['w']} MB/s escrita, {f.get('r', 0)} MB/s leitura."))
+    return finish(out or [("aviso", "Nenhum cartão montado para testar.")], [], {})
 
 
 def screen_facts():
@@ -190,30 +190,37 @@ def check_audio(f, out):
 
 
 def checkup():
-    f = {**battery_facts(), **cpu_facts(), **audio_facts(), **sd_facts()}
+    """Resumo: só o que precisa de atenção, de todos os cards (cada card mostra o seu em detalhe)."""
+    parts = [("Bateria", bateria())]
+    a, b = sem_som(), atualizar()
+    parts.append(("Sistema", finish(a["achados"] + b["achados"], a["acoes"], {})))
+    f = cpu_facts()
     out, acts = [], []
-    check_battery(f, out)
     check_temp(f, out)
-    check_audio(f, out)
     check_overclock(f, out, acts)
-    check_services(out, acts)
+    parts.append(("Desempenho", finish(out, acts, f)))
+    out = []
     check_disk(out)
-    for c in f["cartoes"]:
-        lvl = "aviso" if c["fabricante"] == "desconhecido" else "ok"
-        if lvl == "ok":
-            txt = f"Cartão de {c['cartao']}: {c['tamanho_gb']} GB, {c['fabricante']}."
-        else:
-            txt = (f"Cartão de {c['cartao']}: {c['tamanho_gb']} GB, fabricante não identificado "
-                   f"(código {c['codigo']}, nome \"{c['nome']}\"), comum em cartões genéricos.")
-        out.append((lvl, txt))
-    if f["bateria_pct"] < BATERIA_BAIXA and f["governador"] == "performance":
-        acts.append("economizar_bateria")
-    if f["saida_audio"] != f["saida_esperada"] or not f["asoundrc_padrao"]:
-        acts.append("restaurar_audio")
-    return finish(out, acts, f)
+    for c in sd_facts()["cartoes"]:
+        if c["fabricante"] == "desconhecido":
+            out.append(("aviso", f"Cartão de {c['cartao']} sem marca identificada (código {c['codigo']}), "
+                                 "comum em cartões genéricos."))
+    parts.append(("Cartões SD", finish(out, [], {})))
+    out, acts = [], []
+    check_services(out, acts)
+    parts.append(("Serviços", finish(out, acts, {})))
+    found, acts = [], []
+    for card, r in parts:
+        found += [(lvl, f"{card}: {txt}") for lvl, txt in r["achados"] if lvl in ("aviso", "problema")]
+        acts += [x for x in r["acoes"] if x not in acts]
+    if not found:
+        found.append(("ok", "Tudo certo: nenhum card tem alerta."))
+    found.append(("info", "Cada card mostra o detalhe do seu assunto."))
+    return finish(found, acts, {})
 
 
 def bateria():
+    # o seletor do processador fica em Desempenho; aqui só a dica de economia
     f = {**battery_facts(), **cpu_facts(), "brilho_pct": omni.get_brightness()}
     out, acts = [], []
     check_battery(f, out)
@@ -234,34 +241,8 @@ def sem_som():
     f = audio_facts()
     out, acts = [], []
     check_audio(f, out)
-    if f["volume_pct"] < 20:
-        acts.append("volume_60")
     if f["saida_audio"] != f["saida_esperada"] or not f["asoundrc_padrao"]:
         acts.append("restaurar_audio")
-    return finish(out, acts, f)
-
-
-def lento():
-    f = {**cpu_facts(), **speed_facts()}
-    out, acts = [], []
-    check_temp(f, out)
-    if f["governador"] == "powersave":
-        out.append(("aviso", "O processador está em modo economia, o que deixa os jogos lentos."))
-        acts.append("modo_equilibrado")
-    else:
-        out.append(("ok", f"Processador em modo {f['governador']} ({f['freq_mhz']} MHz agora)."))
-    check_overclock(f, out, acts)
-    for card in ("sistema", "jogos"):
-        w = f.get(f"{card}_escrita_mbs")
-        if w is None:
-            continue
-        r = f.get(f"{card}_leitura_mbs", 0)
-        if w < SD_LENTO:
-            out.append(("problema", f"Cartão de {card} lento: {w} MB/s de escrita. Vale trocar por um melhor."))
-        else:
-            out.append(("ok", f"Cartão de {card}: {w} MB/s escrita, {r} MB/s leitura."))
-    if f["governador"] != "performance" and (f["temperatura_c"] or 0) <= TEMP_QUENTE:
-        acts.append("modo_desempenho")
     return finish(out, acts, f)
 
 
@@ -269,53 +250,25 @@ def atualizar():
     f = screen_facts()
     out = []
     if f["clone"]:
-        out.append(("problema", "Este aparelho é um clone: o dArkOS não tem suporte oficial."))
-    if f["pastas"]:
-        out.append(("ok", "No SELECT MODEL, escolha: " + ", ".join(f["pastas"]) + "."))
-    else:
-        out.append(("aviso", "Não achei sua tela no catálogo do dArkOS."))
-    out.append(("info", "Antes de atualizar, copie a partição BOOT do cartão para o PC."))
+        out.append(("problema", "Este aparelho é um clone: o Omni36OS não tem suporte oficial."))
     return finish(out, [], f)
-
-
-def retroarch():
-    # linhas "arquivo: N linha(s) diferentes ..." ou "arquivo: sem cópia de fábrica"
-    f = {}
-    for line in omni.retroarch_changes().splitlines():
-        name, _, rest = line.partition(": ")
-        f[name] = int(rest.split()[0]) if rest[:1].isdigit() else None
-    out, acts = [], []
-    for name, n in f.items():
-        core = "core-options" in name
-        if n is None:
-            out.append(("info", f"{name}: sem cópia de fábrica para comparar."))
-        elif core:
-            out.append(("info", f"{name}: {n} linhas mudaram (normal: cada núcleo grava as suas opções)."))
-        elif n > 20:
-            out.append(("aviso", f"{name}: {n} linhas mudaram desde a fábrica."))
-        else:
-            out.append(("ok", f"{name}: quase como veio de fábrica ({n} linhas mudaram)."))
-    if any(n and n > 20 for k, n in f.items() if "core-options" not in k):
-        out.append(("info", "Se os controles estão estranhos, restaurar resolve (guarda uma cópia)."))
-        acts.append("restaurar_retroarch")
-    return finish(out, acts, f)
 
 
 def pc():
     f = omni.usb_facts()
     warn = []
     if omni.usb_net_active():
-        warn.append(("aviso", "O USB Network Mode está ligado: ele usa a mesma porta. Desligue-o antes do pendrive."))
+        warn.append(("aviso", "A rede pelo cabo USB está ligada: ela usa a mesma porta. Desligue-a (card USB) antes do pendrive."))
     part = f["particao_para_o_pc"]
     livre = f["livre_gb"].get(part)
     espaco = f" ({livre} GB livres)" if livre is not None else ""
     if f["modo_pendrive_ligado"]:
         out = [("ok", f"Modo pendrive ligado: /{part}{espaco} aparece no PC."),
                ("ok", "Conecte o cabo de dados, copie, ejete no PC e desconecte (ou aperte B)."),
-               ("info", "Wi-Fi e teclado USB ficam desligados nesse modo.")]
+               ("info", "O Wi-Fi fica desligado nesse modo.")]
         return finish(warn + out, ["desligar_pendrive"], f)
     out = [("ok", f"A partição /{part}{espaco} vai aparecer no PC como pendrive."),
-           ("info", "Ligar reinicia o aparelho; Wi-Fi e teclado USB param até desligar."),
+           ("info", "Ligar reinicia o aparelho; o Wi-Fi para até desligar."),
            ("info", "Copiou do Mac? \"Limpar lixo do Mac\" apaga os arquivos ._ que ele cria.")]
     return finish(warn + out, ["ligar_pendrive"], f)
 
@@ -333,8 +286,8 @@ def finish(out, acts, facts):
 
 
 CHECKS = {
-    "checkup": checkup, "bateria": bateria, "sem_som": sem_som, "lento": lento,
-    "atualizar": atualizar, "retroarch": retroarch, "pc": pc,
+    "checkup": checkup, "bateria": bateria, "sem_som": sem_som,
+    "atualizar": atualizar, "pc": pc,
 }
 
 if __name__ == "__main__":

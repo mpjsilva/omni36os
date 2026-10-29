@@ -1,18 +1,18 @@
 #!/bin/bash
 # usb-disco.sh — porta OTG do R36S como pendrive (USB Mass Storage).
-# A interface é o Omni36OS (Ferramentas > Pendrive USB); o Omni36OS instala este arquivo
+# A interface é o Omni36OS (card USB); o Omni36OS instala este arquivo
 # em /home/ark porque o serviço precisa dele fora de /roms2, que é desmontada.
 #
 #   part [p]  mostra/escolhe a partição entregue ao PC (roms2 ou roms)
 #   on|off    liga/desliga o modo pendrive (edita o DTB e reinicia)
 #   restore   volta o DTB original salvo no primeiro "on" e reinicia
 #   status    modo atual, partição escolhida, estado do cabo
-#   daemon    (serviço de boot) espera o cabo do PC: ao conectar para o ES,
-#             desmonta a partição e entrega ao PC; ao desconectar (ou ao
-#             "ejetar" no PC) monta de novo e volta o ES
+#   daemon    (serviço de boot) espera o cabo do PC: ao conectar fecha o
+#             Omni36OS, desmonta a partição e entrega ao PC; ao desconectar
+#             (ou ao "ejetar" no PC) monta de novo e abre o Omni36OS
 #
 # O DTB de fábrica deixa a porta só como host, por isso a troca reinicia.
-# No modo pendrive o dongle Wi-Fi/teclado na OTG não funcionam.
+# No modo pendrive o dongle Wi-Fi na OTG não funciona.
 DTB=/boot/rk3326-r36s-linux.dtb
 BAK=/boot/rk3326-r36s-linux.dtb.host-bak
 UDC=ff300000.usb
@@ -24,7 +24,9 @@ LOG=/home/ark/usb-disco.log
 SVC=/etc/systemd/system/usb-disco.service
 TTY=/dev/tty1
 PART=roms2
+mountpoint -q /roms2 || PART=roms   # sem segundo cartão, o PC recebe a partição de jogos do cartão do sistema
 [ -f $CFG ] && . $CFG
+[ $PART = roms2 ] && ! mountpoint -q /roms2 && PART=roms   # escolheu ROMS2, mas o cartão saiu
 [ "$(id -u)" = 0 ] || exec sudo -n "$0" "$@"
 export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
@@ -35,8 +37,8 @@ dtb_mode() { fdtget -t s $DTB /usb@ff300000 dr_mode; }
 dev() { findmnt -rno SOURCE /$PART 2>/dev/null || awk -v m=/$PART '$2==m{print $1}' /etc/fstab; }
 udc_state() { cat /sys/class/udc/$UDC/state 2>/dev/null; }
 
-# Layout A/B invertido? Vale a opção do ES (InvertButtons) ou a troca global
-# do dArkOS (b_swap.sh, flag /var/cache/Switch_AB). Nos códigos do controle,
+# Layout A/B invertido? Vale a troca global do sistema (b_swap.sh, flag
+# /var/cache/Switch_AB) ou a opção InvertButtons que ficou de instalações antigas. Nos códigos do controle,
 # 304 é o botão de baixo e 305 o da direita.
 swapped() {
   [ -f /var/cache/Switch_AB ] ||
@@ -52,7 +54,7 @@ set_dtb() {  # $1 = peripheral|otg
 }
 
 install_svc() {
-  printf '[Unit]\nDescription=R36S modo pendrive USB\nAfter=local-fs.target emulationstation.service\n[Service]\nExecStart=%s daemon\nRestart=on-failure\n[Install]\nWantedBy=multi-user.target\n' "$SELF" > $SVC
+  printf '[Unit]\nDescription=R36S modo pendrive USB\nAfter=local-fs.target omni36os-launcher.service\n[Service]\nExecStart=%s daemon\nRestart=on-failure\n[Install]\nWantedBy=multi-user.target\n' "$SELF" > $SVC
   systemctl daemon-reload; systemctl enable usb-disco.service 2>/dev/null
   # o modo rede antigo disputaria a mesma porta
   systemctl disable usb-rede.service 2>/dev/null; rm -f /etc/systemd/system/usb-rede.service
@@ -89,33 +91,33 @@ gadget_up() {
   echo $UDC > UDC; cd /
 }
 
-# Para o ES, desmonta e entrega a partição ao PC.
+# Fecha o Omni36OS (ele lê os ports em /roms2), desmonta e entrega a partição ao PC.
 give() {
   local d; d=$(dev); [ -b "$d" ] || { log "partição /$PART não encontrada"; return 1; }
   log "PC conectado: entregando $d (/$PART)"
   say "Conectado ao PC.\n\n  Preparando /$PART..."
-  systemctl stop emulationstation
+  systemctl stop omni36os-launcher omni36os-atalho
   sync
   [ $PART = roms2 ] && umount /opt/system/Tools 2>/dev/null
   if ! umount /$PART 2>/dev/null; then
     fuser -km /$PART 2>/dev/null; sleep 1
-    umount /$PART || { log "não desmontou /$PART"; mount -a; systemctl start emulationstation; return 1; }
+    umount /$PART || { log "não desmontou /$PART"; mount -a; systemctl start omni36os-launcher omni36os-atalho; return 1; }
   fi
   echo "$d" > $LUN/file
   say "MODO PENDRIVE\n\n  /$PART está aberta no computador.\n\n  Ejete no PC e desconecte o cabo,\n  ou aperte B, para voltar aos jogos."
 }
 
-# Tira a partição do PC, monta de novo e volta o ES.
+# Tira a partição do PC, monta de novo e abre o Omni36OS.
 take_back() {
   log "devolvendo /$PART ao R36S"
-  say "Desconectado.\n\n  Montando /$PART e voltando ao EmulationStation..."
+  say "Desconectado.\n\n  Montando /$PART e voltando ao Omni36OS..."
   # sem forced_eject no 4.4: desligar o UDC libera a trava do PC
   echo "" > $G/UDC 2>/dev/null
   sync
   echo "" > $LUN/file 2>/dev/null
   mount /$PART || log "falha ao montar /$PART"
   [ $PART = roms2 ] && mount /opt/system/Tools 2>/dev/null
-  systemctl start emulationstation
+  systemctl start omni36os-launcher omni36os-atalho
   echo $UDC > $G/UDC 2>/dev/null
 }
 

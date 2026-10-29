@@ -1,4 +1,4 @@
-"""Janelas do Omni36OS para os scripts do dArkOSen: substitui dialog, msgbox e osk.
+"""Janelas do Omni36OS para os scripts do Omni36OS: substitui dialog, msgbox e osk.
 
 Os scripts de /opt/system chamam `dialog --menu ...`, `msgbox "..."` e
 `osk "..."`. O run_tool.sh monta este programa por cima deles só dentro do

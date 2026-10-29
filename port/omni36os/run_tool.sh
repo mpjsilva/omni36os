@@ -1,5 +1,5 @@
 #!/bin/bash
-# Roda um script do dArkOSen (/opt/system) com as janelas do Omni36OS.
+# Roda um script do Omni36OS (/opt/system) com as janelas do Omni36OS.
 # O dialog, o msgbox e o osk são trocados pelo omni_dialog.py só dentro de um
 # namespace de montagem deste script (unshare -m): fora dele nada muda, e se
 # algo falhar o script roda com as janelas originais.

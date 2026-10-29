@@ -1,42 +1,71 @@
-"""Atalho global do Omni36OS: segurar L3+R3 (os dois analógicos) por
-1 s alterna entre o Omni36OS e o que estiver na tela (ES ou jogo).
+"""Atalhos do Omni36OS dentro dos jogos.
 
-Roda como serviço (omni36os-atalho.service, ligado em Ajuda > Atalho L3+R3).
-- No menu do ES: com a tela inicial ligada, fecha o ES e o hub.sh abre o Omni36OS
-  (ao sair dela o ES volta). Sem a tela inicial, um job do systemd para o ES,
-  abre o Omni36OS e sobe o ES de novo.
-- Dentro de um jogo (modo "jogo", experimental): congela o jogo (SIGSTOP),
-  abre o Omni36OS por cima e descongela quando ela fecha. Se o Omni36OS não conseguir a
-  tela (alguns emuladores não soltam o vídeo), o jogo volta na hora.
-Lê o controle direto do /dev/input, sem bibliotecas: struct input_event.
+Roda como serviço (omni36os-atalho.service) e lê o controle direto do /dev/input,
+sem bibliotecas (struct input_event). O que existe, os botões padrão e os nomes ficam em
+omni_combos.py; o jogador liga, desliga e troca os botões em Sistema > Atalhos
+(~/.config/omni36os/atalhos.json). Padrão:
+
+- FN + X: mostra ou esconde o contador de FPS (com temperatura e bateria).
+- FN + B: liga ou desliga o limite de 30 FPS.
+- FN + Y: captura de tela em <pasta do jogo>/imagens.
+- SELECT + START (segurar 1 s): fecha o jogo e volta ao Omni36OS.
+
+O contador, a captura e o limite são desenhados pelo hud/omni_hud.so, carregado nos
+ports com LD_PRELOAD pelo launch-direct.sh; aqui só mudam os arquivos em /dev/shm.
 """
+import json
 import os
 import pwd
 import select
 import signal
 import struct
 import subprocess
+import sys
 import time
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import omni_combos as oc   # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 PAD = "/dev/input/by-path/platform-odroidgo3-joypad-event-joystick"
-# L3+R3 (b14 e b15 no gamecontrollerdb do R36S). FN+SELECT saiu: o ES usa o FN e só esmaecia a tela
-COMBOS = ({706, 707},)
-WATCH = set().union(*COMBOS)
 HOLD = 1.0
 EV_KEY = 1
 EVENT = struct.Struct("llHHi")   # timeval (64 bits no aarch64), tipo, código, valor
-CONF = "/home/ark/.config/omni36os/atalho"
-HUB_OPEN = "/dev/shm/omni36os-hub-open"
 USER = pwd.getpwnam("ark")
+CONF = os.path.join(USER.pw_dir, ".config/omni36os/atalhos.json")
+HUD_FLAG = "/dev/shm/omni36os-hud"
+CAP_FLAG = "/dev/shm/omni36os-fpscap"
+SHOT_FLAG = "/dev/shm/omni36os-shot"
+HUD_LIB = os.path.join(HERE, "hud", "omni_hud.so")
+_conf = (None, None)
 
 
-def mode():
+def conf():
+    """Escolhas do jogador; relidas só quando o arquivo muda."""
+    global _conf
     try:
-        with open(CONF) as f:
-            return f.read().strip()
+        mt = os.stat(CONF).st_mtime
     except OSError:
-        return "ligado"
+        return oc.defaults()
+    if _conf[0] != mt:
+        try:
+            with open(CONF) as f:
+                _conf = (mt, oc.normalize(json.load(f)))
+        except (OSError, ValueError):
+            return oc.defaults()
+    return _conf[1]
+
+
+def put(path, text):
+    with open(path, "w") as f:
+        f.write(str(text))
+    os.chmod(path, 0o666)
+
+
+def apply_flags(c=None):
+    """Estado inicial do HUD: contador escondido e limite desligado (o atalho liga no jogo)."""
+    put(HUD_FLAG, "0")
+    put(CAP_FLAG, "0")
 
 
 def pgrep(*args):
@@ -76,70 +105,112 @@ def signal_all(pids, sig):
             pass
 
 
-def as_ark(cmd, **env):
-    e = {"HOME": USER.pw_dir, "USER": "ark", "PATH": "/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin",
-         "SDL_VIDEO_EGL_DRIVER": "libEGL.so", "XDG_RUNTIME_DIR": f"/run/user/{USER.pw_uid}", **env}
-    return ["sudo", "-u", "ark", "-H", "env", *[f"{k}={v}" for k, v in e.items()], *cmd]   # não há runuser
+def cmdline(pid):
+    try:
+        with open(f"/proc/{pid}/cmdline", "rb") as f:
+            return f.read().replace(b"\0", b" ").decode(errors="ignore")
+    except OSError:
+        return ""
 
 
-def open_sab():
-    ui = pgrep("-f", "python3 omni_ui.py")
-    if ui:                                       # já aberto: fecha e volta para o ES ou o jogo
-        signal_all(ui, signal.SIGTERM)
-        return
-    es = pgrep("-x", "emulationstation")
-    if not es:
-        # jogo aberto pelo card Jogos (sem o ES): o jogo é filho do launch.sh do hub
-        hosts = pgrep("-f", f"{HERE}/launch.sh")
-        tree = children()
-        game = [p for h in hosts for p in descendants(h, tree)]
-        if game and mode() == "jogo":
-            freeze_and_open(game)
-        return
-    game = descendants(es[0], children())
-    if not game:                                 # menu do ES
-        if pgrep("-f", f"{HERE}/hub.sh"):
-            with open(HUB_OPEN, "w"):
-                pass
-            os.chown(HUB_OPEN, USER.pw_uid, USER.pw_gid)   # o hub (usuário ark) apaga depois
-            os.kill(es[0], signal.SIGTERM)       # o ES salva as listas e sai; o hub abre o Omni36OS
-        else:
-            launch = " ".join(as_ark(["bash", f"{HERE}/launch.sh"], OMNI_HUB="atalho"))
-            subprocess.run(["systemd-run", "--no-block", "--collect", "--unit", f"omni36os-atalho-{int(time.time())}",
-                            "bash", "-c", f"systemctl stop emulationstation; {launch}; "
-                                          "systemctl start emulationstation"])
-        return
-    if mode() == "jogo":
-        freeze_and_open(game)
+def game_pids():
+    """Os processos do que está na tela, fora o Omni36OS: jogo, port ou ferramenta (filhos do launch-direct.sh)."""
+    tree = children()
+    out = []
+    for h in pgrep("-f", f"{HERE}/launch-direct.sh"):
+        for p in descendants(h, tree):
+            c = cmdline(p)
+            if "omni_ui.py" in c or "power_button" in c or not c:
+                continue
+            out.append(p)
+    return out
+
+
+def ui_env():
+    return {**os.environ, "OMNI_HUB": "jogo", "SDL_GAMECONTROLLERCONFIG_FILE": "/opt/inttools/gamecontrollerdb.txt",
+            "SDL_VIDEO_EGL_DRIVER": "libEGL.so", "XDG_RUNTIME_DIR": f"/run/user/{USER.pw_uid}"}
 
 
 def freeze_and_open(game):
+    """Botão de power num jogo: congela o jogo (SIGSTOP), abre o Omni36OS por cima e descongela quando ele fecha. Se o
+    Omni36OS não conseguir a tela (alguns ports não soltam o vídeo), o jogo volta na hora."""
     signal_all(game, signal.SIGSTOP)
     try:
-        subprocess.run(as_ark(["bash", f"{HERE}/launch.sh"], OMNI_HUB="jogo"), timeout=3600)
+        subprocess.run([sys.executable, os.path.join(HERE, "omni_ui.py")], cwd=HERE, env=ui_env(), timeout=3600)
     except subprocess.TimeoutExpired:
         pass
     finally:
         signal_all(game, signal.SIGCONT)
 
 
+def close_game(game):
+    signal_all(game, signal.SIGCONT)        # congelados precisam acordar para morrer
+    signal_all(game, signal.SIGTERM)
+    end = time.monotonic() + 2.5
+    while time.monotonic() < end and any(os.path.exists(f"/proc/{p}") for p in game):
+        time.sleep(0.1)
+    signal_all(game, signal.SIGKILL)
+
+
+def read_flag(path, dflt="0"):
+    try:
+        with open(path) as f:
+            return f.read().strip() or dflt
+    except OSError:
+        return dflt
+
+
+def active(kind):
+    """{chave: botões} dos atalhos ligados de um tipo ("toque" ou "segurar")."""
+    c = conf()
+    return {k: set(c["combos"][k]) for k, a in oc.ACTIONS.items() if c[k] and a[2] == kind}
+
+
+def tap(key):
+    if not game_pids():
+        return
+    if key == "fps":
+        put(HUD_FLAG, "0" if read_flag(HUD_FLAG) == "1" else "1")
+    elif key == "captura":
+        put(SHOT_FLAG, int(time.time() * 1000))
+    elif key == "limite":
+        put(CAP_FLAG, "0" if read_flag(CAP_FLAG) != "0" else oc.CAP_FPS)
+
+
+def held(key):
+    game = game_pids()
+    if not game:
+        return
+    if key == "fechar":
+        close_game(game)
+
+
 def main():
+    apply_flags()
+    signal.signal(signal.SIGHUP, lambda *_: apply_flags())
     fd = os.open(PAD, os.O_RDONLY)
-    down, since = set(), None
+    down, since, waiting = set(), None, None
     while True:
         r, _, _ = select.select([fd], [], [], 0.2)
         if r:
             data = os.read(fd, EVENT.size * 64)
             for k in range(0, len(data) - EVENT.size + 1, EVENT.size):
                 _s, _us, typ, code, val = EVENT.unpack_from(data, k)
-                if typ != EV_KEY or code not in WATCH:
+                if typ != EV_KEY or val == 2:
                     continue
-                (down.add if val else down.discard)(code)
-                since = time.monotonic() if down in COMBOS else None
+                if val:
+                    down.add(code)
+                    for key, cb in active("toque").items():   # a combinação fechou agora
+                        if down == cb:
+                            tap(key)
+                else:
+                    down.discard(code)
+                waiting = next((key for key, cb in active("segurar").items() if down == cb), None)
+                since = time.monotonic() if waiting else None
         if since is not None and time.monotonic() - since >= HOLD:
-            since, down = None, set()
-            if mode() != "desligado":
-                open_sab()
+            key, since, waiting = waiting, None, None
+            down = set()
+            held(key)
 
 
 if __name__ == "__main__":

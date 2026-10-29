@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """Omni36OS — interface gráfica (SDL2) do assistente do R36S.
 
-Tela inicial com 8 cartões; cada cartão abre uma página com o diagnóstico
+Tela inicial com 9 cartões; cada cartão abre uma página com o diagnóstico
 (regras fixas de omni_checks.py) à esquerda e os controles à direita.
-Controle: direcional/analógico navega, A confirma, B volta, Select+Start sai.
-Os botões A/B seguem a inversão do ES ou do dArkOS.
+Controle: direcional/analógico navega, A confirma, B volta; o power abre Energia.
+Os botões A/B seguem a inversão do sistema ou do Omni36OS.
 
 Variáveis: OMNI_FAKE=1 (dados de mentira, para desenhar no PC),
 OMNI_WINDOWED=1, OMNI_DEMO="right,ok,wait800,shot,..." + OMNI_SHOT_DIR (roteiro
@@ -15,6 +15,7 @@ import json
 import math
 import os
 import signal
+import struct
 import threading
 import time
 
@@ -27,7 +28,13 @@ if not FAKE:
     import omni_backup
     import omni_checks
     import omni_games
+    import omni_ports_fix
+    import omni_sistema
     import omni_tools
+else:   # simulador: a ficha da Steam vem de verdade, mas o cache fica no PC
+    os.environ.setdefault("OMNI_META_DIR", os.path.expanduser("~/.cache/omni36os-steam"))
+import omni_meta  # noqa: E402
+import omni_combos  # noqa: E402
 
 # --- paleta ---
 
@@ -68,39 +75,51 @@ def saved_theme():
 
 
 apply_theme(saved_theme())
-LEVEL = {"ok": hexc("34d399"), "aviso": hexc("fbbf24"), "problema": hexc("f87171"), "info": hexc("60a5fa")}
-LEVEL_ICON = {"ok": "check", "aviso": "alert-triangle", "problema": "x", "info": "info-circle"}
+LEVEL = {"ok": hexc("34d399"), "aviso": hexc("fbbf24"), "problema": hexc("f87171"), "info": hexc("60a5fa"),
+         "dica": hexc("c084fc")}   # dica: mini explicação do item escolhido
+LEVEL_ICON = {"ok": "check", "aviso": "alert-triangle", "problema": "x", "info": "info-circle", "dica": "bulb"}
 
 CARDS = [
     # id, título, ícone, cor 1, cor 2
-    ("checkup", "Verificar", "stethoscope", "22d3ee", "3b82f6"),
+    ("ports", "Ports", "device-gamepad-2", "c084fc", "7c3aed"),     # abre a biblioteca
     ("bateria", "Bateria", "battery-charging", "a3e635", "16a34a"),
-    ("som", "Som", "volume", "f472b6", "a855f7"),
-    ("tela", "Tela e sistema", "sun", "fbbf24", "f97316"),
+    ("tela", "Sistema", "settings", "fbbf24", "f97316"),
     ("desempenho", "Desempenho", "gauge", "fb7185", "e11d48"),
-    ("pendrive", "Pendrive USB", "usb", "818cf8", "4f46e5"),
-    ("jogos", "Jogos", "device-gamepad-2", "c084fc", "7c3aed"),
-    ("testar", "Testar ports", "player-play", "34d399", "059669"),
+    ("pendrive", "USB", "usb", "818cf8", "4f46e5"),
+    ("cartoes", "Cartões SD", "device-sd-card", "2dd4bf", "0284c7"),
+    ("checkup", "Verificar", "stethoscope", "22d3ee", "3b82f6"),
     ("ferramentas", "Ferramentas", "adjustments", "94a3b8", "475569"),
     ("ajuda", "Ajuda", "help-circle", "60a5fa", "a78bfa"),
 ]
 COLS = 3
 # Páginas abertas de dentro de outro card: B volta para o card de origem e os
 # alertas delas aparecem no ponto do card de origem.
-SUBPAGES = {"cartoes": ("Cartões SD", "device-sd-card", "2dd4bf", "0284c7", "desempenho"),
-            "backup": ("Backup", "device-floppy", "60a5fa", "a78bfa", "ajuda"),
-            "retroarch": ("RetroArch", "adjustments", "c084fc", "7c3aed", "ajuda")}
+TWO_COLS = {"tela"}   # cartões sem painel de diagnóstico: as ações vêm em duas colunas
+SUBPAGES = {            "calibracao": ("Calibrar a bateria", "battery-2", "a3e635", "16a34a", "bateria"),
+            "usbrede": ("Rede pelo cabo USB", "network", "38bdf8", "4f46e5", "pendrive"),
+            "seguranca": ("Segurança", "lock", "fbbf24", "f97316", "tela"),
+            "backup": ("Backup", "device-floppy", "60a5fa", "a78bfa", "tela"),
+            "atalhos": ("Atalhos", "keyboard", "fbbf24", "f97316", "tela"),
+            "testar": ("Testar ports", "player-play", "34d399", "059669", "ferramentas")}
 PARENT = {cid: v[4] for cid, v in SUBPAGES.items()}
+SOURCE_NAMES = {"roms": "ROMS", "roms2": "ROMS2", "ambos": "ROMS e ROMS2"}
+ZRAM_SIZES = [0, 256, 512, 768]   # MB do zram (Desempenho); 0 = desligado, o padrão
+LIVE = {"usbrede": 3.0, "calibracao": 10.0}   # subpáginas com estado que muda sozinho: relê a cada N s
+
+
+LIB_CARD = ("jogos", "Jogos", "device-gamepad-2", "c084fc", "7c3aed")   # cor da biblioteca (tela inicial)
 
 
 def card_info(cid):
     """(id, título, ícone, cor 1, cor 2) de um card ou subpágina."""
+    if cid == "jogos":
+        return LIB_CARD
     if cid in SUBPAGES:
         return (cid, *SUBPAGES[cid][:4])
     return next(c for c in CARDS if c[0] == cid)
 FPS_ACTIVE, FPS_IDLE, IDLE_AFTER = 30, 10, 4.0   # quadros/s; segundos sem botão até ficar parado
 LIB_POS = "/tmp/omni36os-biblioteca.json"
-HUB = os.environ.get("OMNI_HUB", "")         # boot/atalho/saida: tela inicial; jogo: por cima de um jogo
+HUB = os.environ.get("OMNI_HUB", "")         # boot: shell do sistema; jogo: por cima de um jogo (botão de power)
 POWER_PRESS = "/dev/shm/omni36os-power-press"   # power_button.py: menu pedido pelo botão de power
 POWER_PENDING = "/dev/shm/omni36os-power-pending"
 POWER_FLAG = "/dev/shm/omni36os-power-menu"     # abrir já no menu de energia
@@ -108,7 +127,6 @@ PANIC_MSG = "/dev/shm/omni36os-panic-msg"
 RESUME = os.environ.get("OMNI_RESUME", "")   # "testar": o Omni36OS voltou de um teste de port
 
 import omni_help
-from omni_help import TELEGRAM
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 
@@ -122,7 +140,7 @@ def omni_version():
 
 
 def about_findings():
-    """Painel da Ajuda: qual Omni36OS e qual dArkOS estão rodando."""
+    """Painel da Ajuda: qual Omni36OS e qual Omni36OS estão rodando."""
     ver = omni_version()
     inst = time.strftime("%d/%m/%Y %H:%M", time.localtime(os.path.getmtime(os.path.join(HERE, "omni_ui.py"))))
     out = [("info", f"Omni36OS versão {ver}, instalado em {inst}.")]
@@ -132,22 +150,24 @@ def about_findings():
     try:
         with open("/home/ark/.config/.VERSION") as f:
             d = f.read().strip()
-        out.append(("info", f"dArkOS de {d[2:4]}/{d[:2]}/{d[4:]}." if len(d) == 8 else f"dArkOS {d}."))
+        out.append(("info", f"Omni36OS de {d[2:4]}/{d[:2]}/{d[4:]}." if len(d) == 8 else f"Omni36OS {d}."))
     except OSError:
         pass
-    out.append(("info", "Comunidade R36S Brasil no Telegram: " + TELEGRAM))
     return out
 
+FAKE_CARD = os.path.expanduser("~/Apps/Omni36OS/cartao/EASYROMS/ports")   # cópia do cartão no PC
 FAKE_GAMES = [
-    {"name": "snes", "full": "Super NES", "path": "/roms2/snes", "n_unknown": 0, "unknown": [], "games": [
-        {"path": "/roms2/snes/Chrono Trigger.sfc", "name": "Chrono Trigger", "size": 4194304, "fav": 1,
-         "plays": 12, "time": 18400, "last": "20261024T201000",
-         "desc": "Crono e os amigos viajam no tempo para impedir o fim do mundo."},
-        {"path": "/roms2/snes/Super Mario World.sfc", "name": "Super Mario World", "size": 524288, "plays": 3,
+    {"name": "ports", "full": "Ports", "path": "/roms2/ports", "n_unknown": 0, "unknown": [], "games": [
+        {"path": "/roms2/ports/Stardew Valley.sh", "name": "Stardew Valley", "size": 524288000, "fav": 1,
+         "plays": 12, "time": 18400, "last": "20261024T201000"},
+        {"path": "/roms2/ports/Celeste.sh", "name": "Celeste", "size": 1200000000, "plays": 3,
          "time": 3600, "last": "20261020T101000"},
-        {"path": "/roms2/snes/Zelda.sfc", "name": "The Legend of Zelda: A Link to the Past", "size": 1048576}]},
-    {"name": "psx", "full": "PlayStation", "path": "/roms2/psx", "n_unknown": 2, "unknown": ["leia.txt.bak", "x.zip"],
-     "games": [{"path": "/roms2/psx/Crash.chd", "name": "Crash Bandicoot", "size": 420000000, "fav": 1}]},
+        {"path": "/roms2/ports/Undertale.sh", "name": "Undertale", "size": 180000000, "fav": 1},
+        {"path": FAKE_CARD + "/Daytona USA.sh", "name": "Daytona USA", "size": 90000000},   # pasta info
+        {"path": FAKE_CARD + "/Halo - Combat Evolved.sh", "name": "Halo - Combat Evolved", "size": 50000000},
+        {"path": FAKE_CARD + "/McpeLauncher.sh", "name": "Minecraft", "size": 300000000},
+        {"path": "/roms2/ports/Half-Life.sh", "name": "Half-Life", "size": 400000000},
+        {"path": "/roms2/ports/Hollow Knight.sh", "name": "Hollow Knight", "size": 900000000}]},
 ]
 
 FAKE_PORTS = [{"dir": "/roms2/ports", "label": "/roms2/ports (cartão de jogos)", "es": True,
@@ -185,11 +205,27 @@ class Data:
     def check(self, name):
         if FAKE:
             time.sleep(0.4)
-            return {"nivel": "aviso", "acoes": ["restaurar_audio", "ligar_pendrive"] if name == "checkup" else [], "achados": [
-                ("ok", "Bateria em 87%."), ("ok", "Temperatura normal: 52 °C."),
-                ("aviso", "Cartão de jogos: 62.5 GB, fabricante não identificado (código 0xfe, nome \"SD\"), "
-                          "comum em cartões genéricos."),
-                ("problema", "A saída de som está em SPK, o certo é SPK_HP.")]}
+            sd = ("aviso", "Cartão de jogos sem marca identificada (código 0xfe), comum em cartões genéricos.")
+            som = ("problema", "A saída de som está em SPK, o certo é SPK_HP.")
+            fake = {
+                "checkup": (["restaurar_audio"], [("problema", "Sistema: " + som[1]), ("aviso", "Cartões SD: " + sd[1]),
+                                                  ("info", "Cada card mostra o detalhe do seu assunto.")]),
+                "bateria": ([], [("ok", "Bateria em 87%, descarregando."), ("ok", "Brilho em 40%."),
+                                 ("ok", "Processador em modo ondemand no menu.")]),
+                "atualizar": (["restaurar_audio"], [("ok", "Volume em 60%."), som]),
+                "desempenho": ([], [("ok", "Temperatura normal: 52 °C."),
+                                    ("ok", "Processador a 1008 MHz, modo Equilibrado."),
+                                    ("info", "Limites: processador 1296 MHz, GPU 520 MHz. ZRAM 0 MB (0 MB em uso).")]),
+                "cartoes": ([], [sd, ("ok", "Cartão do sistema: 16 GB, SanDisk."),
+                                 ("ok", "Espaço do sistema: 4.7 GB livres (50% usado)."),
+                                 ("ok", "Espaço de jogos: 31.2 GB livres (50% usado).")]),
+                "pc": (["ligar_pendrive"], [("ok", "A partição /roms2 (31.2 GB livres) vai aparecer no PC como pendrive."),
+                                            ("info", "Ligar reinicia o aparelho; o Wi-Fi para até desligar.")]),
+            }
+            acts, found = fake.get(name, ([], [("ok", "Tudo certo (dados de teste).")]))
+            nivel = "problema" if any(l == "problema" for l, _ in found) else \
+                "aviso" if any(l == "aviso" for l, _ in found) else "ok"
+            return {"nivel": nivel, "acoes": acts, "achados": found}
         return omni_checks.CHECKS[name]()
 
     def action(self, name):
@@ -206,10 +242,14 @@ class Data:
 
     def get(self, what):
         if FAKE:
+            if what in self.__dict__.get("fake_vals", {}):   # simulador: guarda o que foi mudado
+                return self.fake_vals[what]
+            if what.startswith("at_"):
+                return omni_combos.defaults()[what[3:]]
             return {"brilho": 40, "volume": 60, "gov": "ondemand", "govs": ["powersave", "ondemand", "performance"],
                     "part": "roms2", "pendrive": False, "cpu_max": 1296, "cpu_freqs": [1296, 1416, 1512],
-                    "gpu_max": 520, "gpu_freqs": [400, 480, 520, 600], "gamma": 1.0, "led": "verde",
-                    "hub": "desligada", "atalho": "desligado", "power": "desligar", "tema": THEME}[what]
+                    "gpu_max": 520, "gpu_freqs": [400, 480, 520, 600], "zram": 0, "fonte": "roms", "gamma": 1.0, "contraste": 50, "led": "verde",
+                    "power": "desligar", "tema": THEME}[what]
         if what == "brilho":
             return omni.get_brightness()
         if what == "volume":
@@ -219,7 +259,7 @@ class Data:
         if what == "govs":
             return [g for g in ("powersave", "ondemand", "schedutil", "performance") if g in omni.get_cpu_governors()]
         if what == "part":
-            return omni.usb_run("part") or "roms2"
+            return omni.usb_run("part") or ("roms2" if os.path.ismount("/roms2") else "roms")
         if what == "pendrive":
             return omni.usb_facts()["modo_pendrive_ligado"]
         if what == "cpu_max":
@@ -230,16 +270,20 @@ class Data:
             return omni.get_gpu_max()
         if what == "gpu_freqs":
             return omni.gpu_freqs()
+        if what == "zram":
+            return omni_sistema.zram_get()
+        if what == "fonte":
+            return omni.get_game_source()
         if what == "gamma":
             return omni.get_gamma()
+        if what == "contraste":
+            return int(round((self.get("gamma") - 0.5) * 100))
         if what == "led":
             return omni.get_led()
         if what == "tema":
             return THEME
-        if what == "hub":
-            return omni.get_hub()
-        if what == "atalho":
-            return omni.get_hotkey()
+        if what.startswith("at_"):          # Sistema > Atalhos
+            return omni.get_atalhos()[what[3:]]
         if what == "power":
             return omni.get_power_button()
 
@@ -252,6 +296,7 @@ class Data:
                     f.write(value)
             return "tema"
         if FAKE:
+            self.__dict__.setdefault("fake_vals", {})[what] = value
             return "ok"
         if what == "brilho":
             return omni.set_screen_brightness({"value": max(10, value)})
@@ -265,14 +310,18 @@ class Data:
             return omni.set_cpu_max({"mhz": value})
         if what == "gpu_max":
             return omni.set_gpu_max({"mhz": value})
+        if what == "zram":
+            return omni_sistema.zram_set(value)
+        if what == "fonte":
+            return omni.set_game_source({"source": value})
         if what == "gamma":
             return omni.set_gamma({"value": value})
+        if what == "contraste":
+            return self.set("gamma", 0.5 + value / 100)
         if what == "led":
             return omni.set_led({"color": value})
-        if what == "hub":
-            return omni.set_hub({"mode": value})
-        if what == "atalho":
-            return omni.set_hotkey({"mode": value})
+        if what.startswith("at_"):
+            return omni.set_atalho({"key": what[3:], "value": value})
         if what == "power":
             return omni.set_power_button({"mode": value})
 
@@ -287,7 +336,7 @@ D = Data()
 if not FAKE:
     try:
         omni.migrate_cpu_settings()   # modo do processador de versões antigas
-        omni.relax_clocks()           # o perfmax do ES deixou tudo no máximo
+        omni.relax_clocks()           # o perfmax de um port deixou tudo no máximo
     except OSError:
         pass
 
@@ -312,14 +361,39 @@ BOOT_UNDO = ("Segure L1 ao ligar para pular o Omni36OS, ou B para o BaRT. Se a t
 DANGER = {
     "dArkOSen_dtb_patcher_v1.2.sh": (10, True, "Um DTB errado deixa a tela preta ou o console sem ligar.", BOOT_UNDO),
     "60hz_display_timing_patcher.sh": (10, True, "A tela pode não aceitar o novo tempo e ficar preta.", BOOT_UNDO),
-    "Restore dArkOSen.sh": (10, True, "Troca o kernel e o ES pelos originais do dArkOSen: ajustes feitos depois "
+    "Restore dArkOSen.sh": (10, True, "Troca o kernel e o sistema pelos originais do dArkOSen: ajustes feitos depois "
                                       "somem.", BOOT_UNDO),
     "fix-sd2-mount.sh": (10, False, "Recompila os DTB do boot; se falhar no meio, o boot pode quebrar.", BOOT_UNDO),
     "Enable Quick Mode.sh": (5, False, "Muda o que sobe no boot.", "Rode de novo para voltar ao modo normal."),
     "Remove Kodi.sh": (5, False, "Apaga o Kodi e as configurações dele.", "Só reinstalando o Kodi."),
 }
-HUB_NAMES = {"desligada": "Desligada (ES direto)", "sempre": "Omni36OS no boot", "alertas": "Só com alertas"}
-HOTKEY_NAMES = {"desligado": "Desligado", "ligado": "No menu do ES", "jogo": "Menu e jogos (beta)"}
+ONOFF = {True: "Ligado", False: "Desligado"}
+HUD_FLAG, CAP_FLAG, SHOT_FLAG = "/dev/shm/omni36os-hud", "/dev/shm/omni36os-fpscap", "/dev/shm/omni36os-shot"
+
+
+def flag(path):
+    try:
+        with open(path) as f:
+            return f.read().strip()
+    except OSError:
+        return ""
+
+
+def put_flag(path, value):
+    with open(path, "w") as f:
+        f.write(str(value))
+    try:
+        os.chmod(path, 0o666)
+    except OSError:
+        pass
+PAD_DEV = "/dev/input/by-path/platform-odroidgo3-joypad-event-joystick"   # a gravação de atalho lê direto daqui
+# simulador: comandos do teclado -> botões do controle (KP8 = FN), só na gravação de atalho
+SIM_BUTTONS = {"ok": 305, "back": 304, "x": 307, "y": 308, "l1": 310, "r1": 311, "start": 705, "select": 704,
+               "up": 544, "down": 545, "left": 546, "right": 547, "fn": 708}
+# o que o ogage (serviço do dArkOSen) já faz com o FN: nenhum atalho do Omni36OS usa essas combinações
+FN_SYSTEM = [("info", "FN + cima/baixo: brilho da tela. FN + volume: brilho fino."),
+             ("info", "FN + L1/R1, esquerda/direita, A, L3 e R3: ajustes do sistema (gamma, Wi-Fi, Bluetooth, saves)."),
+             ("info", "SELECT + FN: fala a carga da bateria. FN + power: modo pânico (fecha o jogo e acalma o console).")]
 
 
 class Choice:
@@ -334,6 +408,68 @@ def subpage(action, cid):
     """Marca o botão que abre uma subpágina (o B dela volta com ele selecionado)."""
     action.sub = cid
     return action
+
+
+def tip(item, text):
+    """Mini explicação do controle: aparece no topo do painel da esquerda quando ele está escolhido."""
+    item.tip = text
+    return item
+
+
+# Mini explicações por rótulo (o começo basta); o card USB põe as dele direto nos itens.
+TIPS = {
+    "Atualizar status": "Roda a verificação deste card de novo e atualiza o painel.",
+    "Testar o controle": "Mostra cada botão, direcional e analógico na tela enquanto você aperta. Bom para achar "
+                         "botão falhando ou analógico descalibrado.",
+    "Consertar atalhos": "Reinicia o serviço que cuida de brilho e volume pelos botões. Use quando eles pararem "
+                         "de responder.",
+    "Calibrar a bateria": "Mede a sua bateria de cheia até vazia para a % ficar certa. Leva algumas horas de uso "
+                          "sem o carregador.",
+    "Iniciar a calibração": "Comece com a bateria cheia e sem o carregador. Use o console normalmente até "
+                            "desligar; a medição continua sozinha.",
+    "Parar a calibração": "Interrompe a medição. O que já foi medido fica guardado.",
+    "Aplicar a curva": "Usa a última calibração completa: a % da bateria passa a seguir a sua bateria.",
+    "Voltar à curva de fábrica": "Apaga a curva calibrada e volta à % padrão do sistema.",
+    "Trocar a senha": "Troca a senha do usuário ark, usada no SSH e no sftp.",
+    "Senha do Samba": "Troca a senha das pastas compartilhadas na rede (Samba).",
+    "Trava por senha": "Pede a senha ao ligar o console, antes de abrir o menu.",
+    "Processador no menu": "Como o processador trabalha enquanto você está no menu. Economia gasta menos "
+                           "bateria; os jogos usam o ajuste de cada port.",
+    "Limite do processador": "Frequência máxima do processador. Acima de 1296 MHz é overclock: esquenta mais.",
+    "Limite da GPU": "Frequência máxima da GPU. Acima de 520 MHz é overclock: esquenta mais.",
+    "Memória extra (zram)": "Usa parte da RAM comprimida como memória extra. Ajuda ports pesados que fecham por "
+                            "falta de memória, com um pouco mais de uso do processador.",
+    "Liberar overclock": "Libera 1512 MHz no processador e 600 MHz na GPU. Pode esquentar e travar; o aviso "
+                         "explica como desfazer.",
+    "Ligar: modo universal": "O console dá o IP ao PC (funciona em qualquer PC). Depois use ssh ark@10.44.44.1.",
+    "Ligar: internet pelo PC": "Usa a internet do PC no console. O PC precisa compartilhar a conexão pelo cabo.",
+    "Serviços remotos: ligar": "Liga o gerenciador de arquivos pela web e o Samba, para mexer no cartão pelo PC.",
+    "Serviços remotos: desligar": "Desliga a web e o Samba. O SSH continua.",
+    "Desligar a rede USB": "Desliga a rede e devolve a porta OTG ao modo normal.",
+    "Compatibilidade": "Confere se o kernel, a porta e os programas deste sistema suportam a rede USB.",
+    "Jogos lidos de": "Em qual cartão o Omni36OS procura os ports: ROMS, ROMS2 ou os dois.",
+    "Detalhes": "Tamanho, espaço livre, sistema de arquivos e saúde dos cartões.",
+    "Testar velocidade": "Mede a leitura e a escrita de cada cartão. Cartão lento deixa os ports lentos "
+                         "para abrir.",
+    "Verificar e reparar": "Reinicia, procura e corrige erros na partição dos jogos (/roms2, ou /roms sem segundo cartão) e volta sozinho. Leva alguns "
+                           "minutos.",
+    "Arquivos": "Copiar, mover, renomear e apagar nos cartões e no pendrive, aqui dentro.",
+    "Testar ports": "Abre um port por 15 s, mostra a causa provável se falhar e oferece a correção.",
+    "Escolher o port": "Escolha um port da lista para abrir e testar.",
+    "Limpar avisos de falha": "Apaga os avisos de ports que falharam no teste.",
+    "Botão de power": "O que o botão de power faz: desligar como no Omni36OS ou abrir o menu de energia.",
+    "Manual": "Como usar cada card do Omni36OS.",
+    "Cuidados": "O que pode dar errado com overclock, DTB e cartões, e como evitar.",
+    "Novidades": "O que mudou em cada versão.",
+    "Créditos": "Quem fez o Omni36OS e os projetos em que ele se apoia.",
+}
+
+
+def add_tips(items):
+    for it in items:
+        if not getattr(it, "tip", None):
+            it.tip = next((t for k, t in TIPS.items() if it.label.startswith(k)), None)
+    return items
 
 
 def tagged(action, name):
@@ -361,6 +497,7 @@ class App:
         self.sel_x, self.sel_y = 0.0, 0.0
         self.accent = [hexc(CARDS[0][3]), hexc(CARDS[0][4])]
         self.page = None              # id do cartão aberto
+        self.vol, self.vol_at = None, 0.0   # volume da pílula: lido no início e após os botões de volume
         self.last_page = None         # a página que está saindo (na transição)
         self.snap = None              # (página, última) já desenhadas nas camadas
         self.warm = [c[0] for c in CARDS] + list(SUBPAGES)  # páginas a pré-montar
@@ -373,7 +510,7 @@ class App:
         self.find_top = self.find_max = 0   # rolagem do diagnóstico (L1/R1)
         self.find_scroll = 0.0
         self.picker = None            # lista de ports para testar
-        self.view = "lib"             # lib: biblioteca de jogos (tela inicial); menu: os cards (START)
+        self.view = "menu"            # menu: os cards (tela inicial); lib: a biblioteca (card Ports)
         self.lib = {"sys": 0, "game": 0, "top": 0.0, "stop": 0.0}
         try:                          # volta para o mesmo jogo depois de jogar
             with open(LIB_POS) as f:
@@ -381,6 +518,7 @@ class App:
         except (OSError, ValueError):
             pass
         self.toast = None             # (texto, nível, até)
+        self.player = os.environ.get("OMNI_JOGADOR", "") if FAKE else omni_sistema.player_name()
         self.want_power = self.want_msg = False
         self.msg_t = -9.0
         signal.signal(signal.SIGUSR1, lambda *_: setattr(self, "want_power", True))
@@ -433,13 +571,36 @@ class App:
             return self._cartoes()
         if cid == "testar":
             return self._testar()
+        if cid == "ports":
+            idx = self.games()
+            n = sum(len(s["games"]) for s in idx)
+            return {"nivel": "ok", "acoes": [], "achados": [("ok", f"{n} Jogos e ports na biblioteca.")]}
         if cid == "backup":
             return self._backup()
-        if cid == "jogos":
-            return self._jogos()
         if cid == "ferramentas":
             return self._ferramentas()
-        name = {"som": "sem_som", "tela": "atualizar", "pendrive": "pc"}.get(cid, cid)
+        if cid in ("usbrede", "calibracao"):
+            if FAKE:
+                return {"nivel": "ok", "acoes": [], "achados": [("ok", f"{cid}: tudo certo (dados de teste).")]}
+            fn = {"usbrede": omni_sistema.usbnet_status, "calibracao": omni_sistema.cal_status}[cid]
+            return omni_checks.finish(fn(), [], {})
+        if cid == "atalhos":
+            hud = FAKE or os.path.exists(os.path.join(os.path.dirname(os.path.abspath(__file__)), "hud", "omni_hud.so"))
+            return {"nivel": "ok" if hud else "aviso", "acoes": [], "achados": [
+                ("ok" if hud else "aviso", "Os atalhos valem dentro dos jogos. Aqui você liga, desliga e troca os botões."
+                 if hud else "Falta o hud/omni_hud.so: contador, limite e captura não funcionam."),
+                *FN_SYSTEM]}
+        if cid == "seguranca":
+            locked = (os.environ.get("OMNI_TRAVA") == "1") if FAKE else omni_sistema.lock_on()
+            return {"nivel": "ok", "acoes": [], "achados": [
+                ("ok", "Trava ligada: o console pede a senha ao ligar. A senha fica em EASYROMS/senha/senha.txt."
+                 if locked else "Trava desligada: o console abre direto nos jogos."),
+                ("ok", "Usuário do sistema e do Samba: ark. Trocar a senha muda as duas.")]}
+        if cid == "tela" and not FAKE:    # Sistema = tela + som: as duas verificações juntas
+            a, b = D.check("atualizar"), D.check("sem_som")
+            return omni_checks.finish(a["achados"] + b["achados"], a["acoes"] + b["acoes"],
+                                      {**a.get("fatos", {}), **b.get("fatos", {})})
+        name = {"tela": "atualizar", "pendrive": "pc"}.get(cid, cid)
         return D.check(name)
 
     def check_all(self):
@@ -494,12 +655,13 @@ class App:
         else:
             self.reload_findings()
 
-    def reload_findings(self):
+    def reload_findings(self, quiet=False):
         cid = self.page
         if cid == "ajuda":
             self.findings = {"nivel": "ok", "achados": about_findings(), "acoes": []}
             return
-        self.findings = None
+        if not quiet:                 # quiet: mantém o diagnóstico na tela até o novo chegar
+            self.findings = None
 
         def done(res):
             if not isinstance(res, Exception):
@@ -513,12 +675,11 @@ class App:
         out = []
         omni_checks.check_temp(f, out)
         out.append(("ok", f"Processador a {f['freq_mhz']} MHz, modo {GOV_NAMES.get(f['governador'], f['governador'])}."))
+        omni_checks.check_overclock(f, out, [])   # tirar o OC é o seletor "Limite do processador" daqui
         acts = []
-        omni_checks.check_overclock(f, out, acts)
         z = omni.zram_facts()
         out.append(("info", f"Limites: processador {f['cpu_max_mhz']} MHz, GPU {f['gpu_max_mhz']} MHz. "
                             f"ZRAM {z['zram_mb']} MB ({z['zram_usado_mb']} MB em uso)."))
-        out.append(("ok", "Abra \"Cartões SD\" se os jogos demoram para carregar."))
         return omni_checks.finish(out, acts, f)
 
     def _testar(self):
@@ -528,18 +689,18 @@ class App:
         self.port_count = sum(len(g["ports"]) for g in groups)
         acks = set() if FAKE else omni.port_acks()
         for g in groups:
-            out.append(("ok", f"{len(g['ports'])} ports em {g['label']}, a pasta que o ES mostra."))
+            out.append(("ok", f"{len(g['ports'])} Ports em {g['label']}."))
         names = {os.path.basename(p)[:-3] for g in groups for p in g["ports"]}
         fails = sorted(n for n, r in res.items() if r[0] == "falhou" and n in names
                        and f"{n}|{r[1]}" not in acks)
         seen = sum(1 for n, r in res.items() if r[0] == "falhou" and n in names and f"{n}|{r[1]}" in acks)
         if seen:
-            out.append(("info", f"{seen} falha(s) já vista(s): continuam marcadas na lista até um novo teste."))
+            out.append(("info", f"{seen} Falha(s) já vista(s): continuam marcadas na lista até um novo teste."))
         oks = sum(1 for n, r in res.items() if r[0] == "ok" and n in names)
         for n in fails:
             out.append(("aviso", f"{n} falhou no teste de {res[n][1]}. Relatório em omni36os/logs/{n}/."))
         if oks:
-            out.append(("ok", f"{oks} port(s) passaram no último teste."))
+            out.append(("ok", f"{oks} Port(s) passaram no último teste."))
         out.append(("info", "O teste abre o port por 15 s e fecha sozinho. Se ele fechar antes, é falha."))
         return omni_checks.finish(out, [], {}) if not FAKE else {
             "nivel": "aviso" if fails else "ok", "achados": out, "acoes": []}
@@ -551,54 +712,10 @@ class App:
             self.games_idx = omni_games.index(force)
         return self.games_idx
 
-    def _jogos(self):
-        G = omni_games if not FAKE else None
-        idx = self.games(force=getattr(self, "games_reindex", False))
-        self.games_reindex = False
-        games = [g for s in idx for g in s["games"]]
-        total = sum(g["size"] for g in games)
-        self.game_count = len(games)
-        size = (G.human_size(total) if G else f"{total / 1e9:.1f} GB")
-        out = [("ok", f"{len(games)} jogos em {sum(1 for s in idx if s['games'])} sistemas · {size}.")]
-        if FAKE:
-            out += [("problema", "PlayStation: falta a BIOS scph5501.bin (em /roms2/bios). Sem ela os jogos não abrem."),
-                    ("aviso", "PlayStation: 2 arquivo(s) que o ES não mostra (extensão errada ou pasta trocada)."),
-                    ("info", "Último jogado: Chrono Trigger (Super NES), 24/10/2026.")]
-            return {"nivel": "problema", "achados": out, "acoes": []}
-        sm = G.summary(idx)
-        if sm["ultimo"]:
-            last = max((g["last"] for g in games if g.get("last")), default="")
-            out.append(("info", f"Último jogado: {sm['ultimo'][0]} ({sm['ultimo'][1]}), {G.human_date(last)}."))
-        for s, missing, odd in G.bios_check(idx):
-            if missing:
-                out.append(("problema", f"{s['full']}: falta a BIOS {', '.join(missing)} (em {G.bios_dir()}). "
-                                        "Sem ela os jogos não abrem."))
-            if odd:
-                out.append(("aviso", f"{s['full']}: BIOS {', '.join(odd)} com versão desconhecida; se der erro, "
-                                     "troque por uma conhecida."))
-        for s in idx:
-            if s["n_unknown"]:
-                cut = lambda n: n if len(n) <= 22 else n[:20] + "…"
-                ex = ", ".join(cut(os.path.basename(u)) for u in s["unknown"][:2])
-                out.append(("aviso", f"{s['full']}: {s['n_unknown']} arquivo(s) que o ES não mostra ({ex}...). "
-                                     "Extensão errada ou pasta trocada."))
-        dups = G.duplicates(idx)
-        if dups:
-            out.append(("info", f"{len(dups)} jogo(s) parecem repetidos (mesmo nome, outra versão). "
-                                "Veja em \"Repetidos\"."))
-        big = max((s for s in idx if s["games"]), key=lambda s: sum(g["size"] for g in s["games"]), default=None)
-        if big:
-            out.append(("info", f"O que mais ocupa: {big['full']}, "
-                                f"{G.human_size(sum(g['size'] for g in big['games']))}."))
-        nc = sum(n for _s, n in G.no_cover(idx))
-        if nc:
-            out.append(("info", f"{nc} jogo(s) sem capa no ES."))
-        return omni_checks.finish(out, [], {})
-
     def _backup(self):
         if FAKE:
-            return {"nivel": "ok", "acoes": [], "achados": [("info", "Os backups ficam em /roms2/backup/omni36os.")]}
-        out = [("info", f"Os backups ficam em {omni_backup.backup_dir()} (dá para copiar pelo pendrive).")]
+            return {"nivel": "ok", "acoes": [], "achados": [("info", "Omni36OS: nenhum backup ainda.")]}
+        out = [("info", f"Ao exportar, você escolhe onde salvar. Último lugar: {omni_backup.backup_dir()}.")]
         last = omni_backup.last_backups()
         for mod, (name, *_x) in omni_backup.MODULES.items():
             if mod in last:
@@ -649,117 +766,161 @@ class App:
             act = Action(D.label(a), "bolt", lambda a=a: self.do_action(a),
                          confirm=f"{D.label(a)}?")
             act.suggested, act.act = True, a
+            act.tip = "Sugerido pela verificação deste card: resolve um dos avisos do painel."
             extra.append(act)
         self.items = extra + base
         self.item_sel = min(self.item_sel, len(self.items) - 1)
 
-    def systool(self, tool, label, icon, what):
-        """Ferramenta do dArkOSen, se existir neste sistema. O Omni36OS volta ao fechar."""
-        if not (FAKE or omni.systool_available(tool)):
-            return []
-        return [Action(label, icon, lambda: self.handoff(tool),
-                       confirm=f"Abrir {what} do dArkOSen?\nA Omni36OS fecha, a ferramenta abre em tela cheia "
-                               "e o Omni36OS volta quando ela fechar.")]
-
     def build_items(self, cid):
+        return add_tips(self._build_items(cid))
+
+    def _build_items(self, cid):
         A = Action
-        recheck = A("Verificar de novo", "refresh", self.reload_findings)
+        recheck = A("Atualizar status", "refresh", self.reload_findings)
         if cid == "checkup":
-            return (self.systool("controle", "Testar o controle", "device-gamepad-2", "o teste de controle")
-                    + self.systool("atalhos", "Consertar atalhos", "adjustments", "o conserto dos atalhos globais")
-                    + [recheck])
+            return [A("Testar o controle", "device-gamepad-2", self.open_pad),
+                    A("Consertar atalhos", "adjustments", lambda: self.native("fix_hotkeys", "Reiniciando os atalhos..."),
+                      confirm="Reiniciar o serviço de atalhos (brilho e volume pelos botões)?"),
+                    recheck]
         if cid == "bateria":
-            # as sugestões de economia mexem nestes mesmos controles
-            out = [Choice("Processador no menu", "cpu", "gov", D.get("govs"), GOV_NAMES),
-                   Slider("Brilho", "sun", "brilho", lo=10)]
-            out += self.systool("calibrar_bateria", "Calibrar a bateria", "battery-2", "a calibração da bateria")
+            out = [subpage(A("Calibrar a bateria", "battery-2", lambda: self.open_page("calibracao")), "calibracao")]
             return out + [recheck]
-        if cid == "som":
-            return [Slider("Volume", "volume", "volume"),
-                    tagged(A("Restaurar áudio", "rotate", lambda: self.do_action("restaurar_audio"),
-                             confirm="Restaurar o áudio do sistema?\nSaída de som padrão e volume em 40%."),
-                           "restaurar_audio"), recheck]
         if cid == "tela":
-            out = [Slider("Brilho", "sun", "brilho", lo=10),
-                   Choice("Gamma (contraste)", "adjustments", "gamma", GAMMAS, {g: f"{g:.1f}" for g in GAMMAS}),
+            out = [Slider("Volume", "volume", "volume"),
+                   Slider("Brilho", "sun", "brilho", lo=10),
+                   Slider("Contraste", "adjustments", "contraste"),
+                   Choice("Tema", "sun", "tema", list(THEMES), {"escuro": "Escuro", "claro": "Claro"}),
                    Choice("Cor do LED", "bulb", "led", ["verde", "vermelho"], {"verde": "Verde", "vermelho": "Vermelho"}),
                    A("Detalhes da tela", "device-tv", lambda: self.run_info("Tela e modelo", "detect_hardware_and_screen"))]
-            out += self.systool("info", "Informações do sistema", "info-circle", "as informações do sistema")
-            out += self.systool("splash", "Tela de boot", "power", "o gerenciador da tela de boot")
-            out += self.systool("backup", "Backup e migração", "device-floppy", "o assistente de backup e migração")
-            return out
+            return out + [subpage(A("Segurança", "lock", lambda: self.open_page("seguranca")), "seguranca"),
+                          A(f"Nome do jogador: {self.player or '(sem nome)'}", "users",
+                            lambda: self.ask_name(first=False)),
+                          tagged(A("Restaurar áudio", "rotate", lambda: self.do_action("restaurar_audio"),
+                                   confirm="Restaurar o áudio do sistema?\nSaída de som padrão e volume em 40%."),
+                                 "restaurar_audio"),
+                          subpage(A("Atalhos", "keyboard", lambda: self.open_page("atalhos")), "atalhos"),
+                          subpage(A("Backup", "device-floppy", lambda: self.open_page("backup")), "backup"),
+                          A("Redefinir o sistema", "rotate", self.ask_reset)]
+        if cid == "atalhos":
+            combos = D.get("at_combos")
+            out = [tip(Choice(f"{name} · {omni_combos.text(combos[k])}", icon, "at_" + k, [True, False], ONOFF),
+                       omni_combos.tip(k, combos))
+                   for k, (name, icon, *_x) in omni_combos.ACTIONS.items()]
+            return out + [tip(A("Personalizar um atalho", "pencil", self.pick_atalho),
+                              "Escolha um atalho e aperte a tecla nova: ele vira FN + essa tecla. SELECT + START (fechar "
+                              "o jogo) é fixo. Os nomes nesta página, nas dicas e no manual mudam junto."),
+                          tip(A("Voltar aos botões padrão", "rotate", self.reset_combos,
+                                confirm="Voltar todos os atalhos aos botões padrão?\nO que está ligado ou desligado "
+                                        "não muda."),
+                              "FN + X, FN + B e FN + Y, como vieram.")]
+        if cid == "seguranca":
+            locked = (os.environ.get("OMNI_TRAVA") == "1") if FAKE else omni_sistema.lock_on()
+            return [A("Trocar a senha", "lock", self.ask_password),
+                    A("Senha do Samba", "device-floppy", self.ask_samba),
+                    A("Trava por senha: " + ("ligada" if locked else "desligada"), "lock", self.ask_lock)]
         if cid == "desempenho":
             return [Choice("Processador no menu", "cpu", "gov", D.get("govs"), GOV_NAMES),
                     Choice("Limite do processador", "gauge", "cpu_max", D.get("cpu_freqs"),
                            {f: f"{f} MHz" + (" (OC)" if f > 1296 else "") for f in D.get("cpu_freqs")}),
                     Choice("Limite da GPU", "device-gamepad-2", "gpu_max", D.get("gpu_freqs"),
                            {f: f"{f} MHz" + (" (OC)" if f > 520 else "") for f in D.get("gpu_freqs")}),
-                    subpage(A("Cartões SD", "device-sd-card", lambda: self.open_page("cartoes")), "cartoes")]
+                    Choice("Memória extra (zram)", "database", "zram", ZRAM_SIZES,
+                           {m: f"{m} MB" if m else "Desligada" for m in ZRAM_SIZES}),
+                    A("Liberar overclock (1512 MHz, GPU 600)", "gauge", self.ask_overclock)]
         if cid == "pendrive":
             on = D.get("pendrive")
             tog = A("Desligar pendrive" if on else "Ligar pendrive", "power",
                     lambda: self.do_action("desligar_pendrive" if on else "ligar_pendrive"),
                     confirm=("Desligar o modo pendrive?\nO aparelho reinicia e o Wi-Fi volta." if on else
-                             "Ligar o modo pendrive?\nO aparelho reinicia; Wi-Fi e teclado USB param até desligar."))
+                             "Ligar o modo pendrive?\nO aparelho reinicia; o Wi-Fi para até desligar."))
             tog.act = "desligar_pendrive" if on else "ligar_pendrive"
-            return [tog, Choice("Partição no PC", "device-floppy", "part", ["roms2", "roms"],
-                                {"roms2": "/roms2 (jogos)", "roms": "/roms (sistema)"}),
-                    A("Status", "info-circle", lambda: self.run_info("Pendrive USB", "usb_status")),
-                    tagged(A("Limpar lixo do Mac", "x", lambda: self.do_action("limpar_mac", "Procurando o lixo do Mac... (até 1 minuto)"),
-                             confirm="Apagar os arquivos ._ e .DS_Store que o Mac cria?\nSeus jogos não são tocados."),
-                           "limpar_mac"),
-                    A("Restaurar boot", "arrow-back-up", lambda: self.run_tool_toast("usb_restore"),
-                      confirm="Voltar o arquivo de boot original?\nO aparelho reinicia.", danger=True)]
+            return [tip(tog, "O console vira um pendrive para o PC: ligue o cabo na porta OTG e copie jogos direto "
+                             "para o cartão. Reinicia ao ligar e ao desligar; o Wi-Fi para enquanto estiver ligado."),
+                    tip(subpage(A("Rede pelo cabo USB", "network", lambda: self.open_page("usbrede")), "usbrede"),
+                        "O cabo USB vira uma rede entre o console e o PC: SSH, arquivos pela web e Samba, ou "
+                        "internet do PC no console. Não reinicia."),
+                    tip(A("Montar pendrive", "plug", lambda: self.native("usb_mount", "Montando o pendrive...")),
+                        "Lê um pendrive ligado no console (OTG) em /mnt/usbdrive. Aceita FAT, exFAT e NTFS. "
+                        "É o contrário do modo pendrive."),
+                    tip(A("Desmontar pendrive", "x", lambda: self.native("usb_umount", "Desmontando...")),
+                        "Termina de gravar e solta o pendrive montado. Use antes de tirar do console."),
+                    tip(Choice("Partição no PC", "device-floppy", "part",
+                               ["roms2", "roms"] if FAKE or os.path.ismount("/roms2") else ["roms"],
+                               {"roms2": "/roms2 (segundo cartão)", "roms": "/roms (cartão do sistema)"}),
+                        "Qual partição o PC enxerga no modo pendrive: /roms2 (segundo cartão, se houver) ou /roms "
+                        "(cartão do sistema). Sem segundo cartão, só /roms aparece."),
+                    tip(A("Status", "info-circle", lambda: self.run_info("Pendrive USB", "usb_status")),
+                        "Mostra o estado da porta OTG: modo pendrive, partição exposta e o que está montado."),
+                    tip(tagged(A("Limpar lixo do Mac", "x", lambda: self.do_action("limpar_mac", "Procurando o lixo do Mac... (até 1 minuto)"),
+                                 confirm="Apagar os arquivos ._ e .DS_Store que o Mac cria?\nSeus jogos não são tocados."),
+                               "limpar_mac"),
+                        "Apaga os arquivos ._ e .DS_Store que o Mac deixa ao copiar. Eles aparecem como jogos "
+                        "falsos na lista. Seus jogos não são tocados."),
+                    tip(A("Restaurar boot", "arrow-back-up", lambda: self.run_tool_toast("usb_restore"),
+                          confirm="Voltar o arquivo de boot original?\nO aparelho reinicia.", danger=True),
+                        "Se o modo pendrive deixou a porta presa, volta o arquivo de boot (DTB) original salvo "
+                        "antes da primeira vez e reinicia.")]
         if cid == "cartoes":
-            return [A("Detalhes", "info-circle", lambda: self.run_info("Cartões SD", "check_microsd_info")),
+            return [Choice("Jogos lidos de", "folder", "fonte", list(SOURCE_NAMES), SOURCE_NAMES),
+                    A("Detalhes", "info-circle", lambda: self.run_info("Cartões SD", "check_microsd_info")),
                     A("Testar velocidade", "brand-speedtest", self.speed_test),
-                    A("Verificar e reparar o cartão de jogos", "device-sd-card", lambda: self.run_tool_toast("schedule_scan"),
-                      confirm="Verificar e reparar o cartão de jogos?\nO aparelho reinicia, verifica o cartão e "
+                    A("Verificar e reparar os jogos", "device-sd-card", lambda: self.run_tool_toast("schedule_scan"),
+                      confirm="Verificar e reparar a partição dos jogos?\nO aparelho reinicia, verifica o cartão e "
                               "volta sozinho. Leva alguns minutos.", danger=True)]
         if cid == "ferramentas":
-            cats = [c for c in ("Sistema", "Emuladores", "Jogos", "Outros", "Perigoso")
-                    if any(t["cat"] == c for t in self.tool_list())]
-            icons = {"Sistema": "cpu", "Emuladores": "device-gamepad-2", "Jogos": "folder", "Outros": "adjustments",
-                     "Perigoso": "alert-triangle"}
-            return [A(c if c != "Perigoso" else "Perigoso (mexe no boot)", icons[c],
-                      lambda c=c: self.open_tools(c)) for c in cats]
-        if cid == "jogos":
-            return [A("Por sistema", "device-gamepad-2", self.open_systems),
-                    A("Favoritos", "check", lambda: self.open_games("Favoritos", self.pick("fav"))),
-                    A("Recentes", "clock", lambda: self.open_games("Recentes", self.pick("recent"))),
-                    A("Mais jogados", "gauge", lambda: self.open_games("Mais jogados", self.pick("most"))),
-                    A("Repetidos", "alert-triangle", self.open_dups),
-                    A("Atualizar a lista", "refresh", self.reindex_games)]
+            out = [A("Arquivos", "folder", self.open_files),
+                   subpage(A("Testar ports", "player-play", lambda: self.open_page("testar")), "testar")]
+            out += [tip(A(t["name"], "device-gamepad-2" if "PortMaster" in t["name"] else "folder",
+                          lambda t=t: self.ask_tool(t)),
+                        f"{t.get('desc', '')} Abre em tela cheia e o Omni36OS volta ao fechar.".strip())
+                    for t in self.tool_list()]
+            return out
+        if cid == "usbrede":
+            S = omni_sistema if not FAKE else None
+            run = lambda fn, busy: (lambda: self.worker(fn if S else (lambda: "teste"), self._sys_done, busy=busy))
+            return [A("Ligar: modo universal", "usb", run(S and S.usbnet_universal, "Ligando a rede USB..."),
+                      confirm="Ligar a rede USB no modo universal?\nO console dá o IP ao PC: ligue o cabo de dados "
+                              "na porta OTG e use ssh ark@10.44.44.1."),
+                    A("Ligar: internet pelo PC", "wifi", run(S and S.usbnet_internet, "Pedindo IP ao PC... (até 30 s)"),
+                      confirm="Ligar a rede USB usando a internet do PC?\nO PC precisa já estar compartilhando a "
+                              "conexão pelo cabo."),
+                    A("Serviços remotos: ligar", "device-floppy", run(S and (lambda: S.usbnet_services(True)),
+                                                                     "Ligando web e Samba...")),
+                    A("Serviços remotos: desligar", "x", run(S and (lambda: S.usbnet_services(False)), "Desligando...")),
+                    A("Desligar a rede USB", "power", run(S and S.usbnet_stop, "Desligando...")),
+                    A("Compatibilidade", "info-circle", lambda: self.worker(
+                        (S and S.usbnet_compat) or (lambda: "teste"),
+                        lambda r: self.read("Compatibilidade da rede USB", "network", str(r)), busy="Verificando..."))]
+        if cid == "calibracao":
+            S = omni_sistema if not FAKE else None
+            run = lambda fn, busy: (lambda: self.worker(fn if S else (lambda: "teste"), self._sys_done, busy=busy))
+            return [A("Iniciar a calibração", "player-play", run(S and S.cal_start, "Começando..."),
+                      confirm="Iniciar uma calibração nova?\nA bateria precisa estar cheia e sem o carregador. "
+                              "A sessão anterior é apagada."),
+                    A("Parar a calibração", "x", run(S and S.cal_stop, "Parando...")),
+                    A("Aplicar a curva", "check", run(S and S.cal_apply, "Calculando a curva..."),
+                      confirm="Aplicar a curva da última calibração?\nA % da bateria passa a seguir a sua bateria."),
+                    A("Voltar à curva de fábrica", "rotate", run(S and S.cal_restore, "Restaurando..."),
+                      confirm="Voltar à curva de fábrica?\nA curva calibrada é apagada.", danger=True)]
         if cid == "testar":
             return [A("Escolher o port", "player-play", self.open_picker),
                     A("Limpar avisos de falha", "check", lambda: self.run_tool_toast("clear_port_alerts")), recheck]
         if cid == "backup":
-            return [A(name, icon, lambda m=mod: self.backup_menu(m)) for mod, name, icon in (
-                ("omni36os", "Omni36OS", "help-circle"), ("retroarch", "RetroArch", "device-gamepad-2"),
-                ("standalone", "Emuladores standalone", "cpu"), ("es", "EmulationStation", "device-tv"))]
+            where = "/roms/backup/omni36os" if FAKE else omni_backup.backup_dir()
+            return [tip(A("Exportar", "device-floppy", lambda: self.backup_where("omni36os")),
+                        "Salva as configurações do Omni36OS (testes de ports, processador, GPU, RAM e gamma) num "
+                        ".tar.gz. Você escolhe onde: cartão do sistema, segundo cartão ou pendrive."),
+                    tip(A("Importar", "arrow-back-up", lambda: self.backup_browse("omni36os", where)),
+                        "Abre as pastas para escolher um backup. Antes de importar, o que vale agora é salvo como "
+                        "\"antes-de-importar\".")]
         if cid == "ajuda":
-            mode = "Sistema no console" if not FAKE and omni.get_mode() == "sistema" else "Lista de Ports"
-            return [subpage(A("Backup", "device-floppy", lambda: self.open_page("backup")), "backup"),
-                    subpage(A("RetroArch", "adjustments", lambda: self.open_page("retroarch")), "retroarch"),
-                    A(f"Mostrar no console: {mode}", "device-tv", self.ask_mode),
-                    Choice("Tema", "sun", "tema", list(THEMES), {"escuro": "Escuro", "claro": "Claro"}),
-                    Choice("Tela inicial do console", "power", "hub", list(HUB_NAMES), HUB_NAMES),
-                    Choice("Atalho L3+R3", "device-gamepad-2", "atalho", list(HOTKEY_NAMES), HOTKEY_NAMES),
-                    Choice("Botão de power", "power", "power", list(omni.POWER_NAMES), omni.POWER_NAMES),
-                    A("Manual", "book", lambda: self.read("Manual", "book", omni_help.MANUAL)),
+            return [*([] if FAKE else [Choice("Botão de power", "power", "power", list(omni.POWER_NAMES),
+                                              omni.POWER_NAMES)]),
+                    A("Manual", "book", lambda: self.read("Manual", "book", omni_help.manual(D.get("at_combos")))),
                     A("Cuidados", "alert-triangle", lambda: self.read("Cuidados", "alert-triangle", omni_help.CUIDADOS)),
                     A("Novidades", "tag", lambda: self.read(f"Novidades · Omni36OS {omni_version()}", "tag",
                                                           omni_help.novidades_text())),
-                    A("Créditos", "users", lambda: self.read("Créditos", "users", omni_help.CREDITOS)),
-                    A("Grupo no Telegram", "brand-telegram", self.show_qr),
-                    A("Restaurar o ES", "rotate", self.ask_restore_es)]
-        if cid == "retroarch":
-            return ([tagged(A("Restaurar de fábrica", "rotate", lambda: self.do_action("restaurar_retroarch"),
-                             confirm="Restaurar o RetroArch de fábrica?\nUma cópia das configurações atuais fica guardada.",
-                             danger=True), "restaurar_retroarch")]
-                    + self.systool("ra_manager", "Gerenciador do RetroArch", "adjustments", "o gerenciador do RetroArch")
-                    + self.systool("ra_cores", "Restaurar opções dos cores", "cpu", "a restauração das opções dos cores")
-                    + [recheck])
+                    A("Créditos", "users", lambda: self.read("Créditos", "users", omni_help.CREDITOS))]
         return [recheck]
 
     # --- ações ---
@@ -787,15 +948,6 @@ class App:
             return True
         return False
 
-    def handoff(self, tool):
-        if self.busy_game():
-            return
-        res = "ok" if FAKE else D.run("handoff", {"tool": tool, "card": self.page or ""})
-        if res == "ok":
-            self.running = False      # o Omni36OS.sh abre a ferramenta
-        else:
-            self.toast = (res, "aviso", self.t + 3.5)
-
     def run_tool_toast(self, tool):
         self.worker(lambda: D.run(tool), self._action_done, busy="Fazendo...")
 
@@ -803,7 +955,7 @@ class App:
         def fn():
             if FAKE:
                 return D.run("x")
-            return omni_checks.lento()
+            return omni_checks.velocidade()
 
         def done(res):
             if isinstance(res, dict):
@@ -813,12 +965,6 @@ class App:
                 self.modal = {"title": "Velocidade", "text": str(res), "icon": "brand-speedtest",
                               "buttons": ["OK"], "sel": 0}
         self.worker(fn, done, busy="Testando os cartões... (até 1 minuto)")
-
-    def show_qr(self):
-        self.modal = {"title": "Grupo R36S Brasil", "icon": "brand-telegram", "buttons": ["Fechar"], "sel": 0,
-                      "text": "Aponte a câmera do celular para o código:", "image": "qr-telegram", "url": TELEGRAM}
-
-    # --- lista com rolagem (ports para testar, arquivos de backup) ---
 
     def show_list(self, title, icon, rows, on_ok, ok_label, start=None):
         """rows: {"head", "tag", "tagc"} (título de grupo) ou {"name", "right", "icon", ...}.
@@ -846,7 +992,9 @@ class App:
             pk["sel"] = nxt
             return
         step = {"up": -1, "down": 1, "left": -6, "right": 6, "l1": -6, "r1": 6}.get(cmd)
-        if step:
+        if cmd in ("up", "down"):         # passou do fim volta ao começo (e vice-versa)
+            pk["sel"] = items[(k + step) % len(items)]
+        elif step:                        # pulos de página param na ponta
             pk["sel"] = items[max(0, min(len(items) - 1, k + step))]
         elif cmd == "back":
             self.picker = None
@@ -854,6 +1002,10 @@ class App:
                 pk["on_back"]()
         elif cmd == "ok":
             pk["on_ok"](pk["rows"][pk["sel"]])
+        elif cmd == "x" and pk.get("on_x"):
+            pk["on_x"](pk["rows"][pk["sel"]])
+        elif cmd == "start" and pk.get("on_start"):
+            pk["on_start"](pk["rows"][pk["sel"]])
 
     def draw_picker(self, dt):
         g, pk = self.g, self.picker
@@ -912,66 +1064,34 @@ class App:
             g.rrect(mx + mw - 14, ty, 4, th, 2, ink(18))
             g.rrect(mx + mw - 14, by, 4, bh, 2, alpha(a1, 220))
         self.btn_glyph(mx + 24, my + mh - 32, "A", TEXT)
-        g.text("Regular", 12, f"{pk['ok_label']}  ·  " + ("L1/R1: letra" if pk.get("letters") else
-                                                          "Esquerda/direita: pular"),
+        g.text("Regular", 12, f"{pk['ok_label']}  ·  " + (pk.get("hint") or ("L1/R1: letra" if pk.get("letters") else
+                                                                            "Esquerda/direita: pular")),
                mx + 50, my + mh - 30, MUTED)
         self.btn_glyph(mx + mw - 110, my + mh - 32, "B", TEXT)
         g.text("Regular", 12, "Voltar", mx + mw - 82, my + mh - 30, MUTED)
 
-    # --- ferramentas do dArkOSen ---
+    # --- ferramentas do Omni36OS ---
 
     def tool_list(self):
+        """Programas de tela cheia que continuam fora do launcher (PortMaster, 351Files)."""
         if FAKE:
-            return [{"path": "/opt/system/x.sh", "name": "Calibrar a bateria", "cat": "Sistema", "kind": "janela",
-                     "desc": "Ensina ao sistema a carga real da bateria.", "native": None},
-                    {"path": "/opt/system/y.sh", "name": "Montar pendrive", "cat": "Sistema", "kind": "nativo",
-                     "desc": "Pendrive no OTG.", "native": "usb_mount"},
-                    {"path": "/opt/system/z.sh", "name": "Patch do DTB", "cat": "Perigoso", "kind": "perigoso",
-                     "desc": "Mexe no boot.", "native": None}]
+            return [{"path": "/opt/system/Tools/PortMaster.sh", "name": "PortMaster",
+                     "desc": "Loja de ports (precisa de internet)."}]
         if not getattr(self, "tools_cache", None):
             self.tools_cache = omni_tools.tools()
         return self.tools_cache
 
     def _ferramentas(self):
         ts = self.tool_list()
-        self.tool_count = len(ts)
-        n = lambda k: sum(1 for t in ts if t["kind"] == k)
-        out = [("ok", f"{len(ts)} ferramentas do dArkOSen, as mesmas do menu Opções do ES."),
-               ("info", f"{n('nativo')} rodam aqui dentro; {n('janela')} abrem com as janelas do Omni36OS; "
-                        f"{n('app')} têm tela própria."),
-               ("info", "Ao fechar uma ferramenta, o Omni36OS volta neste card.")]
-        if n("perigoso"):
-            out.append(("info", f"{n('perigoso')} mexem no boot, no kernel ou no ES: ficam em \"Perigoso\", "
-                                 "com aviso duplo."))
+        self.tool_count = len(ts) + 1
+        out = [("info", "Testar o controle fica em Verificar; senha em Sistema; rede USB e pendrive no card "
+                        "USB; calibração em Bateria; overclock em Desempenho.")]
         return {"nivel": "ok", "achados": out, "acoes": []} if FAKE else omni_checks.finish(out, [], {})
 
-    def open_tools(self, cat, start=None):
-        ts = [t for t in self.tool_list() if t["cat"] == cat]
-        rows = [{"name": t["name"], "tool": t} for t in ts]
-        self.show_list(cat, "adjustments", rows, lambda r: self.ask_tool(r["tool"], cat, rows.index(r)),
-                       "Abrir", start)
-
-    def ask_tool(self, t, cat, k):
-        self.picker = None
-        back = lambda: self.open_tools(cat, k)
-        if t["kind"] == "nativo":
-            text = t["desc"] + "\nRoda aqui dentro do Omni36OS."
-        elif t["kind"] == "perigoso":
-            text = (t["desc"] + "\nEsta ferramenta mexe em arquivos do boot ou do sistema. Se der errado, o console "
-                    "pode não ligar: tenha um backup do cartão.")
-        else:
-            text = t["desc"] + "\nA ferramenta abre em tela cheia e o Omni36OS volta quando ela fechar."
-
-        def go():
-            if t["kind"] == "perigoso":
-                secs, hold, risk, undo = (DANGER.get(os.path.basename(t["path"])) or
-                                          (10, False, "Pode deixar o sistema instável.", ""))
-                self.warn(t["name"], t["desc"], lambda: self.run_tool(t), secs, hold, key=t["path"],
-                          risk=risk, undo=undo, back=back)
-            else:
-                self.run_tool(t)
-        self.modal = {"title": t["name"], "icon": "alert-triangle" if t["kind"] == "perigoso" else "adjustments",
-                      "sel": 0, "buttons": ["Abrir", "Voltar"], "text": text, "fns": [go, back]}
+    def ask_tool(self, t):
+        self.modal = {"title": t["name"], "icon": "adjustments", "sel": 0, "buttons": ["Abrir", "Voltar"],
+                      "text": t["desc"] + "\nAbre em tela cheia e o Omni36OS volta quando ela fechar.",
+                      "fn": lambda: self.run_tool(t)}
 
     def run_tool(self, t):
         if self.busy_game():
@@ -979,45 +1099,481 @@ class App:
         if FAKE:
             self.toast = (f"Abriria {t['name']}", "ok", self.t + 3)
             return
-        if t["kind"] == "nativo":
-            def done(res):
-                txt = f"Erro: {res}" if isinstance(res, Exception) else str(res)
-                self.modal = {"title": t["name"], "icon": "check", "buttons": ["OK"], "sel": 0, "text": txt}
-            self.worker(lambda: omni_tools.run_native(t["native"]), done, busy="Fazendo...")
-            return
         omni.write_text(omni.HANDOFF, f"tool:ferramentas:{t['path']}")
-        self.running = False          # o launch.sh roda a ferramenta (run_tool.sh) e reabre o Omni36OS
+        self.running = False          # o launch-direct.sh roda o programa e reabre o Omni36OS
+
+    def native(self, name, busy="Fazendo..."):
+        """Ferramenta reescrita em Python (omni_tools.NATIVE): roda aqui e mostra o resultado."""
+        fn = (lambda: "teste") if FAKE else (lambda: omni_tools.run_native(name))
+        self.worker(fn, self._sys_done, busy=busy)
+
+    def _sys_done(self, res):
+        """Resultado de uma ferramenta do sistema: aviso curto ou janela, e a página relê o estado."""
+        txt = f"Erro: {res}" if isinstance(res, Exception) else str(res)
+        bad = isinstance(res, Exception) or txt.startswith(("Erro", "Não", "Falta", "Desligue", "Tire", "Carregue",
+                                                            "Poucas", "Pare", "Ligue", "O PC"))
+        if len(txt) > 60:
+            self.modal = {"title": "Pronto" if not bad else "Atenção", "icon": "alert-triangle" if bad else "check",
+                          "buttons": ["OK"], "sel": 0, "text": txt}
+        else:
+            self.toast = (txt, "aviso" if bad else "ok", self.t + 3.5)
+        if self.page:
+            self.reload_findings(quiet=True)
+
+    def live_refresh(self):
+        """Subpáginas com estado vivo (rede USB, calibração) se releem sozinhas."""
+        every = LIVE.get(self.page)
+        if not every or self.busy or self.t < getattr(self, "live_at", 0):
+            return
+        self.live_at = self.t + every
+        self.reload_findings(quiet=True)
+
+    # --- teclado na tela ---
+
+    KEYS = ["1234567890", "qwertyuiop", "asdfghjkl-", "zxcvbnm_.@", ["ABC", "espaço", "apagar", "OK"]]
+
+    def keyboard(self, title, on_done, secret=False, value="", hint="", locked=False):
+        """Teclado do Omni36OS: direcional escolhe, A digita, B apaga, Start confirma, Select cancela.
+        locked: tela da trava (não dá para cancelar; o power abre Energia)."""
+        self.kbd = {"title": title, "value": value, "secret": secret, "fn": on_done, "r": 1, "c": 0,
+                    "shift": False, "hint": hint, "locked": locked}
+
+    def kbd_row(self, r):
+        row = self.KEYS[r]
+        if isinstance(row, str):
+            return list(row.upper() if self.kbd["shift"] else row)
+        return ["abc" if self.kbd["shift"] else "ABC"] + row[1:]
+
+    def kbd_input(self, cmd):
+        k = self.kbd
+        if cmd in ("up", "down"):
+            old = len(self.kbd_row(k["r"]))
+            k["r"] = (k["r"] + (1 if cmd == "down" else -1)) % len(self.KEYS)
+            new = len(self.kbd_row(k["r"]))
+            k["c"] = min(new - 1, round(k["c"] * (new - 1) / max(1, old - 1)))
+        elif cmd in ("left", "right"):
+            k["c"] = (k["c"] + (1 if cmd == "right" else -1)) % len(self.kbd_row(k["r"]))
+        elif cmd == "back":
+            k["value"] = k["value"][:-1]
+        elif cmd == "select":
+            if not k.get("locked"):   # travado: nada (Energia é pelo botão de power)
+                self.kbd = None
+        elif cmd == "start":
+            self.kbd = None
+            k["fn"](k["value"])
+        elif cmd == "ok":
+            key = self.kbd_row(k["r"])[k["c"]]
+            if key in ("ABC", "abc"):
+                k["shift"] = not k["shift"]
+            elif key == "espaço":
+                k["value"] += " "
+            elif key == "apagar":
+                k["value"] = k["value"][:-1]
+            elif key == "OK":
+                self.kbd = None
+                k["fn"](k["value"])
+            elif len(k["value"]) < 48:
+                k["value"] += key
+
+    def draw_keyboard(self, dt):
+        g, k = self.g, self.kbd
+        a1, a2 = self.accent
+        if k.get("locked"):               # travado: nada do que está atrás aparece
+            self.draw_bg(dt)
+        else:
+            g.rrect(0, 0, W, H, 0, (5, 7, 20, 190), feather=0)
+        mx, my, mw, mh = 40, 40, W - 80, H - 80
+        g.rrect(mx, my, mw, mh, 22, MODAL_A, MODAL_B)
+        g.stroke(mx, my, mw, mh, 22, ink(25))
+        g.rrect(mx + 20, my + 16, 36, 36, 12, a1, a2)
+        g.icon("lock" if k.get("locked") else "keyboard", mx + 28, my + 24, 20, ON_TEXT)
+        g.text("Bold", 17, k["title"], mx + 68, my + 23, TEXT)
+        # campo
+        shown = "•" * len(k["value"]) if k["secret"] else k["value"]
+        g.rrect(mx + 20, my + 64, mw - 40, 40, 12, ink(16))
+        g.stroke(mx + 20, my + 64, mw - 40, 40, 12, alpha(a1, 160))
+        while shown and g.measure("SemiBold", 17, shown)[0] > mw - 80:
+            shown = shown[1:]
+        tw = g.text("SemiBold", 17, shown, mx + 34, my + 84.5, TEXT, "l", "m") if shown else 0
+        if int(self.t * 2) % 2 == 0:
+            g.rrect(mx + 36 + tw, my + 74, 2, 21, 1, a1)
+        if k["hint"] and not k["value"]:
+            g.text("Regular", 13, k["hint"], mx + 44, my + 84.5, FAINT, "l", "m")
+        # teclas
+        ky, kh, gap = my + 118, 34, 6
+        for r in range(len(self.KEYS)):
+            row = self.kbd_row(r)
+            if r < len(self.KEYS) - 1:
+                ws = [(mw - 40 - gap * (len(row) - 1)) / len(row)] * len(row)
+            else:
+                unit = (mw - 40 - gap * (len(row) - 1)) / 7
+                ws = [unit, unit * 3, unit, unit * 2]
+            x = mx + 20
+            for c, key in enumerate(row):
+                on = r == k["r"] and c == k["c"]
+                act = key == "abc"
+                if on:
+                    g.rrect(x, ky, ws[c], kh, 10, a1, a2)
+                else:
+                    g.rrect(x, ky, ws[c], kh, 10, alpha(a1, 70) if act else ink(18))
+                g.text("SemiBold", 15 if len(key) == 1 else 12, key, x + ws[c] / 2, ky + kh / 2 + 0.5,
+                       ON_TEXT if on else TEXT, "c", "m")
+                x += ws[c] + gap
+            ky += kh + gap
+        self.draw_footer_at(my + mh - 30, [("A", "Digitar", TEXT), ("B", "Apagar", TEXT),
+                                           ("START", "Confirmar", TEXT),
+                                           *([] if k.get("locked") else [("SELECT", "Cancelar", TEXT)])], mx + 22)
+
+    def draw_footer_at(self, y, hints, x):
+        g = self.g
+        for letter, label, c in hints:
+            if letter in ("A", "B"):
+                self.btn_glyph(x, y - 2, letter, c)
+                w = 24
+            else:
+                pw = g.measure("Bold", 9, letter)[0] + 12
+                g.rrect(x, y, pw, 17, 8, ink(40))
+                g.text("Bold", 9, letter, x + pw / 2, y + 9, TEXT, "c", "m")
+                w = pw + 6
+            x += w + g.text("Medium", 12, label, x + w, y + 8.5, MUTED, "l", "m") + 16
+
+    def ask_password(self):
+        def second(new):
+            if len(new) < 3:
+                self.toast = ("A senha precisa de pelo menos 3 letras", "aviso", self.t + 3.5)
+                return
+
+            def check(again):
+                if again != new:
+                    self.toast = ("As duas senhas não batem: nada mudou", "aviso", self.t + 3.5)
+                    return
+                fn = (lambda: "teste") if FAKE else (lambda: omni_sistema.change_password(new))
+                self.worker(fn, self._sys_done, busy="Trocando a senha...")
+            self.keyboard("Repita a nova senha", check, secret=True)
+        self.keyboard("Nova senha do usuário ark", second, secret=True, hint="SSH, Samba e SFTP usam esta senha")
+
+    # --- jogador, trava e Samba ---
+
+    def first_screens(self):
+        """No boot: a trava (se ligada) e depois o nome do jogador (só na primeira vez)."""
+        def after_lock():
+            if not self.player and HUB in ("boot", ""):
+                self.ask_name(first=True)
+        locked = (os.environ.get("OMNI_TRAVA") == "1") if FAKE else omni_sistema.lock_on()
+        if locked and RESUME == "":
+            self.lock_screen(after_lock)
+        else:
+            after_lock()
+
+    def ask_reset(self):
+        def go():
+            def done(res):
+                self.player = ""
+                apply_theme("escuro")
+                self.g.flush()
+                self.open_page("tela")
+                self.toast = (str(res), "ok", self.t + 3)
+                self.ask_name(first=True)
+            self.worker((lambda: "Sistema zerado.") if FAKE else omni_sistema.reset_custom, done, busy="Zerando...")
+        self.warn("Redefinir o sistema", "Volta o Omni36OS ao primeiro boot: apaga o nome do jogador, a trava por "
+                  "senha e o tema, desliga a memória extra (zram) e volta processador (Equilibrado, 1296 MHz), "
+                  "GPU (520 MHz), atalhos (FN + X, FN + B, FN + Y, todos ligados) e botão de power ao padrão.", go, secs=5,
+                  risk="O nome e a senha da trava somem; o Omni36OS pergunta o nome de novo.",
+                  undo="Ports, jogos, testes e as senhas do sistema e do Samba não mudam.")
+
+    def lock_screen(self, then):
+        def check(pw):
+            ok = (pw == os.environ.get("OMNI_TRAVA_SENHA", "1234")) if FAKE else omni_sistema.lock_check(pw)
+            if ok:
+                self.toast = (f"Bem-vindo de volta, {self.player}!" if self.player else "Destravado", "ok",
+                              self.t + 3)
+                then()
+            else:
+                self.toast = ("Senha errada", "problema", self.t + 3)
+                self.lock_screen(then)
+        self.keyboard("Console travado: digite a senha", check, secret=True, locked=True,
+                      hint="Esqueceu? Veja EASYROMS/senha/senha.txt no PC")
+
+    def ask_name(self, first=False):
+        def done(name):
+            name = " ".join(name.split())[:20]
+            if not name:
+                if first:
+                    self.toast = ("Sem nome por enquanto: dá para pôr depois em Ajuda", "ok", self.t + 4)
+                return
+            self.player = name if FAKE else omni_sistema.set_player_name(name)
+            self.toast = (f"Prazer, {self.player}!", "ok", self.t + 3.5)
+            if self.page:
+                keep = self.item_sel
+                self.items = self.build_items(self.page)
+                self.item_sel = min(keep, len(self.items) - 1)
+        self.keyboard("Qual é o seu nome?" if first else "Nome do jogador", done, value=self.player,
+                      hint="Aparece na saudação do menu")
+
+    def ask_samba(self):
+        def first(new):
+            if len(new) < 3:
+                self.toast = ("A senha precisa de pelo menos 3 letras", "aviso", self.t + 3.5)
+                return
+
+            def again(rep):
+                if rep != new:
+                    self.toast = ("As duas senhas não batem: nada mudou", "aviso", self.t + 3.5)
+                    return
+                fn = (lambda: "teste") if FAKE else (lambda: omni_sistema.samba_password(new))
+                self.worker(fn, self._sys_done, busy="Redefinindo...")
+            self.keyboard("Repita a senha do Samba", again, secret=True)
+        self.keyboard("Nova senha do Samba", first, secret=True, hint="Para abrir as pastas do console pelo PC")
+
+    def ask_lock(self):
+        locked = (os.environ.get("OMNI_TRAVA") == "1") if FAKE else omni_sistema.lock_on()
+
+        def refresh(res):
+            self._sys_done(res)
+            if self.page:
+                keep = self.item_sel
+                self.items = self.build_items(self.page)
+                self.item_sel = min(keep, len(self.items) - 1)
+        if locked:
+            def off():
+                def check(pw):
+                    ok = True if FAKE else omni_sistema.lock_check(pw)
+                    if not ok:
+                        self.toast = ("Senha errada: a trava continua", "problema", self.t + 3.5)
+                        return
+                    self.worker((lambda: "teste") if FAKE else omni_sistema.lock_clear, refresh, busy="Desligando...")
+                self.keyboard("Senha atual da trava", check, secret=True)
+            self.modal = {"title": "Trava por senha", "icon": "lock", "sel": 0, "buttons": ["Desligar", "Voltar"],
+                          "text": "A trava está ligada: o console pede a senha ao ligar.\nA senha fica em "
+                                  "EASYROMS/senha/senha.txt (abra o cartão no PC se esquecer).", "fn": off}
+            return
+
+        def first(pw):
+            if len(pw) < 3:
+                self.toast = ("A senha precisa de pelo menos 3 letras", "aviso", self.t + 3.5)
+                return
+
+            def again(rep):
+                if rep != pw:
+                    self.toast = ("As duas senhas não batem: nada mudou", "aviso", self.t + 3.5)
+                    return
+                self.worker((lambda: "teste") if FAKE else (lambda: omni_sistema.lock_set(pw)), refresh,
+                            busy="Ligando a trava...")
+            self.keyboard("Repita a senha da trava", again, secret=True)
+        self.modal = {"title": "Trava por senha", "icon": "lock", "sel": 0, "buttons": ["Ligar", "Voltar"],
+                      "text": "Ao ligar o console, o Omni36OS pede esta senha antes de mostrar os jogos.\n"
+                              "Ela fica guardada em texto simples em EASYROMS/senha/senha.txt, para você "
+                              "recuperar pelo PC. Apagar esse arquivo desliga a trava.",
+                      "fn": lambda: self.keyboard("Senha da trava", first, secret=True)}
+
+    # --- teste do controle ---
+
+    PAD_NAMES = {0: "A", 1: "B", 2: "X", 3: "Y", 4: "SELECT", 6: "START", 7: "L3", 8: "R3", 9: "L1", 10: "R1",
+                 11: "CIMA", 12: "BAIXO", 13: "ESQUERDA", 14: "DIREITA", 5: "GUIDE", 15: "MISC"}
+
+    def open_pad(self):
+        self.pad = {"down": set(), "axes": [0] * 6, "last": "Aperte qualquer botão", "exit_at": None, "count": 0}
+
+    def pad_event(self, kind, num, val, now):
+        p = self.pad
+        if kind == "btn":
+            if val:
+                p["down"].add(num)
+                p["count"] += 1
+                p["last"] = f"{self.PAD_NAMES.get(num, f'botão {num}')}  (SDL {num})"
+            else:
+                p["down"].discard(num)
+            both = {4, 6} <= p["down"]
+            p["exit_at"] = (p["exit_at"] or now + 1.0) if both else None
+        else:
+            p["axes"][num] = val
+            if num >= 4 and abs(val) > 8000:
+                p["last"] = f"{'L2' if num == 4 else 'R2'}  (eixo {num}: {val})"
+
+    def pad_tick(self, now):
+        p = self.pad
+        if p["exit_at"] and now >= p["exit_at"]:
+            self.pad = None
+            self.held.clear()
+            self.toast = (f"Teste do controle: {p['count']} toques", "ok", self.t + 3)
+
+    def draw_pad(self, dt):
+        g, p = self.g, self.pad
+        a1, a2 = self.accent
+        g.rrect(0, 0, W, H, 0, (5, 7, 20, 200), feather=0)
+        mx, my, mw, mh = 24, 20, W - 48, H - 40
+        g.rrect(mx, my, mw, mh, 22, MODAL_A, MODAL_B)
+        g.stroke(mx, my, mw, mh, 22, ink(25))
+        g.rrect(mx + 20, my + 16, 36, 36, 12, a1, a2)
+        g.icon("device-gamepad-2", mx + 28, my + 24, 20, ON_TEXT)
+        g.text("Bold", 18, "Testar o controle", mx + 68, my + 22, TEXT)
+        d = p["down"]
+        lit = lambda b: (a1 if b in d else ink(22))
+        txt = lambda b: ON_TEXT if b in d else MUTED
+        # ombros
+        ax = p["axes"]
+        for x, b, lab in ((mx + 40, 9, "L1"), (mx + mw - 130, 10, "R1")):
+            g.rrect(x, my + 70, 90, 26, 10, lit(b))
+            g.text("Bold", 12, lab, x + 45, my + 83.5, txt(b), "c", "m")
+        for x, k, lab in ((mx + 140, 4, "L2"), (mx + mw - 230, 5, "R2")):
+            on = ax[k] > 8000
+            g.rrect(x, my + 70, 90, 26, 10, a1 if on else ink(22))
+            g.text("Bold", 12, lab, x + 45, my + 83.5, ON_TEXT if on else MUTED, "c", "m")
+        # direcional
+        cx, cy = mx + 120, my + 190
+        for b, dx, dy in ((11, 0, -1), (12, 0, 1), (13, -1, 0), (14, 1, 0)):
+            g.rrect(cx - 18 + dx * 38, cy - 18 + dy * 38, 36, 36, 9, lit(b))
+        g.rrect(cx - 18, cy - 18, 36, 36, 9, ink(12))
+        # ABXY (posição do R36S: A à direita, B embaixo, X em cima, Y à esquerda)
+        bx, by = mx + mw - 120, my + 190
+        for b, dx, dy in ((0, 1, 0), (1, 0, 1), (2, 0, -1), (3, -1, 0)):
+            g.circle(bx + dx * 40, by + dy * 40, 19, lit(b))
+            g.text("Bold", 14, self.PAD_NAMES[b], bx + dx * 40, by + dy * 40 + 0.5, txt(b), "c", "m")
+        # select / start
+        for x, b in ((W / 2 - 80, 4), (W / 2 + 10, 6)):
+            g.rrect(x, my + 150, 70, 22, 11, lit(b))
+            g.text("Bold", 10, self.PAD_NAMES[b], x + 35, my + 161.5, txt(b), "c", "m")
+        # analógicos
+        for k, (sx, b) in enumerate(((W / 2 - 75, 7), (W / 2 + 75, 8))):
+            sy = my + 290
+            g.circle(sx, sy, 44, ink(14))
+            g.stroke(sx - 44, sy - 44, 88, 88, 44, ink(30))
+            g.circle(sx, sy, 44 * 0.12, ink(20))            # zona morta aproximada
+            vx, vy = ax[k * 2] / 32768, ax[k * 2 + 1] / 32768
+            g.circle(sx + vx * 34, sy + vy * 34, 15, a1 if b in d else a2)
+            g.text("Regular", 10, f"{vx:+.2f} {vy:+.2f}", sx, sy + 56, MUTED, "c")
+        g.text("SemiBold", 13, p["last"], W / 2, my + 222, TEXT, "c", "m")
+        g.text("Regular", 12, "Segure SELECT + START por 1 segundo para sair", W / 2, my + mh - 24, MUTED, "c", "m")
+
+    # --- arquivos ---
+
+    def open_files(self, path=None, start=None):
+        if path is None:
+            roots = [r for r in (["/roms", "/roms2", "/mnt/usbdrive"] if not FAKE else ["/roms", "/roms2"])
+                     if FAKE or os.path.ismount(r) or os.path.isdir(r)]
+            names = {"/roms": "Cartão do sistema (/roms)", "/roms2": "Cartão de jogos (/roms2)",
+                     "/mnt/usbdrive": "Pendrive (/mnt/usbdrive)"}
+            rows = [{"name": names[r], "icon": "device-sd-card" if r != "/mnt/usbdrive" else "usb", "path": r,
+                     "dir": True} for r in roots]
+            self.files_at = None
+            self.show_list("Arquivos", "folder", rows, lambda r: self.open_files(r["path"]), "Abrir")
+            self.picker["hint"] = "Escolha um cartão"
+            return
+        self.files_at = path
+        items = ([("ports", True, 0), ("Daytona USA.sh", False, 2400)] if FAKE else omni_sistema.listdir(path))
+        rows = [{"name": "..", "icon": "arrow-up", "up": True}]
+        rows += [{"name": n, "icon": "folder" if d else "file", "dir": d, "path": os.path.join(path, n),
+                  "right": None if d else (omni_sistema.human(sz) if not FAKE else f"{sz} B", MUTED)}
+                 for n, d, sz in items]
+        clip = getattr(self, "clip", None)
+        self.show_list(path, "folder", rows, self.file_ok, "Abrir", start)
+        pk = self.picker
+        pk["on_back"] = lambda: self.file_up()
+        pk["on_x"] = self.file_menu
+        pk["on_start"] = self.folder_menu
+        pk["hint"] = ("START: colar " + ("e mais" if clip else "") if clip else "X: opções  ·  START: pasta")
+
+    def file_up(self):
+        path = self.files_at
+        if not path or path in ("/roms", "/roms2", "/mnt/usbdrive"):
+            self.open_files()
+            return
+        parent = os.path.dirname(path)
+        self.open_files(parent)
+        rows = self.picker["rows"]
+        self.picker["sel"] = next((i for i, r in enumerate(rows) if r.get("path") == path), 0)
+
+    def file_ok(self, r):
+        if r.get("up"):
+            self.file_up()
+        elif r.get("dir"):
+            self.open_files(r["path"])
+        else:
+            self.file_menu(r)
+
+    def _fs(self, fn, busy="Fazendo..."):
+        here = self.files_at
+        sel = self.picker["sel"] if self.picker else 0
+
+        def done(res):
+            txt = f"Erro: {res}" if isinstance(res, Exception) else str(res)
+            self.toast = (txt, "problema" if isinstance(res, Exception) else "ok", self.t + 3.5)
+            self.open_files(here, sel)
+        self.worker((lambda: "teste") if FAKE else fn, done, busy=busy)
+
+    def file_menu(self, r):
+        if r.get("up") or "path" not in r:
+            return
+        path, name = r["path"], os.path.basename(r["path"])
+
+        def rename():
+            self.keyboard(f"Novo nome para {name}", lambda new: self._fs(lambda: omni_sistema.fs_rename(path, new)),
+                          value=name)
+
+        def delete():
+            self.ask(f"Apagar {name}?\n" + ("A pasta e tudo dentro dela somem." if r.get("dir") else
+                                            "O arquivo some de vez."),
+                     lambda: self._fs(lambda: omni_sistema.fs_delete(path), "Apagando..."), danger=True)
+
+        def mark(move):
+            self.clip = (path, move)
+            self.toast = (("Recortado: " if move else "Copiado: ") + name + ". Vá até a pasta e aperte START",
+                          "ok", self.t + 4)
+            self.open_files(self.files_at, self.picker["sel"] if self.picker else None)
+        self.picker = None
+        back = lambda: self.open_files(self.files_at)
+        self.modal = {"title": name, "icon": "folder" if r.get("dir") else "file", "sel": 0,
+                      "buttons": ["Copiar", "Mover", "Renomear", "Apagar"],
+                      "text": ("Pasta" if r.get("dir") else f"Arquivo, {r['right'][0]}") + f"\n{path}",
+                      "fns": [lambda: mark(False), lambda: mark(True), rename, delete], "on_back": back}
+
+    def folder_menu(self, _r=None):
+        here = self.files_at
+        if not here:
+            return
+        clip = getattr(self, "clip", None)
+        btns, fns = [], []
+        if clip:
+            src, move = clip
+
+            def paste():
+                self.clip = None
+                self._fs(lambda: omni_sistema.fs_paste(src, here, move), "Movendo..." if move else "Copiando...")
+            btns.append("Colar aqui")
+            fns.append(paste)
+        btns.append("Nova pasta")
+        fns.append(lambda: self.keyboard("Nome da pasta nova", lambda n: self._fs(lambda: omni_sistema.fs_mkdir(here, n))))
+        btns.append("Voltar")
+        fns.append(lambda: self.open_files(here))
+        self.picker = None
+        text = f"Pasta atual: {here}"
+        if clip:
+            text += f"\n{'Mover' if clip[1] else 'Copiar'}: {os.path.basename(clip[0])}"
+        self.modal = {"title": "Esta pasta", "icon": "folder-plus", "sel": 0, "buttons": btns, "fns": fns,
+                      "text": text, "on_back": lambda: self.open_files(here)}
 
     # --- biblioteca (tela inicial) ---
 
     def lib_lists(self):
-        """[(título, ícone, [(sistema, jogo)])]: coleções e depois cada sistema."""
-        idx = self.games()
-        out = []
-        for title, icon, what in (("Favoritos", "check", "fav"), ("Recentes", "clock", "recent")):
-            pairs = self.pick(what)
-            if pairs:
-                out.append((title, icon, pairs))
-        out += [(s["full"], "device-gamepad-2", [(s, g) for g in s["games"]]) for s in idx if s["games"]]
-        return out
+        """[(título, ícone, [(sistema, jogo)])]: uma lista só, com todos os ports em ordem de nome."""
+        pairs = [(s, g) for s in self.games() for g in s["games"]]
+        pairs.sort(key=lambda p: (not p[1].get("fav"), p[1]["name"].lower()))   # favoritos primeiro
+        return [("Ports", "device-gamepad-2", pairs)] if pairs else []
 
     def library_input(self, cmd):
         lists, lb = self.lib_lists(), self.lib
-        if cmd == "start":
+        if cmd == "back":                 # B: de volta aos cards, com Ports escolhido
             self.view = "menu"
-            return
-        if cmd == "select":
-            self.power_menu()
+            self.sel = 0
             return
         if not lists:
             return
-        lb["sys"] = min(lb["sys"], len(lists) - 1)
-        games = lists[lb["sys"]][2]
-        if cmd in ("left", "right"):
-            lb["sys"] = (lb["sys"] + (1 if cmd == "right" else -1)) % len(lists)
-            lb["game"] = 0
-        elif cmd in ("up", "down"):
+        lb["sys"] = 0
+        games = lists[0][2]
+        if cmd in ("up", "down"):
             lb["game"] = (lb["game"] + (1 if cmd == "down" else -1)) % len(games)
+        elif cmd in ("left", "right"):     # página de 10 (para nas pontas)
+            lb["game"] = max(0, min(len(games) - 1, lb["game"] + (10 if cmd == "right" else -10)))
         elif cmd in ("l1", "r1"):
             first = lambda i: (games[i][1]["name"][:1] or " ").upper()
             k, cur = lb["game"], first(lb["game"])
@@ -1030,42 +1586,40 @@ class App:
             s, g = games[min(lb["game"], len(games) - 1)]
             self.open_sheet(s, g)
 
+    def meta(self, name, path=""):
+        """Ficha do jogo (cache em memória): pasta info do port + PortMaster/IGDB/Steam.
+        Pede a busca na internet uma vez, se houver Wi-Fi; a pasta info manda sobre ela."""
+        cache = self.__dict__.setdefault("meta_cache", {})
+        if name not in cache:
+            net = omni_meta.cached(name)
+            loc = omni_meta.local(path)
+            cache[name] = (net, dict(net or {}, **loc) if loc else net)
+        net, info = cache[name]
+        if net is None and self.status.get("wifi") and name not in self.__dict__.setdefault("meta_tried", set()):
+            self.meta_tried.add(name)
+            omni_meta.want(name, path, lambda n: cache.pop(n, None))   # ao terminar, relê do disco
+        return info
+
     def draw_library(self, dt, fade):
         g, lb = self.g, self.lib
         lists = self.lib_lists()
         a1, a2 = self.accent
         if not lists:
-            g.text("Bold", 20, "Nenhum jogo encontrado", W / 2, 200, TEXT, "c")
-            g.text("Regular", 13, "Copie as ROMs para as pastas de cada sistema no cartão de jogos.", W / 2, 232, MUTED, "c")
-            self.draw_footer([("START", "Opções", TEXT), ("SELECT", "Energia", MUTED)])
+            g.text("Bold", 20, "Nenhum port encontrado", W / 2, 200, TEXT, "c")
+            g.text("Regular", 13, "Instale ports pelo PortMaster (Ferramentas) ou copie para a pasta ports.",
+                   W / 2, 232, MUTED, "c")
+            self.draw_footer([("B", "Voltar", TEXT)])
             return
-        lb["sys"] = min(lb["sys"], len(lists) - 1)
-        title, icon, games = lists[lb["sys"]]
+        title, icon, games = lists[0]
+        lb["sys"] = 0
         lb["game"] = min(lb["game"], len(games) - 1)
-        # sistemas (esquerda)
-        sx, sy, sw, rh = 16, 64, 200, 30
-        top_y, bot_y = sy, H - 44
-        vis = int((bot_y - top_y) // rh)
-        want = max(0, min(lb["sys"] - vis // 2, len(lists) - vis))
-        lb["stop"] = approach(lb.get("stop", 0.0), want * rh, dt, 16)
-        g.rrect(sx, sy - 4, sw, bot_y - sy + 4, 18, alpha(GLASS, 14 * fade))
-        g.clip(sx, sy, sw, bot_y - sy)
-        for i, (t, ic, pairs) in enumerate(lists):
-            y = sy + 4 + i * rh - lb["stop"]
-            if y < sy - rh or y > bot_y:
-                continue
-            on = i == lb["sys"]
-            if on:
-                g.rrect(sx + 6, y, sw - 12, rh - 4, 10, a1, a2)
-            name = t if g.measure("SemiBold", 13, t)[0] < sw - 70 else t[:16] + "…"
-            g.text("SemiBold" if on else "Regular", 13, name, sx + 16, y + 6, ON_TEXT if on else TEXT)
-            g.text("Medium", 11, str(len(pairs)), sx + sw - 18, y + 8, ON_TEXT if on else FAINT, "r")
-        g.clip()
-        # jogos (direita)
-        gx, gw = sx + sw + 14, W - (sx + sw + 14) - 16
+        rh, bot_y = 30, H - 44
+        # jogos (esquerda)
+        gx, gw = 16, 250
         g.text("Bold", 20, title, gx + 4, 58, TEXT)
-        g.text("Regular", 12, f"{len(games)} jogos", gx + 6 + g.measure("Bold", 20, title)[0] + 10, 66, MUTED)
+        g.text("Regular", 12, f"{len(games)} Jogos", gx + 6 + g.measure("Bold", 20, title)[0] + 10, 66, MUTED)
         ly, lh = 92, bot_y - 92
+        g.rrect(gx, ly - 6, gw, lh + 6, 18, alpha(GLASS, 14 * fade))
         vis = int(lh // rh)
         want = max(0, min(lb["game"] - vis // 2, len(games) - vis))
         lb["top"] = approach(lb.get("top", 0.0), want * rh, dt, 18)
@@ -1076,35 +1630,85 @@ class App:
             y = ly + i * rh - lb["top"]
             on = i == lb["game"]
             if on:
-                g.rrect(gx, y, gw, rh - 2, 10, a1, a2)
+                g.rrect(gx + 6, y, gw - 12, rh - 2, 10, a1, a2)
             name = game["name"]
-            while g.measure("Regular", 14, name)[0] > gw - 110 and len(name) > 6:
+            while g.measure("Regular", 14, name)[0] > gw - 50 and len(name) > 6:
                 name = name[:-2]
             if name != game["name"]:
                 name = name.rstrip() + "…"
-            g.text("SemiBold" if on else "Regular", 14, name, gx + 12, y + 6, ON_TEXT if on else TEXT)
-            tag = s["full"] if title in ("Favoritos", "Recentes") else ("★" if game.get("fav") else "")
-            if tag:
-                g.text("Medium", 10, tag[:14], gx + gw - 12, y + 9, ON_TEXT if on else FAINT, "r")
+            g.text("SemiBold" if on else "Regular", 14, name, gx + 16, y + 6, ON_TEXT if on else TEXT)
+            if game.get("fav"):
+                g.icon("check", gx + gw - 30, y + 7, 14, ON_TEXT if on else FAINT)   # favorito
         g.clip()
         if len(games) > vis:
-            th = lh
-            bh = max(24, th * vis / len(games))
-            by = ly + (th - bh) * min(1, lb["top"] / max(1, (len(games) - vis) * rh))
-            g.rrect(W - 12, ly, 3, th, 2, ink(18))
-            g.rrect(W - 12, by, 3, bh, 2, alpha(a1, 220))
-        self.draw_footer([("A", "Ver o jogo", TEXT), ("LR", "Sistema", MUTED), ("L1 / R1", "Letra", MUTED),
-                          ("START", "Opções", MUTED), ("SELECT", "Energia", MUTED)])
+            bh = max(24, lh * vis / len(games))
+            by = ly + (lh - bh) * min(1, lb["top"] / max(1, (len(games) - vis) * rh))
+            g.rrect(gx + gw - 5, by, 3, bh, 2, alpha(a1, 220))
+        # ficha do jogo (direita): capa e dados da Steam + o que o console sabe
+        s, game = games[lb["game"]]
+        info = self.meta(game["name"], game.get("path", ""))
+        px, py, pw, ph = gx + gw + 14, 50, W - (gx + gw + 14) - 16, bot_y - 50
+        g.rrect(px, py, pw, ph, 18, alpha(GLASS, 14 * fade))
+        cw_, ch_ = pw - 24, round((pw - 24) * 215 / 460)
+        cover = info and info.get("capa")
+        g.rrect(px + 12, py + 12, cw_, ch_, 12, ink(12))
+        if not (cover and g.picture(cover, px + 12, py + 12, cw_, ch_, 255 * fade)):
+            g.icon("device-gamepad-2", px + 12 + cw_ / 2 - 24, py + 12 + ch_ / 2 - 24, 48, FAINT)
+        y = py + ch_ + 22
+        name = (info or {}).get("nome") or game["name"]
+        for ln in g.wrap("Bold", 17, name, pw - 28)[:2]:
+            g.text("Bold", 17, ln, px + 14, y, TEXT)
+            y += 22
+        sub = " · ".join(x for x in ((info or {}).get("estudio", "")[:30], (info or {}).get("lancamento", "")) if x)
+        if sub:
+            g.text("Medium", 11, sub, px + 14, y + 2, a1)
+            y += 18
+        if (info or {}).get("generos"):
+            g.text("Regular", 11, info["generos"], px + 14, y + 2, MUTED)
+            y += 18
+        desc = (info or {}).get("descricao") or game.get("desc") or (
+            "Buscando a ficha..." if info is None and self.status.get("wifi") else
+            "Sem ficha: ligue o Wi-Fi para buscar." if info is None else "Sem ficha no PortMaster, IGDB ou Steam.")
+        local = []
+        if (info or {}).get("porter"):
+            local.append("Port: " + info["porter"][:28])
+        if info and "pronto" in info and not info["pronto"]:
+            local.append("Precisa dos arquivos do jogo")
+        if game.get("plays"):
+            local.append(f"Jogado {game['plays']} vez(es)")
+        if game.get("time"):
+            local.append(f"{game['time'] // 3600}h{game['time'] % 3600 // 60:02d}")
+        room = int((py + ph - (30 if local else 12) - y - 4) // 17)
+        lines = g.wrap("Regular", 12, desc, pw - 28)
+        for k, ln in enumerate(lines[:max(0, room)]):
+            if k == room - 1 and len(lines) > room:
+                ln = ln.rstrip(" .,") + "…"
+            g.text("Regular", 12, ln, px + 14, y + 4 + 17 * k, TEXT)
+        if local:
+            ln = " · ".join(local)
+            while g.measure("Medium", 11, ln)[0] > pw - 28 and len(local) > 1:
+                local.pop(0)                  # sem espaço: fica o mais útil (o fim)
+                ln = " · ".join(local)
+            g.text("Medium", 11, ln, px + 14, py + ph - 24, FAINT)
+        self.draw_footer([("A", "Ver o jogo", TEXT), ("LR", "Página", MUTED), ("L1 / R1", "Letra", MUTED),
+                          ("B", "Voltar", MUTED)])
 
     def power_menu(self, button=False):
-        """SELECT na biblioteca, ou o botão de power (aí Cancelar vem primeiro e apertar o power
+        """Botão de power (Cancelar vem primeiro e apertar o power
         de novo desliga: o power_button.py vê o pedido em aberto)."""
-        rows = [{"name": "Abrir o EmulationStation", "icon": "device-tv", "do": "es"},
-                {"name": "Suspender", "icon": "clock", "do": "suspend"},
+        rows = [{"name": "Suspender", "icon": "clock", "do": "suspend"},
                 {"name": "Reiniciar o console", "icon": "refresh", "do": "reboot"},
                 {"name": "Desligar o console", "icon": "power", "do": "poweroff"}]
+        if HUB == "jogo" or os.environ.get("OMNI_JOGO") == "1":   # aberto por cima de um jogo
+            hud, cap = flag(HUD_FLAG) == "1", flag(CAP_FLAG) not in ("", "0")
+            rows = [{"name": "Esconder o contador de FPS" if hud else "Mostrar o contador de FPS", "icon": "gauge",
+                     "do": "hud"},
+                    {"name": "Tirar o limite de 30 FPS" if cap else "Limitar a 30 FPS", "icon": "battery-2",
+                     "do": "cap"},
+                    {"name": "Captura de tela", "icon": "device-tv", "do": "shot"},
+                    {"name": "Fechar o jogo", "icon": "x", "do": "close"}] + rows
         if button:
-            rows = [{"name": "Cancelar", "icon": "x", "do": "cancel"}] + rows[1:]
+            rows = [{"name": "Cancelar", "icon": "x", "do": "cancel"}] + rows
 
         def done():
             try:
@@ -1115,16 +1719,16 @@ class App:
         def back():
             done()
             if getattr(self, "power_return", False):
-                self.quit()           # volta para o ES ou para o jogo (que descongela)
+                self.quit()           # volta para o jogo (que descongela)
 
         def go(r):
             self.picker = None
             if r["do"] == "cancel":
                 return back()
             done()
-            if r["do"] == "es":
-                self.quit()           # no sistema (tela inicial), sair do Omni36OS abre o ES
-            elif r["do"] != "cancel" and not FAKE:
+            if r["do"] in ("hud", "cap", "shot", "close"):
+                return self.game_action(r["do"])
+            if r["do"] != "cancel" and not FAKE:
                 omni.power({"what": r["do"]})
         self.show_list("Energia", "power", rows, go, "Escolher")
         if self.picker and button:
@@ -1138,6 +1742,23 @@ class App:
                         os.remove(path)
                 except OSError:
                     pass
+
+    def game_action(self, what):
+        """Menu de energia por cima de um jogo: o contador, o limite e a captura são do hud/omni_hud.so
+        (arquivos em /dev/shm, valem quando o jogo volta); fechar encerra o jogo congelado."""
+        if FAKE:
+            self.toast = (f"Teste: {what}", "ok", self.t + 3)
+            return
+        if what == "hud":
+            put_flag(HUD_FLAG, "0" if flag(HUD_FLAG) == "1" else "1")
+        elif what == "cap":
+            put_flag(CAP_FLAG, "0" if flag(CAP_FLAG) not in ("", "0") else omni_combos.CAP_FPS)
+        elif what == "shot":
+            put_flag(SHOT_FLAG, int(time.time() * 1000))   # o jogo volta e salva o primeiro quadro
+        elif what == "close":
+            import omni_atalho
+            omni_atalho.close_game(omni_atalho.game_pids())
+        self.quit()                    # volta para o jogo (que descongela) ou para o Omni36OS
 
     def power_check(self):
         """Sinais do power_button.py: USR1 abre o menu de energia, USR2 mostra o aviso do pânico."""
@@ -1160,60 +1781,34 @@ class App:
 
     # --- jogos ---
 
-    def pick(self, what):
-        idx = self.games()
-        if FAKE:
-            pairs = [(s, g) for s in idx for g in s["games"]]
-            return {"fav": [p for p in pairs if p[1].get("fav")], "recent": [p for p in pairs if p[1].get("last")],
-                    "most": [p for p in pairs if p[1].get("time")]}[what]
-        return {"fav": omni_games.favorites, "recent": omni_games.recent, "most": omni_games.most_played}[what](idx)
+    def flush_source(self):
+        res = getattr(self, "source_dirty", None)
+        if res is not None:
+            self.source_dirty = None
+            self.rescan_source(res)
 
-    def open_systems(self, start=None):
-        idx = [s for s in self.games() if s["games"]]
-        rows = [{"name": s["full"], "right": (f"{len(s['games'])} jogos", MUTED), "sys": s} for s in idx]
-        if not self.show_list("Jogos por sistema", "device-gamepad-2", rows,
-                              lambda r: self.open_games(r["sys"]["full"], [(r["sys"], g) for g in r["sys"]["games"]],
-                                                        back=lambda k=rows.index(r): self.open_systems(k)),
-                              "Ver os jogos", start):
-            self.toast = ("Nenhum jogo encontrado nas pastas do ES", "aviso", self.t + 3)
+    def rescan_source(self, res):
+        """Trocou de onde os jogos são lidos: busca os ports e relê a biblioteca."""
+        if isinstance(res, str) and res != "ok":
+            self.toast = (res, "aviso", self.t + 4)
 
-    def open_games(self, title, pairs, back=None, start=None):
-        mixed = len({s["name"] for s, _g in pairs}) > 1
-        rows = []
-        for s, g in pairs:
-            right = None
-            if mixed:
-                right = (s["full"], MUTED)
-            elif g.get("fav"):
-                right = ("Favorito", LEVEL["aviso"])
-            rows.append({"name": g["name"], "right": right, "pair": (s, g)})
-        reopen = lambda k: self.open_games(title, pairs, back, k)
-        if not self.show_list(title, "device-gamepad-2", rows,
-                              lambda r: self.open_sheet(*r["pair"], back=lambda k=rows.index(r): reopen(k)),
-                              "Ver o jogo", start):
-            self.toast = ("Nada aqui ainda", "info", self.t + 3)
-            return
-        self.picker["letters"] = not mixed and title not in ("Recentes", "Mais jogados")
-        self.picker["on_back"] = back
+        def scan():
+            if FAKE:
+                time.sleep(1.0)
+            idx = self.games(force=True)
+            ports = self._testar()
+            return idx, ports
 
-    def open_dups(self):
-        idx = self.games()
-        dups = [] if FAKE else omni_games.duplicates(idx)
-        rows = []
-        for s, gs in dups:
-            rows.append({"head": f"{s['full']} · {gs[0]['name']}"})
-            rows += [{"name": os.path.basename(g["path"]), "pair": (s, g),
-                      "right": (omni_games.human_size(g["size"]), MUTED)} for g in gs]
-        if not self.show_list("Jogos repetidos", "alert-triangle", rows,
-                              lambda r: self.open_sheet(*r["pair"], back=self.open_dups), "Ver o jogo"):
-            self.toast = ("Nenhum jogo repetido", "ok", self.t + 3)
-
-    def reindex_games(self):
-        self.games_reindex = True
-        self.worker(lambda: self._jogos(), lambda res: (self.set_result("jogos", res), self.reload_findings(),
-                                                       setattr(self, "toast", ("Lista atualizada", "ok",
-                                                                               self.t + 3))),
-                    busy="Lendo as pastas de jogos...")
+        def done(out):
+            if isinstance(out, Exception):
+                self.toast = (f"Erro ao ler os jogos: {out}", "problema", self.t + 4)
+                return
+            idx, ports = out
+            self.set_result("testar", ports)
+            self.lib = {"sys": 0, "game": 0, "top": 0.0, "stop": 0.0}
+            n = sum(len(s["games"]) for s in idx)
+            self.toast = (f"Lista atualizada: {n} jogos, {self.port_count} ports", "ok", self.t + 4)
+        self.worker(scan, done, busy="Procurando jogos e ports...")
 
     def open_sheet(self, s, g, back=None):
         self.picker = None
@@ -1244,7 +1839,7 @@ class App:
         except OSError:
             pass
         omni_games.play(s["name"], g["path"])
-        self.running = False          # o launch.sh abre o jogo e reabre o Omni36OS no card Jogos
+        self.running = False          # o launch-direct.sh abre o jogo e reabre o Omni36OS na biblioteca
 
     def draw_sheet(self, dt):
         g, sh = self.g, self.sheet
@@ -1275,7 +1870,7 @@ class App:
         if game.get("last") and G:
             facts.append(f"Última vez: {G.human_date(game['last'])}")
         if game.get("fav"):
-            facts.append("Favorito no ES")
+            facts.append("Favorito")
         for f in facts:
             for line in g.wrap("Regular", 12, f, tw)[:2]:
                 g.text("Regular", 12, line, tx, y, MUTED)
@@ -1310,7 +1905,7 @@ class App:
         res = {} if FAKE else omni.port_results()
         rows = []
         for g in groups:
-            rows.append({"head": g["label"], "tag": "O ES MOSTRA", "tagc": LEVEL["ok"]})
+            rows.append({"head": g["label"], "tag": "NA BIBLIOTECA", "tagc": LEVEL["ok"]})
             for p in g["ports"]:
                 name = os.path.basename(p)[:-3]
                 r = res.get(name)
@@ -1329,87 +1924,85 @@ class App:
     def start_test(self, path):
         res = "ok" if FAKE else D.run("test_port", {"path": path})
         if res == "ok":
-            self.running = False      # o launch.sh roda o teste e reabre o Omni36OS
+            self.running = False      # o launch-direct.sh roda o teste e reabre o Omni36OS
         else:
             self.toast = (res, "aviso", self.t + 3.5)
 
     def show_test_result(self):
-        r = None if FAKE else omni.last_test()
-        if not r:
-            return
+        if FAKE:      # OMNI_FAKE_TESTE=falhou|ok mostra um resultado de teste no simulador
+            kind = os.environ.get("OMNI_FAKE_TESTE", "")
+            if not kind:
+                return
+            r = {"nome": "Halo - Combat Evolved", "resultado": kind, "segundos": "2", "relatorio": ""}
+            found = [] if kind == "ok" else [
+                {"id": "permissao", "causa": "Um arquivo do port está sem permissão para rodar (comum depois de "
+                                             "copiar pelo PC).", "dica": "Dar permissão de execução aos arquivos do port.",
+                 "fix": "chmod", "extra": ""}]
+            settled = ""
+        else:
+            r = omni.last_test()
+            if not r:
+                return
+            settled = omni_ports_fix.settle(r["nome"], r["resultado"] == "ok")
+            found = [] if r["resultado"] == "ok" or not r["relatorio"] else omni_ports_fix.diagnose(r["relatorio"])
+            if found:
+                omni_ports_fix.note(r["relatorio"], found)
+        buttons, fns = ["OK"], [lambda: None]
         if r["resultado"] == "ok":
             text = f"{r['nome']} abriu e ficou rodando 15 segundos. Funcionou!"
             icon = "check"
         else:
             rel = r["relatorio"].split("/omni36os/", 1)[-1] if r["relatorio"] else ""
-            text = (f"{r['nome']} fechou sozinho após {r['segundos']} s.\n"
-                    f"O relatório ficou em omni36os/{rel}" if rel else f"{r['nome']} fechou sozinho.")
+            text = f"{r['nome']} fechou sozinho após {r['segundos']} s."
+            if found:
+                d = found[0]
+                text += f"\nCausa provável: {d['causa']}" + (f" ({d['extra']})" if d["extra"] else "")
+                text += f"\nO que fazer: {d['dica']}"
+                if d["fix"] and not settled:      # uma tentativa por teste: depois de desfeita, não repete
+                    buttons, fns = ["Corrigir e testar de novo", "Agora não"], \
+                        [lambda: self.fix_and_retest(r, d["fix"]), lambda: None]
+            if rel:
+                text += f"\nRelatório: omni36os/{rel}"
             icon = "alert-triangle"
-        self.modal = {"title": "Teste de port", "text": text, "icon": icon, "buttons": ["OK"], "sel": 0}
+        if settled:
+            text = settled + "\n" + text
+        self.modal = {"title": "Teste de port", "text": text, "icon": icon, "buttons": buttons, "sel": 0, "fns": fns}
 
-    # --- modo de exibição (port ou sistema no ES) ---
-
-    def ask_mode(self, first=False):
-        if not first and self.busy_game():
-            return
-        cur = None if FAKE else omni.get_mode()
-        text = ("Onde o Omni36OS deve aparecer no console?\n" if first else "") + \
-            ("Lista de Ports: junto com os outros ports.\n"
-             "Sistema: uma entrada própria no menu principal do console.\n"
-             "Trocar reinicia o menu do console quando o Omni36OS fechar. Dá para mudar depois em Ajuda.")
-        self.modal = {"title": "Como mostrar o Omni36OS", "text": text, "icon": "help-circle",
-                      "buttons": ["Lista de Ports", "Sistema no console"], "sel": 1 if cur == "sistema" else 0,
-                      "fns": [lambda: self.choose_mode("port", first), lambda: self.choose_mode("sistema", first)]}
-
-    def choose_mode(self, mode, first):
+    def fix_and_retest(self, r, fix):
         if FAKE:
+            self.toast = ("Correção aplicada (teste)", "ok", self.t + 3)
             return
-        cur = omni.get_mode() or "port"
-        if mode == cur:          # nada muda no ES; só guarda a escolha
-            omni.remember_mode({"mode": mode})
-            if not first:
-                self.toast = ("O Omni36OS já está assim", "ok", self.t + 3)
-            return
-        res = D.run("set_mode", {"mode": mode})
-        self.modal = {"title": "Pronto", "icon": "check", "buttons": ["Fechar o Omni36OS"], "sel": 0,
-                      "text": res + ".\nO menu do console reinicia quando o Omni36OS fechar.", "fns": [self.quit]}
+        def done(script):
+            if isinstance(script, Exception) or not script:
+                self.toast = ("Não consegui aplicar a correção", "problema", self.t + 3.5)
+                return
+            self.start_test(script)
+        self.worker(lambda: omni_ports_fix.apply(r["relatorio"], fix), done, busy="Corrigindo...")
 
     def quit(self):
         self.running = False
 
-    def ask_restore_es(self):
-        self.modal = {"title": "Restaurar o ES", "icon": "rotate", "sel": 0,
-                      "buttons": ["Só reiniciar", "Desfazer o Omni36OS", "Cancelar"],
-                      "text": "Só reiniciar: o menu do console recarrega quando o Omni36OS fechar (ES travado ou "
-                              "lista desatualizada).\nDesfazer o Omni36OS: tira o sistema próprio, o ícone e o logo "
-                              "que o Omni36OS pôs no ES; ele volta para a lista de Ports.",
-                      "fns": [lambda: self.restore_es("restart_es"), lambda: self.warn("Desfazer o Omni36OS no ES", "Tira o sistema próprio, a tela inicial, o atalho, o ícone e o logo "
-                                      "que o Omni36OS pôs no ES.", lambda: self.restore_es("restore_es"), 5,
-                                      key="restore_es", undo="Ligue de novo em Ajuda (Mostrar no console, "
-                                                               "Tela inicial, Atalho)."),
-                              lambda: None]}
-
-    def restore_es(self, tool):
-        if FAKE:
-            return
-        res = D.run(tool)
-        if not res.startswith("Não"):
-            self.modal = {"title": "Pronto", "icon": "check", "buttons": ["Fechar o Omni36OS", "Depois"], "sel": 0,
-                          "text": res + ".", "fns": [self.quit, lambda: None]}
-        else:
-            self.toast = (res, "problema", self.t + 4)
-
     # --- backup ---
 
-    def backup_menu(self, module):
-        name = omni_backup.MODULES[module][0]
-        where = omni_backup.backup_dir()
-        self.modal = {"title": f"Backup · {name}", "icon": "device-floppy", "buttons": ["Exportar", "Importar"],
-                      "sel": 0, "text": f"Exportar salva as configurações de {name} em:\n{where}\n"
-                                        "Importar abre as pastas para escolher o arquivo.",
-                      "fns": [lambda: self.backup_export(module), lambda: self.backup_browse(module, where)]}
+    def backup_where(self, module):
+        """Pergunta onde salvar: só os lugares disponíveis agora (cartão do sistema sempre; o de jogos e
+        o pendrive quando montados). O escolhido vem marcado da próxima vez."""
+        opts = ([("Cartão do sistema", "/roms/backup/omni36os", 12.4), ("Pendrive", "/mnt/usbdrive/backup/omni36os", 7.1)]
+                if FAKE else omni_backup.places())
+        last = None if FAKE else omni_backup.backup_dir()
+        rows = [{"name": name, "right": (f"{free:.1f} GB livres", MUTED), "dir": d,
+                 "icon": "usb" if "usbdrive" in d else "device-sd-card"} for name, d, free in opts]
 
-    def backup_export(self, module):
+        def go(row):
+            self.picker = None
+            if FAKE:
+                self.toast = (f"Teste: salvaria em {row['dir']}", "ok", self.t + 3)
+                return
+            self.backup_export(module, row["dir"])
+        start = next((i for i, r in enumerate(rows) if r["dir"] == last), None)
+        self.show_list("Onde salvar o backup?", "device-floppy", rows, go, "Salvar aqui", start)
+
+    def backup_export(self, module, dest=None):
         def done(res):
             if isinstance(res, Exception):
                 self.toast = (f"Erro: {res}", "problema", self.t + 4)
@@ -1421,17 +2014,21 @@ class App:
             self.modal = {"title": "Backup salvo", "icon": "check", "buttons": ["OK"], "sel": 0,
                           "text": f"{info} salvos em:\n{path}"}
             self.reload_findings()
-        self.worker(lambda: omni_backup.export(module), done, busy="Exportando...")
+        self.worker(lambda: omni_backup.export(module, dest=dest), done, busy="Exportando...")
 
     def backup_browse(self, module, path):
-        path, entries = omni_backup.browse(path)
+        if FAKE:                      # simulador: uma pasta de teste com um backup
+            path, entries = path, [{"name": "..", "path": "/roms/backup", "dir": True},
+                                   {"name": "omni36os-20261029-120000.tar.gz", "path": path + "/x.tar.gz", "dir": False}]
+        else:
+            path, entries = omni_backup.browse(path)
         rows = [{"head": path}]
         for e in entries:
             if e["dir"]:
                 rows.append({"name": e["name"], "path": e["path"], "dir": True,
                              "icon": "arrow-back-up" if e["name"] == ".." else "folder"})
             else:
-                m = omni_backup.manifest(e["path"]) or {}
+                m = {"module": module, "date": "29/10/2026 12:00"} if FAKE else omni_backup.manifest(e["path"]) or {}
                 mod = m.get("module")
                 ok = mod == module
                 right = (m.get("date", "").split(" ")[0] if ok else
@@ -1447,7 +2044,7 @@ class App:
                 self.toast = (f"Este arquivo não é um backup de {omni_backup.MODULES[module][0]}", "aviso",
                               self.t + 3.5)
             else:
-                self.ask(f"Importar {row['name']}?\nAs configurações atuais de {omni_backup.MODULES[module][0]} "
+                self.ask(f"Importar {row['name']}?\nAs configurações atuais do Omni36OS "
                          "são salvas antes, como \"antes-de-importar\".",
                          lambda: self.backup_import(module, row["path"]), danger=True)
         start = next((i for i, r in enumerate(rows) if r.get("ok")), None)   # o backup compatível
@@ -1461,15 +2058,108 @@ class App:
                 self.toast = (f"Erro: {res}", "problema", self.t + 4)
                 return
             text = str(res)
-            if module == "es" and "restaurado" in text:
-                omni.restart_es_on_exit()
-                text += ".\nO ES reinicia quando o Omni36OS fechar, para ler as configurações."
-            elif module == "retroarch" and "restaurado" in text:
-                text += ".\nVale a partir do próximo jogo aberto no RetroArch."
             self.modal = {"title": "Importação", "icon": "device-floppy", "buttons": ["OK"], "sel": 0,
                           "text": text}
             self.reload_findings()
-        self.worker(lambda: omni_backup.import_(module, path), done, busy="Importando...")
+        self.worker(lambda: "Teste: nada importado" if FAKE else omni_backup.import_(module, path), done,
+                    busy="Importando...")
+
+    # --- atalhos personalizados ---
+
+    def pick_atalho(self):
+        combos = D.get("at_combos")
+        rows = [{"name": name, "right": (omni_combos.text(combos[k]), MUTED), "icon": icon, "key": k}
+                for k, (name, icon, *_x) in omni_combos.ACTIONS.items() if k not in omni_combos.FIXED]
+        def go(r):
+            self.picker = None
+            self.start_capture(r["key"])
+        self.show_list("Personalizar um atalho", "keyboard", rows, go, "Gravar")
+
+    def start_capture(self, key):
+        """Grava a tecla que vai com o FN: o jogador aperta uma tecla e o atalho vira FN + ela. No
+        console lê o controle direto (o SDL não vê todas as teclas); no simulador, a tecla do teclado."""
+        fd = None
+        if not FAKE:
+            try:
+                fd = os.open(PAD_DEV, os.O_RDONLY | os.O_NONBLOCK)
+            except OSError:
+                self.toast = ("Não consegui ler o controle", "problema", self.t + 4)
+                return
+        self.capture = {"key": key, "fd": fd, "seen": set(), "down": set(), "t0": self.t, "last": self.t}
+
+    def capture_poll(self):
+        c = getattr(self, "capture", None)
+        if not c:
+            return
+        if c["fd"] is not None:
+            ev = struct.Struct("llHHi")
+            try:
+                data = os.read(c["fd"], ev.size * 64)
+            except BlockingIOError:
+                data = b""
+            for k in range(0, len(data) - ev.size + 1, ev.size):
+                _s, _us, typ, code, val = ev.unpack_from(data, k)
+                if typ != 1 or val == 2 or code not in omni_combos.BUTTONS:
+                    continue
+                if val == 1 and code != omni_combos.FN:
+                    c["seen"].add(code)
+                    break
+        done = bool(c["seen"])
+        if done:
+            self.finish_capture()
+        elif not c["seen"] and self.t - c["t0"] > 8:
+            self.end_capture()
+            self.toast = ("Nenhum botão: o atalho não mudou", "aviso", self.t + 3)
+
+    def end_capture(self):
+        c, self.capture = self.capture, None
+        if c and c["fd"] is not None:
+            os.close(c["fd"])
+
+    def finish_capture(self):
+        c = self.capture
+        self.end_capture()
+        key, codes = c["key"], [omni_combos.FN, *c["seen"]]
+        combos = dict(D.get("at_combos"))
+        err = omni_combos.problem(key, codes, combos)
+        name = omni_combos.ACTIONS[key][0]
+        if err:
+            self.modal = {"title": "Atalho não gravado", "icon": "alert-triangle", "buttons": ["Tentar de novo", "Cancelar"],
+                          "sel": 0, "text": err, "fns": [lambda: self.start_capture(key), lambda: None]}
+            return
+
+        def save():
+            combos[key] = codes
+            D.set("at_combos", combos)
+            self.refresh_atalhos(f"{name}: {omni_combos.text(codes)}")
+        self.ask(f"Usar {omni_combos.text(codes)} para {name}?", save)
+
+    def reset_combos(self):
+        D.set("at_combos", omni_combos.defaults()["combos"])
+        self.refresh_atalhos("Botões padrão de volta")
+
+    def refresh_atalhos(self, msg):
+        keep = self.item_sel
+        self.items = self.build_items(self.page)
+        self.item_sel = min(keep, len(self.items) - 1)
+        self.toast = (msg, "ok", self.t + 3.5)
+
+    def draw_capture(self):
+        g, c = self.g, self.capture
+        g.rrect(0, 0, W, H, 0, (5, 7, 20, 200), feather=0)
+        mw, mh = 420, 210
+        mx, my = (W - mw) / 2, (H - mh) / 2
+        g.glow(mx, my, mw, mh, 22, alpha(self.accent[0], 60), 26)
+        g.rrect(mx, my, mw, mh, 22, MODAL_A, MODAL_B)
+        g.stroke(mx, my, mw, mh, 22, ink(25))
+        g.icon("keyboard", mx + 24, my + 22, 24, alpha(self.accent[0], 255))
+        g.text("Bold", 17, f"Novo atalho: {omni_combos.ACTIONS[c['key']][0]}", mx + 58, my + 22, TEXT)
+        g.text("Medium", 13, "Aperte a tecla que vai junto com o FN.", mx + 24, my + 62, MUTED)
+        now = "FN + " + (omni_combos.text(c["seen"]) if c["seen"] else "...")
+        g.text("Bold", 26, now, W / 2, my + 118, TEXT, "c", "m")
+        left = max(0, 8 - (self.t - c["t0"])) if not c["seen"] else None
+        g.text("Medium", 12, f"Sem tecla em {left:.0f} s, cancela." if left is not None else "",
+               W / 2, my + mh - 30, FAINT, "c")
 
     def read(self, title, icon, text):
         self.reader = {"title": title, "icon": icon, "text": text, "scroll": 0.0, "top": 0}
@@ -1482,15 +2172,25 @@ class App:
 
     # --- aviso com contagem (estilo "opções perigosas" da Xiaomi) ---
 
+    def ask_overclock(self):
+        """Único ajuste de DTB que ficou: a trava (aviso + 5 toques em A) protege o boot."""
+        S = omni_sistema if not FAKE else None
+        go = ((lambda: self.worker(S.dtb_overclock, self._sys_done, busy="Mexendo no DTB...")) if S else
+              (lambda: setattr(self, "toast", ("Teste: passou", "ok", self.t + 3))))
+        self.warn("Liberar overclock", "Acrescenta frequências de 1368 a 1512 MHz no processador e 600 MHz na GPU, "
+                  "com a tensão do dArkOSen. Depois, escolha o limite em Desempenho.", go, 10, True,
+                  key="Liberar overclock", risk="Um DTB errado deixa a tela preta ou o console sem ligar.",
+                  undo=BOOT_UNDO + " Antes de mudar, o Omni36OS guarda uma cópia do DTB.")
+
     def warn(self, title, text, fn, secs=10, hold=False, key=None, risk="", undo="", back=None):
         """Continuar só acende depois de `secs` s; Cancelar começa escolhido. Com `hold`, ainda é
-        preciso segurar A por 3 s. Quem já passou pelo aviso de `key` nesta sessão não espera de novo."""
+        preciso apertar A 5 vezes. Quem já passou pelo aviso de `key` nesta sessão não espera de novo."""
         seen = getattr(self, "warned", set())
         self.warned = seen
         if key and key in seen:
             secs, hold = 0, False
         self.danger = {"title": title, "text": text, "risk": risk, "undo": undo, "fn": fn, "back": back,
-                       "secs": secs, "hold": hold, "t0": time.monotonic(), "sel": 1, "hold_t": None, "key": key,
+                       "secs": secs, "hold": hold, "t0": time.monotonic(), "sel": 1, "taps": 0, "tap_t": 0.0, "key": key,
                        "nudge": -9}
 
     def danger_left(self):
@@ -1509,7 +2209,11 @@ class App:
             if self.danger_left() > 0:
                 d["nudge"] = time.monotonic()          # ainda não: o botão treme
             elif d["hold"]:
-                d["hold_t"] = time.monotonic()         # começa a encher o anel; soltar antes de 3 s cancela
+                now = time.monotonic()                 # 5 toques em A; parar por 2 s zera a contagem
+                d["taps"] = (d["taps"] if now - d["tap_t"] < 2 else 0) + 1
+                d["tap_t"] = now
+                if d["taps"] >= 5:
+                    self.danger_go()
             else:
                 self.danger_go()
 
@@ -1547,13 +2251,8 @@ class App:
                     y += 19
             y += 8
         left = self.danger_left()
-        # segurar A: o anel enche em 3 s; soltar antes cancela
-        if d["hold_t"] is not None:
-            if not getattr(self, "ok_held", False):
-                d["hold_t"] = None
-            elif time.monotonic() - d["hold_t"] >= 3:
-                self.danger_go()
-                return
+        if d["taps"] and time.monotonic() - d["tap_t"] >= 2:
+            d["taps"] = 0                               # demorou: recomeça do zero
         bw, by = (mw - 68) / 2, my + mh - 66
         shake = 6 * math.sin((time.monotonic() - d["nudge"]) * 40) if time.monotonic() - d["nudge"] < 0.35 else 0
         bx = mx + 28 + shake
@@ -1572,10 +2271,10 @@ class App:
             g.arc(cx_, cy_, 11, 3, -90, -90 + 360 * (1 - left / max(1, d["secs"])), alpha(red, 230))
             g.text("SemiBold", 14, label, bx + bw / 2 + 10, by + 21.5, FAINT, "c", "m")
         elif d["hold"]:
-            k = 0 if d["hold_t"] is None else min(1, (time.monotonic() - d["hold_t"]) / 3)
+            k = d["taps"] / 5
             if k:
                 g.rrect(bx, by, bw * k, 42, 15, (255, 255, 255, 60))
-            g.text("SemiBold", 14, "Segure A por 3 s" if not k else f"Segurando... {int(k * 100)}%",
+            g.text("SemiBold", 14, "Aperte A 5 vezes" if not k else f"Mais {5 - d['taps']} vez(es)",
                    bx + bw / 2, by + 21.5, ON_TEXT, "c", "m")
         else:
             g.text("SemiBold", 14, "Continuar", bx + bw / 2, by + 21.5, ON_TEXT, "c", "m")
@@ -1589,8 +2288,24 @@ class App:
     # --- entrada ---
 
     def handle(self, cmd):
+        if cmd in ("vleft", "vright"):   # analógico para os lados: fora de uma barra/escolha, navega
+            over = (getattr(self, "kbd", None) or getattr(self, "danger", None) or self.reader or self.modal
+                    or getattr(self, "sheet", None) or self.picker)
+            it = self.items[self.item_sel] if self.page and self.items and not over else None
+            if self.page and not over:
+                if not isinstance(it, (Slider, Choice)):
+                    return                # numa página o analógico só ajusta valores
+            else:
+                cmd = cmd[1:]
         self.last_input = time.monotonic()
         if self.busy or self.loading:
+            return
+        if getattr(self, "capture", None):        # gravando um atalho: os botões são do atalho
+            if FAKE and cmd in SIM_BUTTONS and cmd != "fn":
+                self.capture["seen"].add(SIM_BUTTONS[cmd])
+            return
+        if getattr(self, "kbd", None) and not self.modal:
+            self.kbd_input(cmd)
             return
         if getattr(self, "danger", None):
             self.danger_input(cmd)
@@ -1615,6 +2330,8 @@ class App:
                     m["fn"]()
             elif cmd == "back":
                 self.modal = None
+                if m.get("on_back"):
+                    m["on_back"]()
             return
         if getattr(self, "sheet", None):
             self.sheet_input(cmd)
@@ -1625,15 +2342,10 @@ class App:
         if self.page is None and self.view == "lib":
             self.library_input(cmd)
             return
-        if cmd == "select":
-            self.power_menu()
-            return
-        if self.page is None and cmd in ("start", "back"):
-            self.view = "lib"             # do menu de opções de volta para os jogos
-            return
-        if cmd == "start":
-            self.page, self.view = None, "lib"
-            return
+        if cmd in ("start", "select"):
+            return                        # sem atalhos: Ports é o primeiro card; Energia é o botão de power
+        if self.page is None and cmd == "back":
+            return                        # tela inicial: B não sai do sistema
         if self.page is None:
             cols, n = COLS, len(CARDS)
             r, c = divmod(self.sel, cols)
@@ -1646,6 +2358,8 @@ class App:
             elif cmd in ("up", "down"):
                 r = (r + (1 if cmd == "down" else -1)) % rows
                 self.sel = min(r * cols + c, n - 1)
+            elif cmd == "ok" and CARDS[self.sel][0] == "ports":
+                self.view = "lib"
             elif cmd == "ok":
                 self.open_page(CARDS[self.sel][0])
             elif cmd == "back":
@@ -1667,11 +2381,18 @@ class App:
                                       if getattr(x, "sub", None) == sub), 0)
             else:
                 self.page = None
-        elif isinstance(it, Slider) and cmd in ("left", "right"):
-            it.value = max(it.lo, min(100, it.value + (it.step if cmd == "right" else -it.step)))
+                self.flush_source()
+        elif cmd in ("left", "right") and self.page in TWO_COLS:   # direcional: troca de coluna
+            half = (len(self.items) + 1) // 2
+            k = self.item_sel + (half if self.item_sel < half else -half)
+            self.item_sel = max(0, min(len(self.items) - 1, k))
+        elif isinstance(it, Slider) and cmd in ("vleft", "vright"):
+            it.value = max(it.lo, min(100, it.value + (it.step if cmd == "vright" else -it.step)))
             D.set(it.key, it.value)
-        elif isinstance(it, Choice) and cmd in ("left", "right", "ok"):
-            it.index = (it.index + (-1 if cmd == "left" else 1)) % len(it.options)
+            if it.key == "volume":            # a pílula do topo mostra o volume novo na hora
+                self.vol = it.value
+        elif isinstance(it, Choice) and cmd in ("left", "right", "vleft", "vright", "ok"):
+            it.index = (it.index + (-1 if cmd in ("left", "vleft") else 1)) % len(it.options)
             res = D.set(it.key, it.options[it.index])
             if isinstance(res, str) and res.startswith(("Está quente", "Frequência", "Este sistema")):
                 cur = D.get(it.key)     # recusado: volta ao valor que está valendo
@@ -1683,7 +2404,9 @@ class App:
                 self.status = D.status()
             if it.key == "tema":
                 self.g.flush()
-            if it.key in ("hub", "atalho", "power") and isinstance(res, str):
+            if it.key == "fonte":         # a busca espera o jogador sair da página: trocar várias
+                self.source_dirty = res   # vezes seguidas não relê os cartões a cada toque
+            if (it.key == "power" or it.key.startswith("at_")) and isinstance(res, str) and res != "ok":
                 self.toast = (res, "ok", self.t + 4)
         elif isinstance(it, Action) and cmd == "ok":
             if it.confirm:
@@ -1701,24 +2424,60 @@ class App:
             elif typ == 0x653:  # controle conectado
                 gfx.SDL_GameControllerOpen(int.from_bytes(bytes(ev[8:12]), "little", signed=True))
             elif typ in (0x651, 0x652):   # SDL_CONTROLLERBUTTONDOWN / UP
+                if getattr(self, "pad", None):     # teste do controle: todo botão vai para ele
+                    self.last_input = now
+                    self.pad_event("btn", ev[12], typ == 0x651, now)
+                    continue
                 self.button(ev[12], typ == 0x651, now)
             elif typ == 0x650:          # SDL_CONTROLLERAXISMOTION
                 axis = ev[12]
                 val = int.from_bytes(bytes(ev[16:18]), "little", signed=True)
-                if axis in (0, 1):
-                    neg, pos = ("left", "right") if axis == 0 else ("up", "down")
+                if getattr(self, "pad", None):
+                    self.pad_event("axis", axis, val, now)
+                    continue
+                if axis in (0, 1):   # eixo X do analógico esquerdo ajusta valores; o direcional navega
+                    neg, pos = ("vleft", "vright") if axis == 0 else ("up", "down")
                     for d, on in ((neg, val < -20000), (pos, val > 20000)):
                         self.direction(d, on, now)
+            elif typ == 0x401 and FAKE:   # mouse no simulador: esquerdo = A, direito = B
+                btn = ev[16]
+                mx, my = (int.from_bytes(bytes(ev[o:o + 4]), "little", signed=True) for o in (20, 24))
+                if btn == 1 and not self.mouse_pick(mx, my):
+                    self.handle("ok")
+                elif btn == 3:
+                    self.handle("back")
+            elif typ == 0x403 and FAKE:   # roda do mouse no simulador: cima/baixo
+                wy = int.from_bytes(bytes(ev[20:24]), "little", signed=True)
+                if wy:
+                    self.handle("up" if wy > 0 else "down")
             elif typ in (0x300, 0x301):  # teclado (para testar no PC)
                 sym = int.from_bytes(bytes(ev[20:24]), "little")
                 down, rep = typ == 0x300, ev[13]
-                keys = {0x4000004F: "right", 0x40000050: "left", 0x40000051: "down", 0x40000052: "up"}
+                if FAKE and down and sym in (0x40000057, 0x40000056):   # simulador: KP+ / KP- = botões de volume
+                    v = D.get("volume")                                   # (no console quem muda é o ogage)
+                    D.set("volume", max(0, min(100, v + (10 if sym == 0x40000057 else -10))))
+                    self.vol_at = self.t + 0.15
+                    for it in self.items or []:
+                        if isinstance(it, Slider) and it.key == "volume":
+                            it.value = D.get("volume")
+                    continue
+                if sym in (0x4000007F, 0x40000080, 0x40000081) and not down:
+                    self.vol_at = self.t + 0.15   # VOLUP/VOLDOWN/MUTE: o ogage muda o som; relê o volume
+                keys = {0x4000004F: "right", 0x40000050: "left", 0x40000051: "down", 0x40000052: "up",
+                        0x4000005F: "vleft", 0x40000061: "vright"}   # KP7/KP9: analógico esquerdo
                 if sym in keys:
                     if not rep:
                         self.direction(keys[sym], down, now)
                 elif down and not rep:
-                    self.handle({13: "ok", 27: "back", 8: "back",
-                                 0x4000004B: "l1", 0x4000004E: "r1"}.get(sym, ""))   # PageUp/PageDown
+                    # teclado numérico (Num Lock ligado): 2=A, 1=B, 5=X, 4=Y, 6=L1, 3=R1;
+                    # Enter=START, Shift direito=SELECT
+                    self.handle({0x4000005A: "ok", 0x40000059: "back", 0x4000005D: "x", 0x4000005C: "y",
+                                 0x4000005E: "l1", 0x4000005B: "r1", 13: "start", 0x40000058: "start",
+                                 0x400000E5: "select"}.get(sym, ""))
+                    if FAKE and sym == 0x40000060:   # simulador: KP8 = FN (só na gravação de atalho)
+                        self.handle("fn")
+                    if FAKE and sym == 0x40000062:   # simulador: KP0 = botão de power
+                        self.want_power = True
         for d, nxt in list(self.held.items()):
             if now >= nxt:
                 self.handle(d)
@@ -1753,7 +2512,9 @@ class App:
             self.ok_held = down
         if not down:
             return
-        if b in (9, 10):
+        if b in (2, 3):
+            self.handle("x" if b == 2 else "y")
+        elif b in (9, 10):
             self.handle("l1" if b == 9 else "r1")
         elif b == ok_b:
             self.handle("ok")
@@ -1779,18 +2540,29 @@ class App:
         # marca
         g.image("logo-64", 22, 18, 30, smooth=True)
         g.text("Bold", 20, "Omni36OS", 62, 18, TEXT)
-        g.text("Regular", 11, "assistente do R36S", 70 + g.measure("Bold", 20, "Omni36OS")[0], 26, MUTED)
+        g.text("Regular", 11, f"Olá, {self.player}" if self.player else "Sistema de ports",
+               70 + g.measure("Bold", 20, "Omni36OS")[0], 26, MUTED)
         # pílula de estado
         hora = time.strftime("%H:%M")
         bat = f"{s['bat']}%"
         temp = f"{s['temp']}°"
-        w = 46 + g.measure("SemiBold", 13, bat)[0] + 36 + g.measure("SemiBold", 13, temp)[0] + 22 + \
+        if self.vol_at is not None and self.t >= self.vol_at:   # sem leitura periódica: só no início
+            self.vol_at = None                                  # e logo depois dos botões de volume
+            v = D.get("volume")
+            self.vol = v if isinstance(v, int) else None
+        vol = self.vol
+        vtxt = f"{vol}%" if vol is not None else ""
+        w = (24 + g.measure("SemiBold", 13, vtxt)[0] + 12 if vtxt else 0) + 46 + g.measure("SemiBold", 13, bat)[0] + 36 + g.measure("SemiBold", 13, temp)[0] + 22 + \
             g.measure("SemiBold", 13, hora)[0] + 30
         x = W - 22 - w
         g.rrect(x, 16, w, 34, 17, GLASS_HI)
         cx = x + 14
         g.icon("wifi" if s["wifi"] else "wifi-off", cx, 24, 18, TEXT if s["wifi"] else FAINT)
         cx += 26
+        if vtxt:                                  # volume do som
+            vc = TEXT if vol else FAINT
+            g.icon("volume", cx, 24, 18, vc)
+            cx += 24 + g.text("SemiBold", 13, vtxt, cx + 22, 33, vc, "l", "m") + 12
         batc = LEVEL["problema"] if s["bat"] < 20 and not s["carregando"] else TEXT
         g.icon("battery-charging" if s["carregando"] else "battery-2", cx, 24, 18, batc)
         cx += 22 + g.text("SemiBold", 13, bat, cx + 22, 33, batc, "l", "m") + 10
@@ -1827,17 +2599,15 @@ class App:
         s = self.status
         return {
             "checkup": self._home_summary(),
-            "bateria": f"{s['bat']}%" + (" · carregando" if s["carregando"] else ""),
-            "som": "Volume e saída",
-            "tela": "Brilho e modelo",
+            "bateria": f"{s['bat']}%" + (" · Carregando" if s["carregando"] else ""),
+            "tela": "Som, tela e segurança",
             "desempenho": GOV_NAMES.get(s["gov"], s["gov"]) + f" · {s['temp']}°C",
-            "pendrive": "Cabo no PC",
-            "cartoes": "Info e velocidade",
-            "retroarch": "Restaurar padrão",
-            "ferramentas": f"{self.tool_count} do dArkOSen" if getattr(self, "tool_count", 0) else "Do dArkOSen",
-            "jogos": f"{self.game_count} jogos" if getattr(self, "game_count", 0) else "Biblioteca",
+            "pendrive": "Pendrive e rede no cabo",
+            "cartoes": "Espaço, marca e velocidade",
+            "ferramentas": "Arquivos, testes e PortMaster",
             "ajuda": f"Manual · versão {omni_version()}",
-            "testar": f"{self.port_count} ports instalados" if getattr(self, "port_count", 0) else "Abre e fecha em 15 s",
+            "ports": f"{sum(len(s['games']) for s in self.games())} Jogos",
+            "testar": f"{self.port_count} Ports instalados" if getattr(self, "port_count", 0) else "Abre e fecha em 15 s",
         }[cid]
 
     def _home_summary(self):
@@ -1845,14 +2615,34 @@ class App:
         if not hc:
             return "Analisando..."
         n = sum(1 for l, _ in hc["achados"] if l in ("aviso", "problema"))
-        return "Tudo certo" if n == 0 else f"{n} ponto{'s' if n > 1 else ''} de atenção"
+        return "Tudo certo" if n == 0 else f"{n} Ponto{'s' if n > 1 else ''} de atenção"
+
+    def mouse_pick(self, mx, my):
+        """Simulador: clique num cartão/item que não está em foco só o seleciona."""
+        if self.page is not None:
+            hits, cur = getattr(self, "hits_page", []), self.item_sel
+        elif self.view == "menu":
+            hits, cur = getattr(self, "hits_home", []), self.sel
+        else:
+            return False
+        for k, x, y, w, h in hits:
+            if x <= mx < x + w and y <= my < y + h:
+                if k == cur:
+                    return False
+                if self.page is not None:
+                    self.item_sel = k
+                else:
+                    self.sel = k
+                return True
+        return False
 
     def draw_home(self, dt, fade):
         if self.view == "lib":
             return self.draw_library(dt, fade)
         g = self.g
         hour = time.localtime().tm_hour
-        hello = "Bom dia!" if 5 <= hour < 12 else "Boa tarde!" if hour < 18 else "Boa noite!"
+        hello = "Bom dia" if 5 <= hour < 12 else "Boa tarde" if 12 <= hour < 18 else "Boa noite"
+        hello += f", {self.player}!" if self.player else "!"
         g.text("Bold", 26, hello, 22, 66, alpha(TEXT, 255 * fade))
         hc = self.home_check
         if hc:
@@ -1862,8 +2652,8 @@ class App:
                 lvl, msg = "ok", "Seu R36S está em ótima forma."
             else:
                 lvl = "problema" if any(l == "problema" for l, _ in self.alerts.values()) else "aviso"
-                msg = (f"{n} cartão com alerta: veja o ponto nele." if n == 1 else
-                       f"{n} cartões com alertas: veja os pontos neles.")
+                total = sum(k for _, k in self.alerts.values())   # a soma dos pontos dos cards
+                msg = f"{total} Alerta" + ("s" if total != 1 else "")
             g.circle(29, 115, 5, alpha(LEVEL[lvl], 255 * fade))
             g.text("Regular", 13, msg, 42, 105, alpha(MUTED, 255 * fade))
         else:
@@ -1877,6 +2667,7 @@ class App:
         self.sel_x = approach(self.sel_x, x0 + col * (cw + gap), dt, 18)
         self.sel_y = approach(self.sel_y, y0 + row * (ch + gap), dt, 18)
         pos = lambda i: (x0 + (i % COLS) * (cw + gap), y0 + (i // COLS) * (ch + gap))
+        self.hits_home = [(i, *pos(i), cw, ch) for i in range(len(CARDS))]
         for i in range(len(CARDS)):
             x, y = pos(i)
             g.rrect(x, y, cw, ch, 18, alpha(GLASS, 14 * fade))
@@ -1902,19 +2693,24 @@ class App:
             else:
                 g.rrect(bx, by, 46, 46, 14, alpha(hexc(c1), 255 * fade), alpha(hexc(c2), 255 * fade))
             g.icon(ic, bx + 10, by + 10, 26, alpha(ON_TEXT, 255 * fade))   # sempre sobre cor
-            g.text("SemiBold", 14, title, x + 72, y + ch / 2 - 23 + lift, alpha(ON_TEXT if on else TEXT, 255 * fade))
+            tw = cw - 72 - 10
+            size = next((sz for sz in (15, 14, 13, 12) if g.measure("SemiBold", sz, title)[0] <= tw), 12)
+            sub = g.wrap("Regular", 11, self.card_subtitle(cid), cw - 82)[:2]
+            ty = y + ch / 2 - (size + 4 + 15 * len(sub)) / 2 + lift
+            g.text("SemiBold", size, title, x + 72, ty, alpha(ON_TEXT if on else TEXT, 255 * fade))
             if cid in self.alerts:
                 lvl, n = self.alerts[cid]
                 bc = LEVEL[lvl]
-                px_, py_ = x + cw - 18, y + 15 + lift
+                px_, py_ = bx + 44, by + 2           # no canto do ícone: o texto usa a largura toda
                 ring = 0.5 + 0.5 * math.sin(self.t * 4 + i)
                 g.sprite(("ring", lvl), 26, 26, 1, lambda ox, oy, bc=bc: g.circle(ox + 13, oy + 13, 13, alpha(bc, 90)),
                          px_ - 13, py_ - 13, 255 * ring * fade)
                 g.circle(px_, py_, 10, alpha(bc, 255 * fade))
                 g.text("Bold", 11, str(n), px_, py_ + 0.5, alpha(hexc("10142a"), 255 * fade), "c", "m")
-            g.text("Regular", 11, self.card_subtitle(cid), x + 72, y + ch / 2 + 1 + lift,
-                   alpha(ON_TEXT if on else MUTED, (230 if on else 255) * fade))
-        self.draw_footer([("A", "Abrir", TEXT), ("B", "Voltar aos jogos", MUTED), ("SELECT", "Energia", MUTED)])
+            for k, ln in enumerate(sub):
+                g.text("Regular", 11, ln, x + 72, ty + size + 6 + 15 * k,
+                       alpha(ON_TEXT if on else MUTED, (230 if on else 255) * fade))
+        self.draw_footer([("A", "Abrir", TEXT), ("POWER", "Energia", MUTED)])
 
     def draw_page(self, dt, fade):
         g = self.g
@@ -1936,22 +2732,30 @@ class App:
         else:
             g.text("Medium", 12, "Verificando...", 78 + off, 93, alpha(MUTED, a))
 
-        # diagnóstico (esquerda)
+        two = cid in TWO_COLS
+        # diagnóstico (esquerda); Sistema não tem: as ações ocupam as duas colunas
         px, py, pw, ph = 22 + off, 126, 330, 300
-        g.rrect(px, py, pw, ph, 20, alpha(GLASS, 14 * fade))
-        g.stroke(px, py, pw, ph, 20, ink(16 * fade))
-        g.text("SemiBold", 11, "SOBRE" if cid == "ajuda" else "DIAGNÓSTICO", px + 18, py + 14, alpha(FAINT, a))
-        g.clip(px, py, pw, ph)
-        if not f:
+        if two:
+            f = None
+        if two:
+            pass
+        elif not f:
+            g.rrect(px, py, pw, ph, 20, alpha(GLASS, 14 * fade))
+            g.stroke(px, py, pw, ph, 20, ink(16 * fade))
             for k in range(3):
                 yy = py + 44 + k * 52
                 sh = 0.5 + 0.5 * math.sin(self.t * 4 - k)
                 g.rrect(px + 18, yy, pw - 36, 38, 12, ink((10 + 12 * sh) * fade))
         else:
+            g.rrect(px, py, pw, ph, 20, alpha(GLASS, 14 * fade))
+            g.stroke(px, py, pw, ph, 20, ink(16 * fade))
+            g.clip(px, py, pw, ph)
             # Altura de cada item; se não couberem todos, L1/R1 rolam um item por vez.
-            top, bottom = py + 40, py + ph - 12
+            top, bottom = py + 14, py + ph - 12
             blocks = []
-            for lvl, txt in f["achados"]:
+            sel = self.items[self.item_sel] if self.items else None
+            hint = [("dica", sel.tip)] if getattr(sel, "tip", None) else []
+            for lvl, txt in hint + f["achados"]:
                 lines = g.wrap("Regular", 13, txt, pw - 74)
                 blocks.append((lvl, lines, max(40, 14 + 19 * len(lines))))
             offs = [0]
@@ -1986,46 +2790,56 @@ class App:
                     g.text("Regular", 13, line, px + 52, yy + 8 + 19 * n, alpha(TEXT, a))
             g.clip(px, py, pw, ph)
             if self.find_top > 0:
-                g.text("Medium", 11, f"L1: {self.find_top} acima", px + pw - 18, py + 14, alpha(FAINT, a), "r")
+                g.text("Medium", 11, f"L1: {self.find_top} acima", px + pw - 18, py + ph - 24, alpha(FAINT, a), "r")
             if below:
                 g.text("Medium", 12, f"R1: mais {below} item(ns)", px + 18, py + ph - 24, alpha(FAINT, a))
         g.clip()
 
         # controles (direita)
         cx, cy, cw = 366 + off * 1.5, 126, 252
-        g.text("SemiBold", 11, "AÇÕES", cx + 4, cy + 2, alpha(FAINT, a))
+        half = (len(self.items) + 1) // 2 if two else len(self.items)
+        if two:                                 # 6 linhas por coluna: mais baixas e a partir de mais acima
+            cw, cx, cy = (W - 44 - 16) / 2, 22, 116
+        xs = [cx if k < half else cx + cw + 16 for k in range(len(self.items))]
         # Altura de cada item: ações com nome longo quebram em linhas (ao lado
         # da etiqueta SUGERIDO, se houver) e o botão cresce para caber tudo.
         gap, tag = 10, "SUGERIDO"
         tw = g.measure("Bold", 9, tag)[0] + 14
         layout, y = [], cy + 22
-        for it in self.items:
+        for k, it in enumerate(self.items):
+            if k == half:
+                y = cy + 22                     # segunda coluna recomeça no topo
             lines = None
-            ih = 50
+            ih = 44 if two else 50
             if isinstance(it, Action):
                 lines = g.wrap("SemiBold", 14, it.label, cw - 46 - 14)
                 extra = 20 if getattr(it, "suggested", False) else 0   # selo SUGERIDO em cima
-                ih = max(50, 16 + 19 * len(lines) + extra)
+                ih = max(44 if two else 50, 16 + 19 * len(lines) + extra)
             layout.append((y, ih, lines))
-            y += ih + gap
+            y += ih + (5 if two else gap)
         # muitas ações (Ajuda): a coluna rola para o item escolhido caber acima do rodapé
         top, bottom = cy + 18, H - 52
         sy, sh = layout[self.item_sel][:2] if layout else (cy + 22, 50)
         want = max(0, sy + sh - bottom) if sy - (cy + 22) > 0 else 0
         self.act_off = approach(getattr(self, "act_off", 0), want, dt, 18)
-        layout = [(y - self.act_off, ih, lines) for y, ih, lines in layout]
+        same = lambda k: (k < half) == (self.item_sel < half)   # só a coluna do item escolhido rola
+        layout = [(y - (self.act_off if same(k) else 0), ih, lines) for k, (y, ih, lines) in enumerate(layout)]
         sel_y, sel_h = layout[self.item_sel][:2] if layout else (cy + 22, 50)
-        g.clip(cx - 20, top, cw + 40, bottom - top + 4)
+        g.clip(cx - 20, top, (xs[-1] if xs else cx) + cw + 40 - cx, bottom - top + 4)
         self.item_y = approach(self.item_y or sel_y, sel_y, dt, 18)
+        sel_x = xs[self.item_sel] if xs else cx
+        self.item_x = sel_x if not two else approach(getattr(self, "item_x", None) or sel_x, sel_x, dt, 18)
         self.item_h = approach(getattr(self, "item_h", 0) or sel_h, sel_h, dt, 18)
         a1, a2 = self.accent
         ih_ = round(self.item_h)
         g.sprite(("it", a1, a2, ih_), cw, ih_, 16, lambda ox, oy: (
                  g.glow(ox, oy, cw, ih_, 16, alpha(a1, 80), 16),
                  g.rrect(ox, oy, cw, ih_, 16, alpha(a1, 235), alpha(a2, 235))),
-                 cx, self.item_y, 255 * fade)
+                 self.item_x, self.item_y, 255 * fade)
+        self.hits_page = [(k, xs[k], y, cw, ih) for k, (y, ih, _) in enumerate(layout) if top <= y + ih / 2 <= bottom]
         for k, it in enumerate(self.items):
             y, ih, lines = layout[k]
+            cx = xs[k]
             on = k == self.item_sel
             if not on:
                 g.rrect(cx, y, cw, ih, 16, alpha(GLASS, 16 * fade))
@@ -2058,7 +2872,9 @@ class App:
         g.clip()
         it = self.items[self.item_sel] if self.items else None
         hints = [("A", "Confirmar", TEXT), ("B", "Voltar", MUTED)]
-        if isinstance(it, (Slider, Choice)):
+        if isinstance(it, Slider) or (isinstance(it, Choice) and self.page in TWO_COLS):
+            hints.insert(1, ("Analógico", "Ajustar", MUTED))   # o direcional fica para navegar
+        elif isinstance(it, Choice):
             hints.insert(1, ("LR", "Ajustar", MUTED))
         if f and self.find_max > 0:
             hints.append(("L1 / R1", "Rolar", MUTED))
@@ -2072,6 +2888,8 @@ class App:
             self.draw_sheet(dt)
         if getattr(self, "danger", None):
             self.draw_danger(dt)
+        if getattr(self, "capture", None):
+            self.draw_capture()
         if self.busy:
             g.rrect(0, 0, W, H, 0, (5, 7, 20, 170), feather=0)
             g.circle(W / 2, H / 2 - 20, 30, ink(20))
@@ -2111,6 +2929,10 @@ class App:
                 g.text("SemiBold", 13, label, bx + bw / 2, by + 19.5, ON_TEXT if k == m["sel"] else TEXT, "c", "m")
         if self.reader:
             self.draw_reader(dt)
+        if getattr(self, "pad", None):
+            self.draw_pad(dt)
+        if getattr(self, "kbd", None):
+            self.draw_keyboard(dt)
         if self.toast:
             txt, lvl, until = self.toast
             left = until - self.t
@@ -2188,6 +3010,10 @@ class App:
 
     def frame(self, dt):
         self.t += dt
+        if getattr(self, "pad", None):
+            self.pad_tick(time.monotonic())
+        if self.page and not self.loading:
+            self.live_refresh()
         while self.pending:
             done, res, had_busy = self.pending.pop(0)
             if had_busy:
@@ -2257,27 +3083,26 @@ class App:
         g.text("Regular", 13, self.load_label, cx, by + 28, MUTED, "c", "m")
         if self.results and not self.warm and self.load_shown > 0.98:
             self.loading = False
+            self.first_screens()
             if RESUME == "testar":
-                self.sel = next(i for i, c in enumerate(CARDS) if c[0] == "testar")
+                self.sel = next(i for i, c in enumerate(CARDS) if c[0] == "ferramentas")
                 self.open_page("testar")
                 self.show_test_result()
-            elif RESUME == "biblioteca":
+            elif RESUME in ("biblioteca", "port"):   # voltou de um jogo: a lista no mesmo lugar
                 self.view = "lib"
-            elif RESUME in [c[0] for c in CARDS]:    # voltou de uma ferramenta do dArkOSen
+            elif RESUME in [c[0] for c in CARDS]:    # voltou de uma ferramenta do Omni36OS
                 self.sel = next(i for i, c in enumerate(CARDS) if c[0] == RESUME)
                 self.open_page(RESUME)
             elif RESUME in SUBPAGES:                 # ferramenta aberta de uma subpágina (ex.: RetroArch)
                 self.sel = next(i for i, c in enumerate(CARDS) if c[0] == PARENT[RESUME])
                 self.open_page(RESUME)
-            elif not FAKE and omni.get_mode() is None:   # primeira execução
-                self.ask_mode(first=True)
             try:
                 os.remove(POWER_PRESS)                   # de um menu que não fechou direito
             except OSError:
                 pass
             try:
                 if time.time() - os.path.getmtime(POWER_FLAG) < 60:
-                    self.want_power = self.power_return = True   # aberto pelo power no ES ou num jogo
+                    self.want_power = self.power_return = True   # aberto pelo power num jogo
                 os.remove(POWER_FLAG)
             except OSError:
                 pass
@@ -2319,6 +3144,7 @@ class App:
             dt = min(0.05, now - last)
             last = now
             self.poll()
+            self.capture_poll()
             self.power_check()
             if demo and now >= next_demo and not self.busy:
                 cmd = demo.pop(0)
@@ -2331,8 +3157,16 @@ class App:
                     self.g.screenshot(os.path.join(shot_dir, f"{shots:02d}.ppm"))
                     self.g.present()
                     continue
+                elif cmd == "power":
+                    self.want_power = True
                 elif cmd == "quit":
                     self.running = False
+                elif cmd.startswith("pad:"):       # teste: aperta (ou solta, com -) um botão no teste do controle
+                    n = int(cmd[4:])
+                    self.pad_event("btn", abs(n), n >= 0 and not cmd[4:].startswith("-"), now)
+                elif cmd.startswith("axis:"):
+                    k, v = cmd[5:].split("=")
+                    self.pad_event("axis", int(k), int(v), now)
                 elif cmd.startswith("warn:"):      # teste: abre o aviso sem rodar nada
                     secs, hold, risk, undo = DANGER[cmd[5:]]
                     self.warn(cmd[5:], "Teste do aviso.", lambda: setattr(self, "toast", ("teste: passou", "ok", self.t + 3.5)),
@@ -2350,6 +3184,7 @@ class App:
             # Ritmo: 30 quadros/s em uso e 10 parado. A 60 quadros/s sem parar a
             # Omni36OS ocupava 70% de um núcleo e deixava o aparelho perto de 80 °C.
             moving = (self.loading or self.busy or getattr(self, "danger", None) or self.toast or 0.01 < self.page_anim < 0.99
+                      or getattr(self, "kbd", None) or getattr(self, "pad", None)
                       or now - self.last_input < IDLE_AFTER)
             spare = 1 / (FPS_ACTIVE if moving else FPS_IDLE) - (time.monotonic() - now)
             if spare > 0:

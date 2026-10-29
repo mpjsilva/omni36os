@@ -1,169 +1,152 @@
 """Textos do card Ajuda: manual, cuidados, novidades e créditos.
 Linhas que começam com "# " viram títulos no leitor."""
 
-TELEGRAM = "t.me/r36sbr"
 
-# A versão em uso vem do arquivo VERSION; a lista abaixo é o histórico.
+# A versão em uso vem do arquivo VERSION. Aqui fica só ela; o histórico completo está no NOVIDADES.md.
 NOVIDADES = [
-    ("1.4.0", "26/10/2026", [
-        "Botão de power abre o menu de energia (Cancelar, Suspender, Reiniciar, Desligar); apertar o power "
-        "de novo com o menu aberto desliga. Ligue ou desligue em Ajuda > Botão de power.",
-        "FN + power: modo pânico. Fecha o jogo, port ou ferramenta na tela e volta o processador, o brilho e o "
-        "som para níveis seguros. Duas vezes em 10 s: grava tudo e reinicia.",
-        "Desligar e reiniciar pelo Omni36OS agora fecham o ES e gravam tudo antes, como o power do dArkOSen.",
-        "Atalho L3+R3 desligado: a troca entre o Omni36OS e o ES é pelo menu (SELECT > Abrir o ES).",
-    ]),
-    ("1.3.1", "26/10/2026", [
-        "Lista de ferramentas mais limpa: sem as etiquetas Nativo/Janelas/App.",
-        "FN+SELECT não alterna mais entre o Omni36OS e o ES (no ES só esmaecia a tela); use SELECT > Abrir o ES.",
-        "START+SELECT juntos não fecham mais o Omni36OS (para ir ao ES: SELECT > Abrir o ES).",
-        "Jogos só abrem pela lista da tela inicial; no card Jogos do menu a ficha é só para consultar.",
-    ]),
-    ("1.3.0", "26/10/2026", [
-        "Aviso com contagem antes do que é perigoso: tela vermelha dizendo o que a ação faz, o que pode dar "
-        "errado e como desfazer. Continuar só acende depois de 10 s (o que pode impedir o boot) ou 5 s (o resto); "
-        "Cancelar já começa escolhido.",
-        "Patch do DTB, Tela em 60 Hz e Restaurar o dArkOSen pedem ainda segurar A por 3 s. Passou uma vez, não "
-        "espera de novo até reiniciar.",
-        "O aviso também vale para desfazer o Omni36OS no ES, importar backup, consertar o cartão, restaurar o "
-        "RetroArch e o arquivo de boot.",
-        "Zerar últimos jogados guarda uma cópia (gamelist.xml.omni-bak) antes de apagar.",
-    ]),
-    ("1.2.0", "26/10/2026", [
-        "O Omni36OS é a tela inicial do console: liga direto na biblioteca de jogos (sistemas à esquerda, "
-        "jogos à direita, A abre a ficha e joga).",
-        "START abre as opções (os cards); B volta para os jogos. SELECT abre Energia: abrir o ES, reiniciar, desligar.",
-        "Card Ferramentas: as 47 ferramentas do menu Opções do dArkOSen. 13 reescritas aqui dentro; as outras "
-        "abrem com as janelas do Omni36OS (menus, mensagens, teclado na tela) no lugar das janelas de terminal.",
-        "Ferramentas que mexem no boot ficam em Perigoso, com aviso duplo.",
-    ]),
-    ("1.1.0", "26/10/2026", [
-        "Card Jogos: os jogos que o ES mostra, por sistema, com favoritos, recentes, mais jogados e repetidos. "
-        "L1/R1 pulam de letra em letra.",
-        "Ficha do jogo com capa, descrição, tempo de jogo e o botão Jogar: abre com o mesmo emulador, core e "
-        "governador do ES, e o Omni36OS volta no card Jogos quando o jogo fecha.",
-        "Diagnóstico da biblioteca: BIOS que faltam, arquivos que o ES não mostra, jogos repetidos e sem capa.",
-        "RetroArch foi para Ajuda > RetroArch.",
-        "FN+SELECT (ou L3+R3) alterna entre o Omni36OS e o ES.",
-    ]),
-    ("1.0.0", "26/10/2026", [
-        "Primeira versão do Omni36OS, nascido da Sab 1.10: tudo que ela fazia (verificação, bateria, som, tela, "
-        "desempenho, cartões, pendrive, RetroArch, teste de ports, backup) com nome, ícone e pastas próprios.",
-        "Tela inicial do console: o Omni36OS abre no boot, antes do ES (sempre ou só com alertas); B vai para o ES "
-        "e sair do ES volta para o Omni36OS. Segure B no boot para o BaRT ou L1 para pular.",
-        "Atalho L3+R3: segure os dois analógicos por 1 s para abrir o Omni36OS no menu do ES; no modo beta, "
-        "também por cima dos jogos.",
-        "Tema claro e tema escuro (Ajuda > Tema).",
-        "Instala ao lado da Sab sem conflito: pastas, configurações e serviços com nomes próprios.",
+    ("1.6.0", "29/10/2026", [
+        "Sistema > Atalhos (no lugar do Atalho L3+R3): dentro dos jogos, FN + X mostra o contador de FPS com "
+        "temperatura e bateria, FN + B liga o limite de 30 FPS, FN + Y salva a tela e SELECT + START (segurar) "
+        "fecha o jogo. Cada um liga e desliga, e \"Personalizar um atalho\" troca a tecla que vai com o FN; os "
+        "textos acompanham.",
+        "Sem depender do segundo cartão: o backup pergunta onde salvar (cartão do sistema, segundo cartão ou "
+        "pendrive); modo pendrive, reparo e testes usam /roms quando não há /roms2.",
+        "Botão de power num jogo: o menu Energia ganhou mostrar o contador de FPS, limitar a 30 FPS, captura de "
+        "tela e fechar o jogo.",
+        "Restos do EmulationStation removidos: modo pendrive, botão de power e atalhos agora tratam o Omni36OS "
+        "como o menu do console; saíram Mostrar no console, Restaurar o ES, o card Jogos e o manual do ES.",
+        "Sistema: Contraste virou barra (0 a 100%, 50% = normal). Volume, brilho e contraste mudam com o "
+        "analógico esquerdo; o direcional só navega e troca de coluna. Tema subiu para a esquerda, Restaurar "
+        "áudio foi para a direita e Zerar virou Redefinir o sistema.",
+        "Cada página explica a opção escolhida no topo do painel da esquerda (lâmpada roxa); os rótulos AÇÕES, "
+        "DIAGNÓSTICO e STATUS DA BATERIA saíram.",
+        "Rede pelo cabo USB: o NetworkManager não mexe mais na usb0, então o PC volta a receber IP no modo "
+        "universal; o painel mostra o IP entregue.",
+        "Backup: Exportar e Importar direto na página, sem a janela intermediária.",
+        "Modo pendrive: o aviso fala só do Wi-Fi (o console não usa teclado USB).",
     ]),
 ]
 
 MANUAL = """# O que é o Omni36OS
-O Omni36OS é um assistente para o R36S com dArkOS. Ele verifica bateria, som, tela, processador e cartões, aponta o que está errado e corrige com um botão.
+O Omni36OS é um assistente para o R36S com Omni36OS. Ele verifica bateria, som, tela, processador e cartões, aponta o que está errado e corrige com um botão.
 Ele não usa internet nem inteligência artificial: são verificações e scripts fixos.
 
 # Como usar
 Direcional ou analógico: andar pelos cards e opções.
-A: abrir ou confirmar. B: voltar. Select + Start: fechar o Omni36OS.
+A: abrir ou confirmar. B: voltar. O botão de power abre Energia (suspender, reiniciar, desligar).
 L1/R1: rolam o diagnóstico (painel da esquerda) quando ele não cabe; "L1: N acima" e "R1: mais N" mostram o que está escondido. No manual e nas listas, L1/R1 pulam de bloco em bloco.
-Nas opções de valor (volume, brilho, modo do processador), use esquerda e direita.
-Se os seus botões A e B forem trocados no ES, o Omni36OS segue a mesma troca.
+Nas opções de valor (modo do processador, limites), use esquerda e direita. Em Sistema, as barras (volume, brilho, contraste) e as escolhas mudam com o analógico esquerdo, e o direcional só navega.
+Cada página explica a opção escolhida no topo do painel da esquerda (lâmpada roxa).
+Se os botões A e B estiverem trocados no sistema, o Omni36OS segue a mesma troca.
 
 # Pontos de alerta
 Um ponto amarelo (aviso) ou vermelho (problema) em um card mostra quantas coisas precisam de atenção ali. Abra o card para ver a causa.
 Quando há conserto, ele aparece no topo das ações com a etiqueta SUGERIDO.
-As verificações rodam na tela de carregamento. Depois de uma ação, o card verifica de novo sozinho; "Verificar de novo" força uma nova leitura.
+As verificações rodam na tela de carregamento. Depois de uma ação, o card verifica de novo sozinho; "Atualizar status" força uma nova leitura.
 
 # Verificar
-Resumo geral: bateria, temperatura, som, espaço, overclock, cartões e serviços do sistema numa tela só.
-"Testar o controle" e "Consertar atalhos" abrem as ferramentas do dArkOSen; o Omni36OS volta quando elas fecham.
-Serviços que falham no boot aparecem aqui. A falha do dmc-governor (ajuste da RAM) tem conserto com um botão; a do systemd-remount-fs é conhecida e inofensiva no dArkOSen.
+Resumo: mostra só o que precisa de atenção em todos os cards (bateria, sistema, desempenho, cartões e serviços), cada linha com o card de origem. Sem alertas, aparece "Tudo certo". O detalhe fica em cada card.
+"Testar o controle" mostra o R36S com cada botão aceso ao apertar, os gatilhos L2/R2 e a posição dos analógicos. Para sair, segure SELECT + START por 1 segundo (B também é testado).
+"Consertar atalhos" reinicia o serviço que cuida do brilho e do volume pelos botões.
+Serviços que falham no boot aparecem aqui. A falha do dmc-governor (ajuste da RAM) tem conserto com um botão; a do systemd-remount-fs é conhecida e inofensiva no Omni36OS.
 
 # Bateria
-Mostra a carga da bateria e se está carregando. Ajuste o brilho e o modo do processador para a bateria durar mais.
-"Calibrar a bateria" abre a ferramenta de calibração do dArkOSen: o Omni36OS fecha, a ferramenta abre em tela cheia e, ao terminar, o Omni36OS volta no card Bateria. Calibre quando a porcentagem pular ou o aparelho desligar com carga sobrando.
+Mostra a carga, se está carregando, o brilho e o modo do processador. Com o brilho alto ou o processador no máximo, aparece a dica de economia com um botão. O brilho se ajusta em Sistema e o processador em Desempenho.
+"Calibrar a bateria" abre a página da calibração. Calibre quando a porcentagem pular ou o aparelho desligar com carga sobrando:
+1. Carregue até o fim e tire o carregador.
+2. Toque em "Iniciar a calibração" e use o console normalmente (pode jogar) até ele desligar sozinho. Uma amostra por minuto fica gravada em /usr/local/etc/battery-cal.
+3. Ligue, carregue e toque em "Aplicar a curva". A porcentagem passa a seguir a sua bateria.
+"Voltar à curva de fábrica" desfaz.
 
-# Som
-Volume e saída de som. "Restaurar áudio" volta a saída padrão, a configuração de som do sistema e o volume para 40%.
-
-# Tela e sistema
-Brilho e o modelo da sua tela. "Detalhes da tela" diz qual opção escolher no SELECT MODEL ao atualizar o dArkOS, e avisa se o aparelho é um clone.
-Gamma: deixa a imagem mais clara (abaixo de 1.0) ou mais escura e contrastada (acima de 1.0). Vale na hora e fica salvo para o boot; as teclas de atalho de gamma do dArkOSen continuam a partir do valor escolhido.
+# Sistema
+Som, tela e segurança num card só, nesta ordem: Volume, Brilho e Contraste. As barras mudam com o analógico esquerdo; o direcional navega entre os itens e troca de coluna.
+Volume: o som do console. "Restaurar áudio" conserta o som quando ele some ou sai pelo lugar errado: põe de volta o arquivo de som do sistema (.asoundrc), aponta a saída para o alto-falante/fone certo deste modelo e deixa o volume em 40%.
+Brilho e o modelo da sua tela. "Detalhes da tela" diz qual opção escolher no SELECT MODEL ao atualizar o Omni36OS, e avisa se o aparelho é um clone.
+Contraste: barra de 0 a 100% (50% é o normal, gamma 1.0); acima de 50% a imagem fica mais contrastada, abaixo mais clara. Vale na hora e fica salvo para o boot; as teclas de atalho de gamma do sistema continuam a partir do valor escolhido.
 Cor do LED: verde ou vermelho, também no boot. Com a bateria em 10% ou menos, o LED pisca.
-"Informações do sistema", "Tela de boot" e "Backup e migração" abrem as ferramentas do dArkOSen em tela cheia; o Omni36OS fecha antes e volta quando elas fecham.
+"Redefinir o sistema" (último item): volta ao primeiro boot. Apaga o nome do jogador, a trava por senha e o tema, desliga a memória extra (zram) e volta processador (Equilibrado, 1296 MHz), GPU (520 MHz), atalhos e botão de power ao padrão; depois pergunta o nome de novo. Ports, jogos, testes e as senhas do sistema e do Samba ficam.
+
+"Nome do jogador": aparece na saudação do menu. "Tema": escuro ou claro, vale na hora e fica salvo.
+"Atalhos": combinações com o botão FN que valem dentro dos jogos (veja Atalhos abaixo).
+"Backup": exporta e importa as configurações do Omni36OS (veja Backup abaixo).
+
+# Atalhos (dentro de Sistema)
+Valem com um port aberto. Cada atalho tem Ligado ou Desligado na página, e os botões abaixo são os que estão valendo agora:
+«fps»: mostra ou esconde o contador. Ele fica no canto de cima e mostra quadros por segundo, temperatura e bateria. O FPS fica verde de 50 para cima, amarelo de 28 a 49 e vermelho abaixo disso. A temperatura fica amarela a partir de 65 °C e vermelha a partir de 75 °C. A bateria fica amarela até 30% e vermelha até 15%; carregando, aparece um raio verde.
+«limite»: liga ou desliga o limite de 30 FPS. Em jogo leve, economiza bateria e esquenta menos. Um traço roxo no contador mostra que o limite está ligado.
+«captura»: captura de tela na pasta imagens dentro da pasta do jogo (ex.: ports/daytona/imagens), em .bmp com o nome do port e a hora, sem o contador. Vale em qualquer cartão. Aparece "CAPTURA SALVA" no canto.
+«fechar» (segure 1 s): fecha o jogo e volta ao Omni36OS. Serve para port travado ou sem opção de sair. Este é fixo.
+"Personalizar um atalho": escolha o atalho e aperte a tecla nova; ele vira FN + essa tecla. O Omni36OS recusa o que já é do sistema ou de outro atalho. "Voltar aos botões padrão" desfaz (FN + X, FN + B e FN + Y).
+Pelo botão de power, com um jogo aberto: o jogo congela e o menu Energia abre por cima com as mesmas opções (mostrar o contador, limitar a 30 FPS, captura de tela e fechar o jogo), além de suspender, reiniciar e desligar. Captura e contador valem quando o jogo volta.
+O sistema (ogage) já usa: FN + cima/baixo e FN + volume para o brilho; FN com L1/R1, esquerda/direita, A, L3 e R3 para ajustes do sistema; SELECT + FN fala a bateria; FN + power é o modo pânico.
+O contador, o limite e a captura funcionam em ports que desenham com OpenGL ES (a maioria). Ports em 32 bits ou que trocam o LD_PRELOAD não mostram o contador.
+
+# Segurança (dentro de Sistema)
+Tudo o que é senha fica aqui. B volta para Sistema.
+"Trocar a senha" muda a senha do usuário ark (SSH, SFTP e Samba) com o teclado na tela: direcional escolhe, A digita, B apaga, START confirma e SELECT cancela. A senha é pedida duas vezes.
+"Senha do Samba" redefine só a senha das pastas compartilhadas (usuário ark), sem mexer na do SSH.
+"Trava por senha": com ela ligada, o console pede a senha ao ligar, antes de mostrar os jogos (o botão de power ainda abre Energia para desligar). A senha fica em texto simples em EASYROMS/senha/senha.txt: esqueceu, abra o cartão no PC e leia. Apagar esse arquivo desliga a trava. Para desligar pelo console, a senha atual é pedida.
 
 # Desempenho
-Modo do processador: Economia, Equilibrado ou Máximo. A escolha fica salva em /etc/cpu-settings.conf, o mesmo arquivo do CPU Manager e do R36 Tuner, e vale no boot e depois de jogar.
+Modo do processador: Economia, Equilibrado ou Máximo. A escolha fica salva em /etc/cpu-settings.conf, e vale no boot e depois de jogar.
 Limite do processador: 1296 MHz é o padrão. De 1368 a 1512 MHz é overclock (OC).
 Limite da GPU: 520 MHz é o padrão; 600 MHz é overclock.
 O overclock só é liberado com o aparelho abaixo de 70 °C. Se ele esquentar com o OC ligado, o Omni36OS sugere voltar ao padrão.
-O painel também mostra os limites atuais e a ZRAM (memória comprimida que ajuda nos jogos pesados).
-"Cartões SD" abre a página dos cartões (veja abaixo). B volta para Desempenho.
+Memória extra (zram): desligada por padrão. 256, 512 ou 768 MB de memória comprimida na RAM, que segura ports pesados que fecham por falta de memória. Vale na hora e nos próximos boots; custa um pouco de processador.
+"Liberar overclock" mexe no arquivo de hardware do boot (DTB): libera as frequências de 1368 a 1512 MHz e a GPU de 600 MHz. Tem trava: aviso vermelho com contagem e depois A apertado 5 vezes. Antes de mudar, o Omni36OS guarda uma cópia do DTB. Vale depois de reiniciar; o limite se escolhe em "Limite do processador" e "Limite da GPU".
 
-# Pendrive USB
-Liga o modo pendrive: com o cabo de dados no PC, a partição de jogos (ou a do sistema) aparece como um pendrive para copiar ROMs.
-Ligar e desligar reinicia o aparelho. Enquanto estiver ligado, o Wi-Fi e o teclado USB não funcionam, porque usam a mesma porta.
-Ao tirar o cabo ou ejetar no PC, o console monta a partição de novo e volta ao ES. Para sair sem o PC, aperte B ou Select + Start.
+# USB
+Liga o modo pendrive: com o cabo de dados no PC, a partição /roms2 (segundo cartão) ou /roms (cartão do sistema) aparece como um pendrive para copiar ports.
+Ligar e desligar reinicia o aparelho. Enquanto estiver ligado, o Wi-Fi não funciona, porque usa a mesma porta.
+Ao conectar o PC, o Omni36OS fecha para soltar a partição. Ao tirar o cabo ou ejetar no PC, o console monta a partição de novo e o Omni36OS volta. Para sair sem o PC, aperte B ou Select + Start.
 "Restaurar boot" volta o arquivo de boot original se algo der errado.
-"Limpar lixo do Mac" apaga os arquivos ._ e .DS_Store que o macOS cria ao copiar. Eles aparecem como jogos fantasmas no ES. A busca leva até um minuto.
-Se o USB Network Mode estiver ligado, o Omni36OS avisa: ele usa a mesma porta e precisa ser desligado antes.
+"Limpar lixo do Mac" apaga os arquivos ._ e .DS_Store que o macOS cria ao copiar. Eles aparecem como ports fantasmas na biblioteca. A busca leva até um minuto.
+"Montar pendrive" monta um pendrive ligado no OTG em /mnt/usbdrive (FAT, exFAT ou NTFS); "Desmontar" antes de tirar.
+"Rede pelo cabo USB": o console vira uma placa de rede no cabo.
+- Modo universal: o console dá o IP ao PC. No PC: ssh ark@10.44.44.1.
+- Internet pelo PC: o PC compartilha a internet pelo cabo e o console recebe o IP dele.
+- Serviços remotos: liga o Samba e o navegador web de arquivos (usuário e senha: ark).
+A página mostra o IP e os comandos para o PC, e se atualiza sozinha. A rede USB e o modo pendrive usam a mesma porta: desligue um antes de ligar o outro.
 
-# Cartões SD (dentro de Desempenho)
-Fica no card Desempenho, no botão "Cartões SD". Os alertas dos cartões aparecem no ponto do card Desempenho.
+# Cartões SD
+Card próprio (no lugar do antigo card Jogos).
+"Jogos lidos de": ROMS (cartão do sistema), ROMS2 (segundo cartão) ou ROMS e ROMS2. Ao sair da página depois de trocar (B ou START), o Omni36OS procura os jogos e os ports de novo, uma vez só, e atualiza a biblioteca e o Testar ports. Com as duas, o mesmo sistema dos dois cartões vira uma lista só. ROMS2 só entra se o segundo cartão estiver no console.
 Marca, tamanho, espaço livre e velocidade dos cartões. "Testar velocidade" leva até um minuto. Cartões genéricos sem marca costumam ser lentos e falhar mais.
 O Omni36OS avisa quando um cartão passa de 90% de uso ou tem menos de 1 GB livre.
-"Verificar e reparar o cartão de jogos" reinicia o aparelho e roda o reparo do dArkOSen (fsck.exfat) com o cartão desmontado. Depois o resultado aparece neste card, e o log fica em /boot/sd2_scan.log.
+"Verificar e reparar os jogos" reinicia o aparelho e roda o reparo do Omni36OS (fsck.exfat) com o cartão desmontado. Depois o resultado aparece neste card, e o log fica em /boot/sd2_scan.log (segundo cartão) ou /boot/sd1p3_scan.log (só o cartão do sistema).
 
-# RetroArch (Ajuda > RetroArch)
-Mostra o que foi mudado na configuração do RetroArch e restaura a de fábrica. Uma cópia da configuração atual fica guardada antes.
-"Gerenciador do RetroArch" e "Restaurar opções dos cores" abrem as ferramentas do dArkOSen (o Omni36OS volta quando elas fecham).
 
-# Biblioteca (tela inicial)
-Com a tela inicial ligada, o console liga direto na lista de jogos. Esquerda/direita trocam de sistema (Favoritos e Recentes vêm primeiro), cima/baixo escolhem o jogo, L1/R1 pulam de letra. A abre a ficha do jogo; "Jogar" abre e, ao fechar o jogo, a lista volta no mesmo lugar.
-START abre as opções (os cards do Omni36OS); B ou START voltam para os jogos. SELECT abre Energia: abrir o EmulationStation, reiniciar ou desligar. O ES continua instalado como reserva.
+# Ports (primeiro card)
+O console liga nos cards, com Ports já escolhido: A abre a biblioteca. É uma lista só, com os favoritos primeiro e o resto por nome. Cima/baixo escolhem o port, esquerda/direita pulam de 10 em 10 e L1/R1 pulam de letra. Ao lado aparece a ficha do jogo (capa, estúdio, data, gêneros e descrição); A abre o port e, ao fechar, a lista volta no mesmo lugar.
+B volta para os cards. O botão de power abre Energia: suspender, reiniciar ou desligar.
+A ficha vem da pasta info do port (info.json, imagem e .txt), e depois do PortMaster, do IGDB e da Steam, buscados uma vez com Wi-Fi e guardados no cartão.
 
 # Ferramentas
-As ferramentas do menu Opções do dArkOSen, por categoria. Parte delas foi reescrita e roda aqui dentro; as outras rodam o script original, com os menus, mensagens e o teclado no visual do Omni36OS (o sistema não é alterado para isso). Programas com tela própria abrem como no ES. "Perigoso": mexem no boot, no kernel ou no ES; abrem um aviso vermelho com contagem (10 s nas que podem impedir o boot, 5 s nas outras) e as três mais graves pedem segurar A por 3 s. Cancelar fica escolhido desde o início; depois de passar uma vez, a mesma ferramenta não espera de novo até reiniciar.
+"Arquivos": navega pelos cartões (/roms, /roms2) e pelo pendrive. A abre a pasta, B sobe um nível, X abre as opções do item (copiar, mover, renomear, apagar) e START abre as opções da pasta (colar aqui, nova pasta). Para copiar: X > Copiar no item, vá até a pasta de destino e START > Colar aqui.
+"PortMaster" e "351Files" abrem em tela cheia; o Omni36OS volta quando eles fecham.
+As outras ferramentas do sistema ficam nos cards: Testar o controle (Verificar), Trocar a senha (Sistema), rede USB e pendrive (USB), Calibrar a bateria (Bateria), Liberar overclock (Desempenho). Tudo o que mexe no boot abre um aviso vermelho com contagem; Cancelar fica escolhido desde o início.
 
-# Jogos
-Lista os jogos que o ES mostra, lidos do es_systems.cfg e dos gamelist.xml (o Omni36OS só lê; quem grava é o ES). "Por sistema", "Favoritos", "Recentes" e "Mais jogados" abrem listas; L1/R1 pulam de letra em letra.
-A ficha do jogo mostra a capa, a descrição, o tempo de jogo e o arquivo. Aqui ela é só para consultar: jogar é pela lista de jogos da tela inicial, que usa o mesmo emulador, core e governador escolhidos no ES. Jogos abertos daqui não somam no contador de vezes do ES.
-O diagnóstico aponta BIOS que faltam na pasta de BIOS do RetroArch (sem elas o jogo não abre), BIOS com versão desconhecida, arquivos que o ES não mostra (extensão errada ou pasta trocada), jogos repetidos e jogos sem capa. "Atualizar a lista" relê as pastas (a lista também se atualiza sozinha quando uma pasta muda).
-
-# Testar ports
-Mostra os ports da pasta que o ES exibe na lista de Ports. O ArkOS guarda os jogos em /roms2 (cartão de jogos) ou em /roms (cartão do sistema); o Omni36OS lê qual está em uso no es_systems.cfg e ignora a outra.
-Escolha um port e aperte A: o Omni36OS fecha, o port abre como se fosse pelo ES e, depois de 15 segundos, é encerrado sozinho. O Omni36OS volta com o resultado.
+# Testar ports (dentro de Ferramentas)
+Mostra os ports das pastas escolhidas em Cartões SD > Jogos lidos de.
+Escolha um port e aperte A: o Omni36OS fecha, o port abre como pela biblioteca e, depois de 15 segundos, é encerrado sozinho. O Omni36OS volta com o resultado.
 Passou: o port ficou aberto os 15 segundos.
 Falhou: o port fechou antes. O relatório fica em omni36os/logs/<nome do port>/ (dentro de /opt/omni36os) com a saída do port, os logs da pasta dele, as mensagens do kernel e o estado do sistema.
 A lista mostra o último resultado de cada port, e as falhas viram alerta no card.
 "Limpar avisos de falha" tira o alerta do card depois que você já viu as falhas. O resultado continua na lista até o port ser testado de novo; se o novo teste falhar, o aviso volta.
 Ports com menu próprio (como Daytona USA e NFSU1) passam quando o menu abre: o teste não aperta botões.
-
-# Mostrar no console (port ou sistema)
-Na primeira vez que abre, o Omni36OS pergunta onde aparecer:
-Lista de Ports: junto com os outros ports (o atalho Omni36OS.sh fica na pasta de ports).
-Sistema no console: uma entrada própria "Omni36OS" no menu principal do console (o atalho fica em /roms2/omni36os/ e sai da lista de Ports).
-Para trocar depois: Ajuda > Mostrar no console. A troca muda o es_systems.cfg (com backup em es_systems.cfg.omni36os-bak) e o ES reinicia quando o Omni36OS fecha. Nessa hora o Omni36OS também põe o ícone e a descrição dele na lista do ES e o logo do sistema no tema ativo (pasta omni36os/ do tema).
-Se o seu tema não tiver arte para "Omni36OS", o ES mostra o nome em texto.
+Quando o port falha, o Omni36OS lê o relatório e mostra a causa provável (script do Windows, arquivo sem permissão, falta de memória, runtime do PortMaster, biblioteca, glibc, arquivos do jogo, cartão exFAT, travamento). Se houver conserto seguro, aparece "Corrigir e testar de novo": ele corrige (permissão, formato dos scripts ou memória extra) e testa outra vez. Se ainda falhar, a correção é desfeita. O diagnóstico também fica no relatório.
 
 # Backup
-Ajuda > Backup > escolha o módulo > Exportar ou Importar.
-Omni36OS: resultados dos testes de ports e os ajustes de processador, GPU, RAM e gamma. O modo de exibição não entra: ele depende do ES de cada console.
-RetroArch: retroarch.cfg, opções dos cores, configurações por jogo/core, remapeamentos, playlists e overlays (RetroArch e RetroArch32).
-Emuladores standalone: DuckStation, Flycast, GZDoom, LZDoom, ECWolf, Mupen64Plus, PPSSPP, ScummVM, DraStic e retrorun.
-EmulationStation: es_settings.cfg, controles, coleções, gamelists e scripts.
-Exportar grava um .tar.gz em /roms2/backup/omni36os (no cartão de jogos: dá para copiar pelo modo pendrive). O caminho completo aparece ao terminar.
+Sistema > Backup > Exportar ou Importar.
+Omni36OS: resultados dos testes de ports e os ajustes de processador, GPU, RAM e gamma. Os atalhos e o tema não entram.
+Exportar pergunta onde salvar: cartão do sistema (/roms/backup/omni36os), segundo cartão (/roms2/backup/omni36os) ou pendrive (/mnt/usbdrive/backup/omni36os). Só aparece o que está no console agora, e o último lugar escolhido vem marcado. O caminho completo aparece ao terminar.
 Importar abre a pasta dos backups; navegue pelas pastas com A ("..": voltar). Cada arquivo mostra de qual módulo é, e só o backup do módulo certo pode ser importado.
 Antes de importar, o Omni36OS salva o que está valendo agora como "...-antes-de-importar.tar.gz".
 Só configurações: saves, estados, cores, shaders, temas e bancos de dados ficam de fora.
 
 # Ajuda
-Este manual, os cuidados, as novidades de cada versão e os créditos.
-"Tema": escuro ou claro, vale na hora e fica salvo.
-"Tela inicial do console": Desligada (o console abre no ES, como sempre), Omni36OS no boot (o Omni36OS abre antes do ES; B na tela inicial vai para o ES e sair do ES volta para o Omni36OS) ou Só com alertas (o Omni36OS só abre no boot se a bateria estiver fraca, o console quente, um serviço falhando ou um cartão cheio). Vale a partir do próximo boot. No boot, segure B para o BaRT do dArkOSen ou L1 para pular o Omni36OS.
-"Botão de power": Menu de energia (um toque abre Cancelar, Suspender, Reiniciar e Desligar; outro toque com o menu aberto faz o que o power fazia antes) ou Como no dArkOSen (suspende, ou desliga se a opção de trocar power e suspender estiver ligada). Com o menu ligado, FN + power é o modo pânico: fecha o que estiver na tela, tira o overclock, põe o processador no modo normal, sobe o brilho se estiver quase apagado e abaixa o som se estiver no máximo. Duas vezes em menos de 10 s, o console grava tudo e reinicia. Segurar o power por uns 8 s sempre desliga à força: isso é do chip de energia, não do Omni36OS. O botão de reset reinicia por hardware e não pode ser mudado.
-"Atalho L3+R3": segure L3+R3 (os dois analógicos) por 1 s para alternar: do ES para o Omni36OS e do Omni36OS de volta. No menu do ES, o Omni36OS abre e o ES volta quando ele fecha. Em "Menu e jogos (beta)", também dentro de um jogo: o jogo congela, o Omni36OS abre por cima e o jogo continua quando ele fecha (alguns emuladores não soltam a tela; aí o jogo volta na hora). Por cima de um jogo, testes de port e ferramentas de tela cheia ficam bloqueados.
-"Restaurar o ES": "Só reiniciar" recarrega o menu do console quando o Omni36OS fecha (para um ES travado ou lista desatualizada). "Desfazer o Omni36OS" tira o sistema próprio, o ícone, a descrição e o logo que o Omni36OS pôs no ES (inclusive a tela inicial e o atalho), e ele volta para a lista de Ports."""
+Este manual, os cuidados, as novidades de cada versão, os créditos (com os projetos usados como base) e o botão de power.
+"Botão de power": Menu de energia (um toque abre Cancelar, Suspender, Reiniciar e Desligar; outro toque com o menu aberto faz o que o power fazia antes) ou Como no Omni36OS (suspende, ou desliga se a opção de trocar power e suspender estiver ligada). Com o menu ligado, FN + power é o modo pânico: fecha o que estiver na tela, tira o overclock, põe o processador no modo normal, sobe o brilho se estiver quase apagado e abaixa o som se estiver no máximo. Duas vezes em menos de 10 s, o console grava tudo e reinicia. Segurar o power por uns 8 s sempre desliga à força: isso é do chip de energia, não do Omni36OS. O botão de reset reinicia por hardware e não pode ser mudado."""
 
 CUIDADOS = """# Antes de qualquer coisa
 Faça backup do cartão do sistema no PC de vez em quando. Uma imagem do cartão inteiro salva você de quase qualquer problema.
@@ -171,9 +154,9 @@ Faça backup do cartão do sistema no PC de vez em quando. Uma imagem do cartão
 # Pendrive USB
 Sempre ejete o pendrive no PC antes de tirar o cabo. Tirar no meio de uma cópia pode corromper os arquivos.
 Não desligue o console enquanto ele estiver ligado no PC.
-Prefira compartilhar /roms2 (jogos). Mexer em /roms (sistema) pelo PC pode estragar o dArkOS.
-Se o console não voltar ao normal, use "Restaurar boot" no card Pendrive USB.
-Não ligue o USB Network Mode e o pendrive ao mesmo tempo.
+Com segundo cartão, prefira compartilhar /roms2. Sem ele, o PC recebe /roms (a partição de jogos do cartão do sistema): copie só para as pastas de jogos e ports.
+Se o console não voltar ao normal, use "Restaurar boot" no card USB.
+Não ligue a rede USB e o modo pendrive ao mesmo tempo.
 
 # Verificar e reparar o cartão
 O aparelho reinicia e passa alguns minutos verificando. Não desligue nem tire o cartão nessa hora.
@@ -181,11 +164,11 @@ O reparo apaga entradas corrompidas: se o cartão já estava com erros, algum ar
 
 # Restaurar e atualizar
 "Restaurar de fábrica" do RetroArch apaga os seus ajustes (uma cópia fica guardada).
-Antes de atualizar o dArkOS, copie a partição BOOT do cartão para o PC e veja em "Detalhes da tela" qual modelo escolher.
+Antes de atualizar o Omni36OS, copie a partição BOOT do cartão para o PC e veja em "Detalhes da tela" qual modelo escolher.
 
 # Overclock
 Overclock é usar o chip acima do que a fábrica garante. Pode causar travamentos e, com o tempo, desgaste maior.
-O kernel do dArkOSen protege o aparelho: freia a 70 °C, limita a 85 °C e desliga a 115 °C. Mesmo assim, se travar ou fechar jogos sozinho, volte para 1296 MHz (CPU) e 520 MHz (GPU).
+O kernel do Omni36OS protege o aparelho: freia a 70 °C, limita a 85 °C e desliga a 115 °C. Mesmo assim, se travar ou fechar jogos sozinho, volte para 1296 MHz (CPU) e 520 MHz (GPU).
 O Omni36OS não libera o overclock com o aparelho acima de 70 °C.
 
 # Bateria e calor
@@ -201,12 +184,12 @@ Durante o teste não aperte botões: o port recebe os comandos.
 Se o port travar a tela, segure o botão de ligar para reiniciar; o resultado não é gravado nesse caso.
 
 # Backup e importação
-Importar substitui as configurações do módulo pelas do arquivo. Use backups da mesma versão do dArkOS: configurações de outra versão podem não funcionar.
-Depois de importar o EmulationStation, o ES reinicia quando o Omni36OS fechar; não desligue o console nessa hora.
+Importar substitui as configurações do módulo pelas do arquivo. Use backups da mesma versão do Omni36OS: configurações de outra versão podem não funcionar.
 Guarde cópias dos backups fora do console (no PC, pelo pendrive).
 
-# Ao fechar
-Saia do Omni36OS com B ou Select + Start, nunca desligando o console direto: ao sair, o dArkOS devolve as configurações de som e do processador."""
+# Ao desligar
+Desligue pelo menu Energia (botão de power), nunca segurando o power: pelo menu, o Omni36OS grava tudo e desmonta o boot antes de desligar.
+Para fechar um port travado, use SELECT + START (segure 1 s) antes de pensar em desligar à força."""
 
 CREDITOS = """# Omni36OS
 Assistente do R36S, feita por mpjsilva.
@@ -214,12 +197,15 @@ Assistente do R36S, feita por mpjsilva.
 # Origem
 O Omni36OS nasceu da Sab, o assistente do R36S feito em homenagem a Sabrina Broch, youtuber que fala de ports do R36S. Omni (tudo) + R36S: a mesma ajuda, agora tomando conta do console inteiro.
 
-# Comunidade
-Grupo R36S Brasil no Telegram: """ + TELEGRAM + """
-Abra "Grupo no Telegram" nas ações para ver o QR code.
+# Projetos usados como base
+ArkOS, de christianhaitian: o sistema original do R36S e de vários portáteis RK3326. github.com/christianhaitian/arkos
+dArkOS, de christianhaitian: o ArkOS sobre Debian. github.com/christianhaitian/dArkOS
+dArkOSen, de djparent: a imagem usada como base do Omni36OS, e a ferramenta de calibração da bateria e o patch do DTB que o Omni36OS reescreveu. github.com/djparentx
+PortMaster: a loja de ports. github.com/PortsMaster/PortMaster-GUI
 
 # Bibliotecas
-Fonte Poppins (licença OFL) e ícones Tabler (licença MIT)."""
+Fonte Poppins, licença OFL: github.com/itfoundry/Poppins
+Ícones Tabler, licença MIT: github.com/tabler/tabler-icons"""
 
 
 def novidades_text():
@@ -229,3 +215,14 @@ def novidades_text():
         out += [f"• {i}" for i in itens]
         out.append("")
     return "\n".join(out).strip()
+
+
+
+def manual(combos=None):
+    """O manual com os botões dos atalhos que estão valendo (Sistema > Atalhos)."""
+    import omni_combos
+    combos = combos or omni_combos.defaults()["combos"]
+    text = MANUAL
+    for k in omni_combos.ACTIONS:
+        text = text.replace(f"«{k}»", omni_combos.text(combos[k]))
+    return text

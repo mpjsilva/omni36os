@@ -1,4 +1,4 @@
-"""Omni36OS — desenho com a SDL2 via ctypes (sem pygame no dArkOS).
+"""Omni36OS — desenho com a SDL2 via ctypes (sem pygame no Omni36OS).
 
 Formas são triângulos (SDL_RenderGeometry) com cor por vértice: dá degradê,
 borda suave (uma faixa de 1 px que some no alfa) e brilho/sombra (a mesma
@@ -117,7 +117,7 @@ class Gfx:
             or SDL_CreateRenderer(self.win, -1, 0)
         SDL_RenderSetLogicalSize(self.r, W, H)
         SDL_SetRenderDrawBlendMode(self.r, BLEND)
-        SDL_ShowCursor(0)
+        SDL_ShowCursor(1 if os.environ.get("OMNI_FAKE") == "1" else 0)  # simulador: mostra o mouse
         TTF_Init()
         self.fonts, self.text_cache, self.icons = {}, {}, {}
         # Formas prontas: montar vértices em Python é o caro (a CPU do R36S

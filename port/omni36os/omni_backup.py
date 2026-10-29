@@ -21,30 +21,30 @@ MODULES = {
         f"{HOME}/.config/omni36os", f"{omni.OMNI_DIR}/logs/resultados.txt", f"{omni.OMNI_DIR}/logs/avisos_limpos.txt",
         "/etc/cpu-settings.conf", "/etc/gpu-settings.conf", "/etc/dmc-settings.conf", "/etc/gamma-settings.conf",
     ], ["/.config/omni36os/modo"]),   # o modo depende do es_systems.cfg deste console: não se importa
-    "retroarch": ("RetroArch", [
-        f"{HOME}/.config/{ra}/{p}" for ra in ("retroarch", "retroarch32")
-        for p in ("*.cfg", "config", "remaps", "playlists", "overlay", "records_config")
-    ], []),
-    "standalone": ("Emuladores standalone", [
-        f"{HOME}/.config/{e}" for e in ("duckstation", "flycast", "gzdoom", "lzdoom", "ecwolf",
-                                        "mupen64plus", "ppsspp", "scummvm")
-    ] + [f"{HOME}/.config/retrorun.cfg", "/opt/drastic/config", "/opt/advanceddrastic/config",
-         "/opt/ppsspp/*.ini", "/opt/ppsspp/PSP/SYSTEM"],
-        ["/duckstation/database", "/duckstation/resources", "/duckstation/shaders", "/cache",
-         ".pk3", ".sf2", "/soundfont"]),
-    "es": ("EmulationStation", [
-        f"{HOME}/.emulationstation/es_settings.cfg", f"{HOME}/.emulationstation/es_input.cfg",
-        f"{HOME}/.emulationstation/collections", f"{HOME}/.emulationstation/gamelists",
-        f"{HOME}/.emulationstation/scripts",
-    ], []),
 }
 MANIFEST = "omni36os-backup.txt"
 
 
+# Onde um backup pode ser salvo: o jogador escolhe ao exportar. /roms2 e o pendrive só valem montados.
+PLACES = (("/roms", "Cartão do sistema"), ("/roms2", "Cartão de jogos"), ("/mnt/usbdrive", "Pendrive"))
+LAST_DIR = f"{HOME}/.config/omni36os/backup_onde"
+
+
+def places():
+    """[(nome, pasta dos backups, GB livres)] dos lugares disponíveis agora."""
+    out = []
+    for root, name in PLACES:
+        if root == "/roms" and os.path.isdir(root) or os.path.ismount(root):
+            st = os.statvfs(root)
+            out.append((name, f"{root}/backup/omni36os", round(st.f_bavail * st.f_frsize / 1e9, 1)))
+    return out
+
+
 def backup_dir():
-    """Pasta dos backups no cartão em que o ES guarda os jogos (dá para copiar pelo pendrive)."""
-    root = "/roms2" if omni.es_ports_dir().startswith("/roms2") else "/roms"
-    return f"{root}/backup/omni36os"
+    """Último lugar escolhido, se ainda estiver disponível; senão o primeiro disponível."""
+    dirs = [d for _n, d, _f in places()]
+    last = omni.read_text(LAST_DIR, "").strip()
+    return last if last in dirs else (dirs[0] if dirs else "/roms/backup/omni36os")
 
 
 def _files(module):
@@ -79,13 +79,16 @@ def allowed(module, member):
     return False
 
 
-def export(module, tag=""):
+def export(module, tag="", dest=None):
     files = _files(module)
     if not files:
         return None, f"Nada para exportar em {MODULES[module][0]}."
-    os.makedirs(backup_dir(), exist_ok=True)
+    if dest:                                   # escolha do jogador: vira o padrão das próximas vezes
+        omni.write_text(LAST_DIR, dest)
+    dest = dest or backup_dir()
+    os.makedirs(dest, exist_ok=True)
     name = f"{module}-{time.strftime('%Y%m%d-%H%M%S')}{tag}.tar.gz"
-    path = os.path.join(backup_dir(), name)
+    path = os.path.join(dest, name)
     info = f"module={module}\nsab={read_version()}\ndate={time.strftime('%d/%m/%Y %H:%M')}\nfiles={len(files)}\n"
     with tarfile.open(path, "w:gz") as tar:
         data = info.encode()
@@ -136,7 +139,8 @@ def last_backups():
     """módulo -> (arquivo, data) do backup mais recente."""
     out = {}
     for module in MODULES:
-        files = sorted(glob.glob(os.path.join(backup_dir(), f"{module}-*.tar.gz")), key=os.path.getmtime)
+        files = sorted((f for _n, d, _f in places() for f in glob.glob(os.path.join(d, f"{module}-*.tar.gz"))),
+                       key=os.path.getmtime)
         files = [f for f in files if "-antes-de-importar" not in f] or files
         if files:
             out[module] = (os.path.basename(files[-1]),
@@ -146,7 +150,7 @@ def last_backups():
 
 # --- navegação para escolher o arquivo a importar ---
 
-BROWSE_ROOTS = ("/roms2", "/roms", HOME)
+BROWSE_ROOTS = ("/roms", "/roms2", "/mnt/usbdrive", HOME)
 
 
 def browse(path):
@@ -173,5 +177,5 @@ def browse(path):
         entries.insert(0, {"name": "..", "path": up, "dir": True})
     else:   # nos topos, dá para pular entre os cartões
         entries = [{"name": r, "path": r, "dir": True} for r in BROWSE_ROOTS
-                   if r != path and os.path.isdir(r)] + entries
+                   if r != path and (r in ("/roms", HOME) and os.path.isdir(r) or os.path.ismount(r))] + entries
     return path, entries

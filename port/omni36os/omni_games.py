@@ -17,9 +17,11 @@ import omni
 ES_SYSTEMS = omni.ES_SYSTEMS
 ES_SETTINGS = f"{omni.HOME}/.emulationstation/es_settings.cfg"
 CACHE = f"{omni.HOME}/.config/omni36os/jogos.json"
-CACHE_VER = 1
+CACHE_VER = 2
 # sistemas que não são jogos (ou têm card próprio)
 SKIP = {"ports", "omni36os", "sab", "tools", "options", "retropie", "settings", "kodi", "imageviewer"}
+if omni.SHELL:          # Omni36OS como sistema de ports: os ports são os jogos
+    SKIP.discard("ports")
 # pastas e arquivos que moram nas pastas de jogos e não são jogos
 NOT_GAMES = {"gamelist.xml", "gamelist.xml.old", "neogeo.zip", "systeminfo.txt", "readme.txt", "_info.txt"}
 MEDIA_DIRS = {"images", "videos", "media", "manuals", "snap", "snaps", "boxart", "box2d", "wheel",
@@ -54,14 +56,18 @@ def systems():
         if path in seen:        # dois sistemas na mesma pasta: conta uma vez
             continue
         seen.add(path)
+        # a mesma pasta em cada cartão escolhido (Cartões SD > Jogos lidos de)
+        rel = path.split("/", 2)[2] if path.startswith(("/roms/", "/roms2/")) else None
+        paths = [f"{r}/{rel}" for r in omni.game_roots()] if rel else [path]
         emus = []
         for e in s.findall("emulators/emulator"):
             cores = [c.text.strip() for c in e.findall("cores/core") if c.text]
             default = next((c.text.strip() for c in e.findall("cores/core") if c.get("default") == "true"), None)
             emus.append({"name": e.get("name"), "cores": cores, "default": default})
-        out.append({"name": name, "full": (s.findtext("fullname") or name).strip(), "path": path,
-                    "ext": sorted({x.lower() for x in (s.findtext("extension") or "").split()}),
-                    "command": (s.findtext("command") or "").strip(), "emulators": emus})
+        for p in paths:
+            out.append({"name": name, "full": (s.findtext("fullname") or name).strip(), "path": p,
+                        "ext": sorted({x.lower() for x in (s.findtext("extension") or "").split()}),
+                        "command": (s.findtext("command") or "").strip(), "emulators": emus})
     return out
 
 
@@ -223,7 +229,12 @@ def index(force=False):
             data, changed = _read_system(s), True
         new[s["path"]] = {"sig": sig, "data": data}
         if data["games"] or data["n_unknown"]:
-            out.append(data)
+            same = next((d for d in out if d["name"] == data["name"]), None)
+            if same:              # o mesmo sistema nos dois cartões: uma lista só
+                out[out.index(same)] = dict(same, games=same["games"] + data["games"],
+                                            n_unknown=same["n_unknown"] + data["n_unknown"])
+            else:
+                out.append(data)
     if changed or set(new) != set(old):
         try:
             os.makedirs(os.path.dirname(CACHE), exist_ok=True)
@@ -411,5 +422,5 @@ def command(sysd_name, game_path):
 
 
 def play(sys_name, path):
-    """Pede ao launch.sh para abrir o jogo (o Omni36OS fecha e volta depois)."""
+    """Pede ao launch-direct.sh para abrir o jogo (o Omni36OS fecha e volta depois)."""
     omni.write_text(omni.HANDOFF, f"game\t{sys_name}\t{path}")
