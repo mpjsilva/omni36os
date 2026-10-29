@@ -48,6 +48,7 @@ As verificações rodam na tela de carregamento. Depois de uma ação, o card ve
 Resumo: mostra só o que precisa de atenção em todos os cards (bateria, sistema, desempenho, cartões e serviços), cada linha com o card de origem. Sem alertas, aparece "Tudo certo". O detalhe fica em cada card.
 "Testar o controle" mostra o R36S com cada botão aceso ao apertar, os gatilhos L2/R2 e a posição dos analógicos. Para sair, segure SELECT + START por 1 segundo (B também é testado).
 "Consertar atalhos" reinicia o serviço que cuida do brilho e do volume pelos botões.
+"Detalhes da tela" mostra o modelo da sua tela, diz qual opção escolher no SELECT MODEL ao atualizar o Omni36OS e avisa se o aparelho é um clone.
 Serviços que falham no boot aparecem aqui. A falha do dmc-governor (ajuste da RAM) tem conserto com um botão; a do systemd-remount-fs é conhecida e inofensiva no Omni36OS.
 
 # Bateria
@@ -61,12 +62,13 @@ Mostra a carga, se está carregando, o brilho e o modo do processador. Com o bri
 # Sistema
 Som, tela e segurança num card só, nesta ordem: Volume, Brilho e Contraste. As barras mudam com o analógico esquerdo; o direcional navega entre os itens e troca de coluna.
 Volume: o som do console. "Restaurar áudio" conserta o som quando ele some ou sai pelo lugar errado: põe de volta o arquivo de som do sistema (.asoundrc), aponta a saída para o alto-falante/fone certo deste modelo e deixa o volume em 40%.
-Brilho e o modelo da sua tela. "Detalhes da tela" diz qual opção escolher no SELECT MODEL ao atualizar o Omni36OS, e avisa se o aparelho é um clone.
+Brilho: a luz da tela.
 Contraste: barra de 0 a 100% (50% é o normal, gamma 1.0); acima de 50% a imagem fica mais contrastada, abaixo mais clara. Vale na hora e fica salvo para o boot; as teclas de atalho de gamma do sistema continuam a partir do valor escolhido.
 Cor do LED: verde ou vermelho, também no boot. Com a bateria em 10% ou menos, o LED pisca.
 "Redefinir o sistema" (último item): volta ao primeiro boot. Apaga o nome do jogador, a trava por senha e o tema, desliga a memória extra (zram) e volta processador (Equilibrado, 1296 MHz), GPU (520 MHz), atalhos e botão de power ao padrão; depois pergunta o nome de novo. Ports, jogos, testes e as senhas do sistema e do Samba ficam.
 
 "Nome do jogador": aparece na saudação do menu. "Tema": escuro ou claro, vale na hora e fica salvo.
+"Wi-Fi": liga e desliga o adaptador, "Procurar redes" lista as redes por perto (com cadeado pede a senha no teclado; START confirma), "Redes salvas" conecta de novo ou esquece uma, "Desconectar" sai da rede atual. O painel mostra a rede, o sinal e o IP do console, e se atualiza sozinho.
 "Atalhos": combinações com o botão FN que valem dentro dos jogos (veja Atalhos abaixo).
 "Backup": exporta e importa as configurações do Omni36OS (veja Backup abaixo).
 
@@ -164,7 +166,7 @@ O reparo apaga entradas corrompidas: se o cartão já estava com erros, algum ar
 
 # Restaurar e atualizar
 "Restaurar de fábrica" do RetroArch apaga os seus ajustes (uma cópia fica guardada).
-Antes de atualizar o Omni36OS, copie a partição BOOT do cartão para o PC e veja em "Detalhes da tela" qual modelo escolher.
+Antes de atualizar o Omni36OS, copie a partição BOOT do cartão para o PC e veja em Verificar > "Detalhes da tela" qual modelo escolher.
 
 # Overclock
 Overclock é usar o chip acima do que a fábrica garante. Pode causar travamentos e, com o tempo, desgaste maior.

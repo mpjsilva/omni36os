@@ -61,6 +61,132 @@ def samba_password(new):
     return "Senha do Samba redefinida (usuário ark)."
 
 
+# --- Wi-Fi (Sistema > Wi-Fi) ---
+# Liga e desliga com os scripts do dArkOSen (carregam o módulo do adaptador USB); o resto pelo nmcli.
+
+WIFI_ON, WIFI_OFF = "/usr/local/bin/wifi_enable.sh", "/usr/local/bin/wifi_disable.sh"
+
+
+def _nm_fields(line):
+    """Uma linha do nmcli -t: campos separados por ":" (o ":" dentro do nome vem como "\\:")."""
+    out, cur, esc = [], "", False
+    for ch in line:
+        if esc:
+            cur, esc = cur + ch, False
+        elif ch == "\\":
+            esc = True
+        elif ch == ":":
+            out, cur = out + [cur], ""
+        else:
+            cur += ch
+    return out + [cur]
+
+
+def wifi_iface():
+    return next((n for n in sorted(os.listdir("/sys/class/net")) if n.startswith("wlan")), None)
+
+
+def wifi_on():
+    return bool(wifi_iface()) and sh("nmcli", "radio", "wifi")[1].strip() == "enabled"
+
+
+def wifi_set(on):
+    script = WIFI_ON if on else WIFI_OFF
+    if os.path.exists(script):
+        sh(script, timeout=60)
+    else:
+        sh("nmcli", "radio", "wifi", "on" if on else "off")
+    if on and not wifi_iface():
+        return "Não achei o adaptador de Wi-Fi. Confira se ele está no USB."
+    return "Wi-Fi ligado." if on else "Wi-Fi desligado."
+
+
+def wifi_current():
+    """(rede, sinal %) da conexão ativa, ou (None, 0)."""
+    for ln in sh("nmcli", "-t", "-f", "ACTIVE,SSID,SIGNAL", "device", "wifi")[1].splitlines():
+        f = _nm_fields(ln)
+        if len(f) >= 3 and f[0] == "yes":
+            return f[1], int(f[2] or 0)
+    return None, 0
+
+
+def wifi_ip():
+    dev = wifi_iface()
+    if not dev:
+        return ""
+    m = re.search(r"inet (\d+\.\d+\.\d+\.\d+)", sh("ip", "-4", "-o", "addr", "show", dev)[1])
+    return m.group(1) if m else ""
+
+
+def wifi_saved():
+    return [f[0] for f in map(_nm_fields, sh("nmcli", "-t", "-f", "NAME,TYPE", "connection", "show")[1].splitlines())
+            if len(f) >= 2 and f[1] == "802-11-wireless"]
+
+
+def wifi_scan():
+    """[{rede, sinal, senha, atual, salva}] sem repetidas, a mais forte primeiro."""
+    code, txt = sh("nmcli", "-t", "-f", "IN-USE,SSID,SIGNAL,SECURITY", "device", "wifi", "list", "--rescan", "yes",
+                   timeout=30)
+    saved, best = set(wifi_saved()), {}
+    for ln in txt.splitlines() if code == 0 else []:
+        f = _nm_fields(ln)
+        if len(f) < 4 or not f[1]:
+            continue
+        n = {"rede": f[1], "sinal": int(f[2] or 0), "senha": f[3] not in ("", "--"), "atual": f[0] == "*",
+             "salva": f[1] in saved}
+        if n["rede"] not in best or n["sinal"] > best[n["rede"]]["sinal"] or n["atual"]:
+            best[n["rede"]] = n
+    return sorted(best.values(), key=lambda n: (not n["atual"], -n["sinal"]))
+
+
+def wifi_connect(rede, senha=None):
+    if rede in wifi_saved() and not senha:
+        code, txt = sh("nmcli", "connection", "up", "id", rede, timeout=45)
+    else:
+        sh("nmcli", "connection", "delete", "id", rede)      # senha nova: some a antiga
+        cmd = ["nmcli", "device", "wifi", "connect", rede] + (["password", senha] if senha else [])
+        code, txt = sh(*cmd, timeout=45)
+    if code == 0:
+        ip = wifi_ip()
+        return f"Conectado a {rede}." + (f" IP: {ip}" if ip else "")
+    if "Secrets were required" in txt or "802-1X" in txt or "password" in txt.lower():
+        sh("nmcli", "connection", "delete", "id", rede)
+        return f"Não conectou a {rede}: senha errada."
+    return f"Não conectou a {rede}. Chegue mais perto do roteador e tente de novo."
+
+
+def wifi_disconnect():
+    dev = wifi_iface()
+    return "Desconectado." if dev and sh("nmcli", "device", "disconnect", dev)[0] == 0 else "Não estava conectado."
+
+
+def wifi_forget(rede):
+    return f"{rede} esquecida." if sh("nmcli", "connection", "delete", "id", rede)[0] == 0 else \
+        f"Não achei {rede} nas redes salvas."
+
+
+def wifi_status():
+    """Achados para o painel da página Wi-Fi (atualiza sozinho)."""
+    if not wifi_iface():
+        return [("aviso", "Nenhum adaptador de Wi-Fi encontrado. O R36S usa um adaptador USB: confira se ele está "
+                          "ligado e se o modo pendrive e a rede USB estão desligados.")]
+    if not wifi_on():
+        return [("info", "Wi-Fi desligado.")]
+    rede, sinal = wifi_current()
+    if not rede:
+        n = len(wifi_saved())
+        return [("info", "Wi-Fi ligado, sem conexão."),
+                ("info", f"{n} rede(s) salva(s)." if n else "Nenhuma rede salva: escolha uma em Procurar redes.")]
+    ip = wifi_ip()
+    out = [("ok", f"Conectado a {rede}, sinal {sinal}%."),
+           ("ok" if ip else "aviso", f"IP do console: {ip}" if ip else "Ainda sem IP.")]
+    if ip:
+        out.append(("info", f"No PC: ssh ark@{ip}  ·  sftp://ark@{ip}"))
+    if sinal < 35:
+        out.append(("aviso", "Sinal fraco: downloads podem falhar."))
+    return out
+
+
 # --- nome do jogador ---
 
 CFG = os.path.expanduser("~ark/.config/omni36os")

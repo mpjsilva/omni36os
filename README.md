@@ -29,9 +29,9 @@ boot (logo.bmp = frame 0 de "Carregando")
 
 | Card | O que tem |
 |---|---|
-| **Verificar** | **Resumo**: só avisos e problemas de todos os cards, cada um com o card de origem ("Tudo certo" se não houver). Testar o controle (sair segurando SELECT+START), Consertar atalhos (reinicia o `ogage`; não depende mais do `.bak`, que não existe nesta imagem) |
+| **Verificar** | **Resumo**: só avisos e problemas de todos os cards, cada um com o card de origem ("Tudo certo" se não houver). Testar o controle (sair segurando SELECT+START), Detalhes da tela, Consertar atalhos (reinicia o `ogage`; não depende mais do `.bak`, que não existe nesta imagem) |
 | **Bateria** | Carga, brilho e modo do processador, com dica de economia. Subpágina **Calibrar a bateria** (`/usr/local/etc/battery-cal`) |
-| **Sistema** | Duas colunas. Volume, Brilho e Contraste (barras no analógico esquerdo), Tema, Cor do LED, Detalhes da tela; Segurança (subpágina: trocar a senha, senha do Samba, trava por senha), Nome do jogador, Restaurar áudio, **Atalhos** (subpágina), **Backup** (subpágina: Exportar escolhendo onde salvar, Importar), **Redefinir o sistema** (último) |
+| **Sistema** | Duas colunas. Volume, Brilho e Contraste (barras no analógico esquerdo), Tema, Cor do LED; Segurança (subpágina: trocar a senha, senha do Samba, trava por senha), **Wi-Fi** (subpágina: ligar/desligar, procurar redes e conectar com senha, redes salvas, desconectar; painel com rede, sinal e IP, via nmcli e os scripts wifi_enable/disable do dArkOSen), Nome do jogador, Restaurar áudio, **Atalhos** (subpágina), **Backup** (subpágina: Exportar escolhendo onde salvar, Importar), **Redefinir o sistema** (último) |
 | **Desempenho** | Processador no menu, limites de CPU/GPU, **Memória extra (zram)** 0/256/512/768 MB (desligada por padrão), subpágina **Overclock e DTB** |
 | **USB** | Modo pendrive, subpágina **Rede pelo cabo USB**, montar/desmontar pendrive, limpar lixo do Mac, restaurar boot |
 | **Cartões SD** | Marca, espaço, testar velocidade, verificar e reparar (era subpágina de Desempenho; entrou no lugar do card Jogos) |

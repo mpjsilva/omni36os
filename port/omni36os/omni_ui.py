@@ -98,13 +98,14 @@ TWO_COLS = {"tela"}   # cartões sem painel de diagnóstico: as ações vêm em 
 SUBPAGES = {            "calibracao": ("Calibrar a bateria", "battery-2", "a3e635", "16a34a", "bateria"),
             "usbrede": ("Rede pelo cabo USB", "network", "38bdf8", "4f46e5", "pendrive"),
             "seguranca": ("Segurança", "lock", "fbbf24", "f97316", "tela"),
+            "wifi": ("Wi-Fi", "wifi", "38bdf8", "0ea5e9", "tela"),
             "backup": ("Backup", "device-floppy", "60a5fa", "a78bfa", "tela"),
             "atalhos": ("Atalhos", "keyboard", "fbbf24", "f97316", "tela"),
             "testar": ("Testar ports", "player-play", "34d399", "059669", "ferramentas")}
 PARENT = {cid: v[4] for cid, v in SUBPAGES.items()}
 SOURCE_NAMES = {"roms": "ROMS", "roms2": "ROMS2", "ambos": "ROMS e ROMS2"}
 ZRAM_SIZES = [0, 256, 512, 768]   # MB do zram (Desempenho); 0 = desligado, o padrão
-LIVE = {"usbrede": 3.0, "calibracao": 10.0}   # subpáginas com estado que muda sozinho: relê a cada N s
+LIVE = {"usbrede": 3.0, "calibracao": 10.0, "wifi": 5.0}   # subpáginas com estado que muda sozinho: relê a cada N s
 
 
 LIB_CARD = ("jogos", "Jogos", "device-gamepad-2", "c084fc", "7c3aed")   # cor da biblioteca (tela inicial)
@@ -418,6 +419,7 @@ def tip(item, text):
 
 # Mini explicações por rótulo (o começo basta); o card USB põe as dele direto nos itens.
 TIPS = {
+    "Wi-Fi": "Liga e desliga o Wi-Fi, conecta a uma rede, esquece as salvas e mostra o IP do console.",
     "Atualizar status": "Roda a verificação deste card de novo e atualiza o painel.",
     "Testar o controle": "Mostra cada botão, direcional e analógico na tela enquanto você aperta. Bom para achar "
                          "botão falhando ou analógico descalibrado.",
@@ -581,6 +583,13 @@ class App:
             return self._backup()
         if cid == "ferramentas":
             return self._ferramentas()
+        if cid == "wifi" and FAKE:
+            on = getattr(self, "fake_wifi", True)
+            return {"nivel": "ok", "acoes": [], "achados": [("ok", "Conectado a Casa, sinal 72%."),
+                                                            ("ok", "IP do console: 192.168.0.42")] if on else
+                    [("info", "Wi-Fi desligado.")]}
+        if cid == "wifi":
+            return omni_checks.finish(omni_sistema.wifi_status(), [], {})
         if cid in ("usbrede", "calibracao"):
             if FAKE:
                 return {"nivel": "ok", "acoes": [], "achados": [("ok", f"{cid}: tudo certo (dados de teste).")]}
@@ -781,6 +790,7 @@ class App:
         recheck = A("Atualizar status", "refresh", self.reload_findings)
         if cid == "checkup":
             return [A("Testar o controle", "device-gamepad-2", self.open_pad),
+                    A("Detalhes da tela", "device-tv", lambda: self.run_info("Tela e modelo", "detect_hardware_and_screen")),
                     A("Consertar atalhos", "adjustments", lambda: self.native("fix_hotkeys", "Reiniciando os atalhos..."),
                       confirm="Reiniciar o serviço de atalhos (brilho e volume pelos botões)?"),
                     recheck]
@@ -792,9 +802,9 @@ class App:
                    Slider("Brilho", "sun", "brilho", lo=10),
                    Slider("Contraste", "adjustments", "contraste"),
                    Choice("Tema", "sun", "tema", list(THEMES), {"escuro": "Escuro", "claro": "Claro"}),
-                   Choice("Cor do LED", "bulb", "led", ["verde", "vermelho"], {"verde": "Verde", "vermelho": "Vermelho"}),
-                   A("Detalhes da tela", "device-tv", lambda: self.run_info("Tela e modelo", "detect_hardware_and_screen"))]
+                   Choice("Cor do LED", "bulb", "led", ["verde", "vermelho"], {"verde": "Verde", "vermelho": "Vermelho"})]
             return out + [subpage(A("Segurança", "lock", lambda: self.open_page("seguranca")), "seguranca"),
+                          subpage(A("Wi-Fi", "wifi", lambda: self.open_page("wifi")), "wifi"),
                           A(f"Nome do jogador: {self.player or '(sem nome)'}", "users",
                             lambda: self.ask_name(first=False)),
                           tagged(A("Restaurar áudio", "rotate", lambda: self.do_action("restaurar_audio"),
@@ -877,6 +887,20 @@ class App:
                         f"{t.get('desc', '')} Abre em tela cheia e o Omni36OS volta ao fechar.".strip())
                     for t in self.tool_list()]
             return out
+        if cid == "wifi":
+            on = getattr(self, "fake_wifi", True) if FAKE else omni_sistema.wifi_on()
+            return [tip(A("Desligar o Wi-Fi" if on else "Ligar o Wi-Fi", "wifi-off" if on else "wifi",
+                          lambda: self.wifi_toggle(not on)),
+                        "Desliga o adaptador para poupar bateria." if on else
+                        "Liga o adaptador USB de Wi-Fi; ele volta para a última rede salva."),
+                    tip(A("Procurar redes", "refresh", self.wifi_scan),
+                        "Lista as redes por perto, a mais forte primeiro. A rede com cadeado pede a senha."),
+                    tip(A("Redes salvas", "device-floppy", self.wifi_saved),
+                        "As redes que o console já conhece: conecte de novo ou esqueça uma."),
+                    tip(A("Desconectar", "x", lambda: self.wifi_run(omni_sistema.wifi_disconnect if not FAKE else
+                                                                    (lambda: "Desconectado."), "Desconectando...")),
+                        "Sai da rede atual sem desligar o Wi-Fi."),
+                    recheck]
         if cid == "usbrede":
             S = omni_sistema if not FAKE else None
             run = lambda fn, busy: (lambda: self.worker(fn if S else (lambda: "teste"), self._sys_done, busy=busy))
@@ -1174,7 +1198,7 @@ class App:
             elif key == "OK":
                 self.kbd = None
                 k["fn"](k["value"])
-            elif len(k["value"]) < 48:
+            elif len(k["value"]) < 64:
                 k["value"] += key
 
     def draw_keyboard(self, dt):
@@ -1313,6 +1337,70 @@ class App:
                 self.item_sel = min(keep, len(self.items) - 1)
         self.keyboard("Qual é o seu nome?" if first else "Nome do jogador", done, value=self.player,
                       hint="Aparece na saudação do menu")
+
+    # --- Wi-Fi ---
+
+    def wifi_run(self, fn, busy):
+        def done(res):
+            self._sys_done(res)
+            if self.page == "wifi":
+                keep = self.item_sel
+                self.items = self.build_items("wifi")
+                self.item_sel = min(keep, len(self.items) - 1)
+                self.reload_findings(quiet=True)
+        self.worker(fn, done, busy=busy)
+
+    def wifi_toggle(self, on):
+        if FAKE:
+            self.fake_wifi = on
+        self.wifi_run((lambda: "Wi-Fi ligado." if on else "Wi-Fi desligado.") if FAKE else
+                      (lambda: omni_sistema.wifi_set(on)), "Ligando o Wi-Fi..." if on else "Desligando o Wi-Fi...")
+
+    def wifi_connect(self, rede, senha=None):
+        self.wifi_run((lambda: f"Conectado a {rede}. IP: 192.168.0.42") if FAKE else
+                      (lambda: omni_sistema.wifi_connect(rede, senha)), f"Conectando a {rede}... (até 45 s)")
+
+    def wifi_scan(self):
+        def done(nets):
+            if isinstance(nets, Exception) or not nets:
+                self.toast = ("Nenhuma rede encontrada. O Wi-Fi está ligado?", "aviso", self.t + 3.5)
+                return
+            rows = [{"name": n["rede"], "icon": "lock" if n["senha"] else "wifi", "net": n,
+                     "right": ("Conectada" if n["atual"] else "Salva" if n["salva"] else f"{n['sinal']}%", MUTED)}
+                    for n in nets]
+
+            def ok(row):
+                n = row["net"]
+                self.picker = None
+                if n["senha"] and not n["salva"]:
+                    self.keyboard(f"Senha de {n['rede']}", lambda pw: pw and self.wifi_connect(n["rede"], pw),
+                                  secret=True, hint="Digite a senha da rede")
+                else:
+                    self.wifi_connect(n["rede"])
+            self.show_list("Redes por perto", "wifi", rows, ok, "Conectar")
+        fake = [{"rede": "Casa", "sinal": 72, "senha": True, "atual": True, "salva": True},
+                {"rede": "Vizinho 5G", "sinal": 40, "senha": True, "atual": False, "salva": False},
+                {"rede": "Café aberto", "sinal": 28, "senha": False, "atual": False, "salva": False}]
+        self.worker((lambda: fake) if FAKE else omni_sistema.wifi_scan, done, busy="Procurando redes...")
+
+    def wifi_saved(self):
+        def done(names):
+            if isinstance(names, Exception) or not names:
+                self.toast = ("Nenhuma rede salva ainda", "aviso", self.t + 3.5)
+                return
+            rows = [{"name": n, "icon": "wifi"} for n in names]
+
+            def ok(row):
+                self.picker = None
+                self.modal = {"title": row["name"], "icon": "wifi", "sel": 0, "buttons": ["Conectar", "Esquecer", "Voltar"],
+                              "text": "Conectar a esta rede ou esquecê-la (a senha salva é apagada)?",
+                              "fns": [lambda: self.wifi_connect(row["name"]),
+                                      lambda: self.wifi_run((lambda: f"{row['name']} esquecida.") if FAKE else
+                                                            (lambda: omni_sistema.wifi_forget(row["name"])),
+                                                            "Esquecendo..."),
+                                      lambda: None]}
+            self.show_list("Redes salvas", "device-floppy", rows, ok, "Escolher")
+        self.worker((lambda: ["Casa", "Trabalho"]) if FAKE else omni_sistema.wifi_saved, done, busy="Lendo as redes...")
 
     def ask_samba(self):
         def first(new):
