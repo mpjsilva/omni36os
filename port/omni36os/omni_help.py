@@ -4,16 +4,9 @@ Linhas que começam com "# " viram títulos no leitor."""
 
 # A versão em uso vem do arquivo VERSION. Aqui fica só ela; o histórico completo está no NOVIDADES.md.
 NOVIDADES = [
-    ("1.8.0", "29/10/2026", [
-        "Ajuda > Procurar atualização: baixa a versão nova do GitHub, confere tudo antes de instalar e guarda "
-        "a de agora. Se a nova não abrir em 3 tentativas, a anterior volta sozinha; \"Voltar à versão "
-        "anterior\" faz o mesmo a pedido.",
-        "Bateria no fim: aviso em 5% e, em 2%, o jogo é fechado com tempo de salvar e o console desliga com "
-        "segurança, em vez de apagar de repente.",
-        "Wi-Fi: ligar e desligar mexem só no rádio, sem derrubar o modo pendrive nem a rede USB.",
-        "Verificar e reparar os jogos não repara mais uma partição que não desmontou de verdade (o reparo "
-        "nela podia estragar o cartão).",
-        "Testes automáticos rodam antes de cada mudança no código do Omni36OS.",
+    ("1.8.1", "29/10/2026", [
+        "Bateria: como a porcentagem do R36S não é confiável, os limites subiram. Aviso para carregar em 30%, "
+        "pedido para salvar e fechar o jogo em 15% e, em 10%, o Omni36OS salva e desliga sozinho.",
     ]),
 ]
 
@@ -43,7 +36,7 @@ Serviços que falham no boot aparecem aqui. A falha do dmc-governor (ajuste da R
 
 # Bateria
 Mostra a carga, se está carregando, o brilho e o modo do processador. Com o brilho alto ou o processador no máximo, aparece a dica de economia com um botão. O brilho se ajusta em Sistema e o processador em Desempenho.
-Bateria no fim: em 5% aparece um aviso (num jogo, o contador surge com a bateria em vermelho). Em 2%, sem o carregador, o Omni36OS fecha o jogo dando tempo de ele salvar, grava tudo e desliga, em vez de o console apagar de repente.
+Bateria no fim (a porcentagem do R36S não é confiável, por isso os limites são altos): em 30% aparece um aviso para ligar o carregador; em 15%, o pedido para salvar e fechar o jogo (num jogo, o contador surge com a bateria em vermelho). Em 10%, sem o carregador, o Omni36OS fecha o jogo dando tempo de ele salvar, grava tudo e desliga, em vez de o console apagar de repente.
 "Calibrar a bateria" abre a página da calibração. Calibre quando a porcentagem pular ou o aparelho desligar com carga sobrando:
 1. Carregue até o fim e tire o carregador.
 2. Toque em "Iniciar a calibração" e use o console normalmente (pode jogar) até ele desligar sozinho. Uma amostra por minuto fica gravada em /usr/local/etc/battery-cal.

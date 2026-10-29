@@ -166,10 +166,12 @@ class Bateria(unittest.TestCase):
             g.last = 0
             g.tick()
 
-    def test_desliga_so_com_duas_leituras(self):
-        self.run_guard([(2, 3500, False), (40, 3900, False), (2, 3500, False)])
+    def test_desliga_em_10_so_com_duas_leituras(self):
+        self.run_guard([(10, 3600, False), (40, 3900, False), (10, 3600, False)])
         self.assertEqual(self.offs, [])
-        self.run_guard([(2, 3500, False), (2, 3500, False), (1, 3400, False)])
+        self.run_guard([(11, 3600, False), (11, 3600, False)])
+        self.assertEqual(self.offs, [])
+        self.run_guard([(10, 3600, False), (10, 3600, False), (9, 3550, False)])
         self.assertEqual(self.offs, [1])                 # uma vez só
 
     def test_tensao_baixa_tambem_desliga(self):
@@ -180,9 +182,22 @@ class Bateria(unittest.TestCase):
         self.run_guard([(1, 3300, True)] * 4)
         self.assertEqual(self.offs, [])
 
-    def test_avisa_uma_vez(self):
-        self.run_guard([(5, 3700, False), (4, 3690, False), (4, 3690, False)])
+    def test_avisos_30_e_15_uma_vez_cada(self):
+        self.run_guard([(31, 3800, False), (30, 3790, False), (25, 3750, False), (15, 3700, False),
+                        (14, 3690, False), (12, 3680, False)])
+        self.assertEqual(len(self.msgs), 2)
+        self.assertIn("carregador", self.msgs[0])
+        self.assertIn("feche o jogo", self.msgs[1])
+        self.assertEqual(self.offs, [])
+
+    def test_caiu_direto_para_15_so_pede_para_fechar(self):
+        self.run_guard([(15, 3700, False), (14, 3690, False)])
         self.assertEqual(len(self.msgs), 1)
+        self.assertIn("feche o jogo", self.msgs[0])
+
+    def test_carregou_e_descarregou_avisa_de_novo(self):
+        self.run_guard([(30, 3800, False), (30, 3800, True), (29, 3790, False)])
+        self.assertEqual(len(self.msgs), 2)
 
 
 class Atualizacao(unittest.TestCase):

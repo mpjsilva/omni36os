@@ -2,6 +2,10 @@
 
 Histórico completo. Dentro do console (Ajuda > Novidades) aparece só a versão em uso.
 
+## 1.8.1 (29/10/2026)
+
+- Bateria: como a porcentagem do R36S não é confiável, os limites subiram. Aviso para carregar em 30%, pedido para salvar e fechar o jogo em 15% e, em 10%, o Omni36OS salva e desliga sozinho.
+
 ## 1.8.0 (29/10/2026)
 
 - Ajuda > Procurar atualização: baixa a versão nova do GitHub, confere tudo antes de instalar e guarda a de agora. Se a nova não abrir em 3 tentativas, a anterior volta sozinha; "Voltar à versão anterior" faz o mesmo a pedido.

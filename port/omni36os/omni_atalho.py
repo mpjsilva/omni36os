@@ -39,7 +39,8 @@ SHOT_FLAG = "/dev/shm/omni36os-shot"
 HUD_LIB = os.path.join(HERE, "hud", "omni_hud.so")
 BAT = "/sys/class/power_supply/battery"
 POWER_SHM = "/dev/shm/omni36os-power"           # o mesmo do power_button.py: o aviso aparece no Omni36OS
-BAT_WARN, BAT_OFF, BAT_OFF_MV = 5, 2, 3350      # % do aviso, % e mV do desligamento
+# A % da bateria do R36S não é confiável (pula e cai de repente): os limites ficam altos de propósito.
+BAT_WARN, BAT_CLOSE, BAT_OFF, BAT_OFF_MV = 30, 15, 10, 3350   # aviso, pedido para fechar, desligar (% e mV)
 BAT_EVERY = 30                                  # segundos entre leituras
 _conf = (None, None)
 
@@ -191,9 +192,10 @@ def held(key):
 
 # --- bateria crítica ---
 # Com a bateria no fim o R36S apaga de repente: o jogo perde o save e o cartão pode ficar com
-# arquivo pela metade. Aqui ele avisa em 5% e, em 2% (ou abaixo de 3,35 V), fecha o jogo com
-# SIGTERM (dá tempo de salvar), grava tudo e desliga. Duas leituras seguidas: um pico de consumo
-# não desliga ninguém. Carregando, nada acontece.
+# arquivo pela metade. Aqui ele avisa em 30%, pede para salvar e fechar em 15% e, em 10% (ou
+# abaixo de 3,35 V), fecha o jogo com SIGTERM (dá tempo de salvar), grava tudo e desliga. Duas
+# leituras seguidas para desligar: um pico de consumo não desliga ninguém. Carregando, nada
+# acontece; cada aviso aparece uma vez por descarga.
 
 def battery():
     """(%, mV, carregando) ou None sem bateria (simulador, PC)."""
@@ -237,7 +239,7 @@ def safe_poweroff():
 
 class BatteryGuard:
     def __init__(self):
-        self.last, self.low, self.warned = 0.0, 0, False
+        self.last, self.low, self.warned = 0.0, 0, set()
 
     def tick(self):
         now = time.monotonic()
@@ -249,7 +251,7 @@ class BatteryGuard:
             return
         pct, mv, charging = b
         if charging:
-            self.low, self.warned = 0, False
+            self.low, self.warned = 0, set()
             return
         critical = pct <= BAT_OFF or 0 < mv <= BAT_OFF_MV
         self.low = self.low + 1 if critical else 0
@@ -259,9 +261,12 @@ class BatteryGuard:
             time.sleep(3)
             safe_poweroff()
             self.low = -999                  # uma vez só
-        elif pct <= BAT_WARN and not self.warned:
-            self.warned = True
-            notify(f"Bateria em {pct}%: ligue o carregador. Em {BAT_OFF}% o console desliga sozinho.")
+        elif pct <= BAT_CLOSE and "fechar" not in self.warned:
+            self.warned |= {"fechar", "aviso"}
+            notify(f"Bateria em {pct}%: salve e feche o jogo agora. Em {BAT_OFF}% o console salva e desliga sozinho.")
+        elif pct <= BAT_WARN and "aviso" not in self.warned:
+            self.warned.add("aviso")
+            notify(f"Bateria em {pct}%: ligue o carregador logo.")
 
 
 def safe_call(fn, key):
