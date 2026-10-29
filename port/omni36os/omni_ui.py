@@ -852,16 +852,18 @@ class App:
                     confirm=("Desligar o modo pendrive?\nO aparelho reinicia e o Wi-Fi volta." if on else
                              "Ligar o modo pendrive?\nO aparelho reinicia; o Wi-Fi para até desligar."))
             tog.act = "desligar_pendrive" if on else "ligar_pendrive"
+            mounted = getattr(self, "fake_usb", False) if FAKE else os.path.ismount("/mnt/usbdrive")
             return [tip(tog, "O console vira um pendrive para o PC: ligue o cabo na porta OTG e copie jogos direto "
                              "para o cartão. Reinicia ao ligar e ao desligar; o Wi-Fi para enquanto estiver ligado."),
                     tip(subpage(A("Rede pelo cabo USB", "network", lambda: self.open_page("usbrede")), "usbrede"),
                         "O cabo USB vira uma rede entre o console e o PC: SSH, arquivos pela web e Samba, ou "
                         "internet do PC no console. Não reinicia."),
-                    tip(A("Montar pendrive", "plug", lambda: self.native("usb_mount", "Montando o pendrive...")),
+                    tip(A("Desmontar pendrive", "x", lambda: self.native("usb_umount", "Desmontando..."))
+                        if mounted else
+                        A("Montar pendrive", "plug", lambda: self.native("usb_mount", "Montando o pendrive...")),
+                        "Termina de gravar e solta o pendrive montado. Use antes de tirar do console." if mounted else
                         "Lê um pendrive ligado no console (OTG) em /mnt/usbdrive. Aceita FAT, exFAT e NTFS. "
                         "É o contrário do modo pendrive."),
-                    tip(A("Desmontar pendrive", "x", lambda: self.native("usb_umount", "Desmontando...")),
-                        "Termina de gravar e solta o pendrive montado. Use antes de tirar do console."),
                     tip(Choice("Partição no PC", "device-floppy", "part",
                                ["roms2", "roms"] if FAKE or os.path.ismount("/roms2") else ["roms"],
                                {"roms2": "/roms2 (segundo cartão)", "roms": "/roms (cartão do sistema)"}),
@@ -1136,6 +1138,8 @@ class App:
 
     def native(self, name, busy="Fazendo..."):
         """Ferramenta reescrita em Python (omni_tools.NATIVE): roda aqui e mostra o resultado."""
+        if FAKE and name in ("usb_mount", "usb_umount"):
+            self.fake_usb = name == "usb_mount"
         fn = (lambda: "teste") if FAKE else (lambda: omni_tools.run_native(name))
         self.worker(fn, self._sys_done, busy=busy)
 
@@ -1150,6 +1154,9 @@ class App:
         else:
             self.toast = (txt, "aviso" if bad else "ok", self.t + 3.5)
         if self.page:
+            keep = self.item_sel          # rótulos que dependem do estado (montar/desmontar) mudam
+            self.items = self.build_items(self.page)
+            self.item_sel = min(keep, len(self.items) - 1)
             self.reload_findings(quiet=True)
 
     def live_refresh(self):
