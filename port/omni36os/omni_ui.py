@@ -2544,7 +2544,7 @@ class App:
         # marca
         g.image("logo-64", 22, 18, 30, smooth=True)
         g.text("Bold", 20, "Omni36OS", 62, 18, TEXT)
-        g.text("Regular", 11, f"Olá, {self.player}" if self.player else "Sistema de ports",
+        g.text("Regular", 11, "Sistema de ports",
                70 + g.measure("Bold", 20, "Omni36OS")[0], 26, MUTED)
         # pílula de estado
         hora = time.strftime("%H:%M")
