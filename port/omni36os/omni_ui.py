@@ -121,10 +121,11 @@ def card_info(cid):
 FPS_ACTIVE, FPS_IDLE, IDLE_AFTER = 30, 10, 4.0   # quadros/s; segundos sem botão até ficar parado
 LIB_POS = "/tmp/omni36os-biblioteca.json"
 HUB = os.environ.get("OMNI_HUB", "")         # boot: shell do sistema; jogo: por cima de um jogo (botão de power)
-POWER_PRESS = "/dev/shm/omni36os-power-press"   # power_button.py: menu pedido pelo botão de power
-POWER_PENDING = "/dev/shm/omni36os-power-pending"
-POWER_FLAG = "/dev/shm/omni36os-power-menu"     # abrir já no menu de energia
-PANIC_MSG = "/dev/shm/omni36os-panic-msg"
+POWER_SHM = "/dev/shm/omni36os-power"          # mesma pasta do power_button.py (lá está o porquê)
+POWER_PRESS = f"{POWER_SHM}/press"               # menu na tela: o pid deste Omni36OS
+POWER_PENDING = f"{POWER_SHM}/pending"
+POWER_FLAG = f"{POWER_SHM}/menu"                 # abrir já no menu de energia
+PANIC_MSG = f"{POWER_SHM}/panic-msg"
 RESUME = os.environ.get("OMNI_RESUME", "")   # "testar": o Omni36OS voltou de um teste de port
 
 import omni_help
@@ -529,9 +530,14 @@ class App:
         try:
             if os.environ.get("SDL_VIDEODRIVER") == "offscreen":
                 raise OSError("teste fora da tela")
-            with open("/dev/shm/omni36os-ui-pid", "w") as f:   # o power_button.py só sinaliza este
+            os.makedirs(POWER_SHM, exist_ok=True)
+            try:
+                os.chmod(POWER_SHM, 0o777)
+            except OSError:
+                pass
+            with open(f"{POWER_SHM}/ui-pid", "w") as f:   # o power_button.py só sinaliza este
                 f.write(str(os.getpid()))
-            os.chmod("/dev/shm/omni36os-ui-pid", 0o666)
+            os.chmod(f"{POWER_SHM}/ui-pid", 0o666)
         except OSError:
             pass
         signal.signal(signal.SIGUSR2, lambda *_: setattr(self, "want_msg", True))
@@ -1829,7 +1835,7 @@ class App:
                 try:
                     if path == POWER_PRESS:
                         with open(path, "w") as f:
-                            f.write(str(time.time()))
+                            f.write(str(os.getpid()))
                     else:
                         os.remove(path)
                 except OSError:

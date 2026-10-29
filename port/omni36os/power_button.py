@@ -1,13 +1,13 @@
-"""Botão de power do Omni36OS. O ogage chama o /usr/local/bin/finish.sh a cada toque no
-power; com o botão ligado em Ajuda, aquele finish.sh chama este arquivo antes do original.
+"""Botão de power do Omni36OS. O ogage chama o /usr/local/bin/pause.sh a cada toque no
+power; com o botão ligado em Ajuda, aquele pause.sh chama este arquivo antes do original.
 
 - FN + power: modo pânico. Fecha o que estiver na tela (jogo, port, ferramenta) e volta ao
   Omni36OS, com o processador sem overclock e o brilho e o som em níveis normais.
   Duas vezes em menos de 10 s: grava tudo e reinicia.
 - Power sozinho: abre o menu de energia do Omni36OS (o dele, se estiver na tela, ou por cima
   do jogo, que congela).
-- Saída 0: tratado aqui. Qualquer outra saída (ou erro): o finish.sh roda o original, que
-  desliga com segurança. Um segundo toque enquanto o menu não abriu também desliga.
+- Power com o menu de energia já na tela: desliga com segurança.
+- Saída 0: tratado aqui. Qualquer outra saída (ou erro): o pause.sh roda o original (suspende).
 """
 import fcntl
 import os
@@ -24,12 +24,16 @@ import omni_atalho as at   # noqa: E402
 PAD = at.PAD
 FN = 708
 EVIOCGKEY = (2 << 30) | (96 << 16) | (ord("E") << 8) | 0x18   # 96 bytes = KEY_MAX 0x2ff
-PRESS = "/dev/shm/omni36os-power-press"        # o Omni36OS grava quando o menu está na tela
-PENDING = "/dev/shm/omni36os-power-pending"    # menu pedido, ainda abrindo (o Omni36OS carregando)
-MENU_FLAG = "/dev/shm/omni36os-power-menu"     # o Omni36OS abre direto no menu de energia
-UI_PID = "/dev/shm/omni36os-ui-pid"
-PANIC_LAST = "/dev/shm/omni36os-panic-last"
-PANIC_MSG = "/dev/shm/omni36os-panic-msg"
+# Numa pasta própria, aberta e sem o bit sticky: no /dev/shm (sticky) com fs.protected_regular=2 o
+# root (este arquivo) e o ark (o Omni36OS) não conseguem regravar nem apagar os arquivos um do outro,
+# e um "menu na tela" que ficasse para trás fazia todo toque cair no pause.sh original (suspender).
+SHM = "/dev/shm/omni36os-power"
+PRESS = f"{SHM}/press"            # o Omni36OS grava o pid dele quando o menu está na tela
+PENDING = f"{SHM}/pending"        # menu pedido, ainda abrindo (o Omni36OS carregando)
+MENU_FLAG = f"{SHM}/menu"         # o Omni36OS abre direto no menu de energia
+UI_PID = f"{SHM}/ui-pid"
+PANIC_LAST = f"{SHM}/panic-last"
+PANIC_MSG = f"{SHM}/panic-msg"
 PENDING_WINDOW = 25   # toques enquanto o menu abre são ignorados; depois disso, tenta de novo
 
 
@@ -53,21 +57,42 @@ def stamp(path):
         return 0.0
 
 
+def shm_dir():
+    os.makedirs(SHM, exist_ok=True)
+    try:
+        os.chmod(SHM, 0o777)
+    except OSError:
+        pass
+
+
 def put(path, text):
+    shm_dir()
     with open(path, "w") as f:
         f.write(text)
     os.chmod(path, 0o666)   # o Omni36OS apaga
 
 
+def is_ui(pid):
+    """O processo é o python do Omni36OS (não o sudo nem o shell em volta, que repassariam o sinal)?"""
+    try:
+        with open(f"/proc/{pid}/cmdline", "rb") as f:
+            argv = f.read().split(b"\0")
+    except OSError:
+        return False
+    return os.path.basename(argv[0]).startswith(b"python") and any(a.endswith(b"omni_ui.py") for a in argv[1:])
+
+
 def ui_pids():
-    """O python do Omni36OS que entende o botão (ele grava o pid em UI_PID ao abrir). Um Omni36OS
-    de antes da atualização morreria com o SIGUSR1; o sudo em volta repassaria o sinal."""
+    """O Omni36OS na tela: o pid que ele grava em UI_PID ao abrir ou, se o arquivo falhar, o
+    procurado no /proc (o mais novo: o que abriu por cima de um jogo)."""
     try:
         pid = int(open(UI_PID).read().strip())
-        with open(f"/proc/{pid}/cmdline", "rb") as f:
-            return [pid] if b"omni_ui.py" in f.read() else []
+        if is_ui(pid):
+            return [pid]
     except (OSError, ValueError):
-        return []
+        pass
+    found = [p for p in ui_any() if is_ui(p)]
+    return found[-1:]
 
 
 def ui_any():
@@ -150,14 +175,13 @@ def panic():
 
 
 def menu():
-    """0 se o menu de energia vai abrir; 1 para o finish.sh desligar."""
-    if os.path.exists(PRESS) and ui_pids():
-        return 1                           # toque com o menu na tela: desliga
+    """0 se o toque foi tratado aqui; 1 para o pause.sh rodar o original (suspender)."""
+    ui = ui_pids()
+    if ui and stamp(PRESS) == ui[0]:
+        safe("poweroff")                   # toque com o menu na tela: desliga (o original suspenderia)
+        return 0
     if time.time() - stamp(PENDING) < PENDING_WINDOW:
         return 0                           # o menu ainda está abrindo: não desligar por engano
-    ui = ui_pids()
-    if ui_any() and not ui:
-        return 1                           # Omni36OS de antes da atualização: desliga como sempre
     game = front()
     if ui:                                 # Omni36OS na tela (sozinho ou por cima de um jogo congelado)
         put(PENDING, str(time.time()))
