@@ -1589,7 +1589,7 @@ class App:
             self.open_sheet(s, g)
 
     def meta(self, name, path=""):
-        """Ficha do jogo (cache em memória): pasta info do port + PortMaster/IGDB/Steam.
+        """Ficha do jogo (cache em memória): pasta info do port + PortMaster/Steam.
         Pede a busca na internet uma vez, se houver Wi-Fi; a pasta info manda sobre ela."""
         cache = self.__dict__.setdefault("meta_cache", {})
         if name not in cache:
@@ -1670,7 +1670,7 @@ class App:
             y += 18
         desc = (info or {}).get("descricao") or game.get("desc") or (
             "Buscando a ficha..." if info is None and self.status.get("wifi") else
-            "Sem ficha: ligue o Wi-Fi para buscar." if info is None else "Sem ficha no PortMaster, IGDB ou Steam.")
+            "Sem ficha: ligue o Wi-Fi para buscar." if info is None else "Sem ficha no PortMaster ou na Steam.")
         local = []
         if (info or {}).get("porter"):
             local.append("Port: " + info["porter"][:28])

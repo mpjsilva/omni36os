@@ -16,7 +16,7 @@ Histórico completo. Dentro do console (Ajuda > Novidades) aparece só a versão
 
 ## 1.5.0 (28/10/2026)
 
-- Ports: uma lista só (sem sistemas), favoritos primeiro. Ao lado, a ficha do jogo (PortMaster, IGDB e Steam): capa, estúdio, data, gêneros e descrição. Busca uma vez por jogo com Wi-Fi e guarda no cartão. Uma pasta info dentro da pasta do port (info.json, imagem e .txt) vale sobre a internet.
+- Ports: uma lista só (sem sistemas), favoritos primeiro. Ao lado, a ficha do jogo (PortMaster e Steam): capa, estúdio, data, gêneros e descrição. Busca uma vez por jogo com Wi-Fi e guarda no cartão. Uma pasta info dentro da pasta do port (info.json, imagem e .txt) vale sobre a internet.
 - Sistema mais leve: EmulationStation, RetroArch e emuladores removidos (3 GB livres); serviços e timers do dArkOSen que não servem a ports desligados no boot. O SSH continua ligado.
 - Sem repetição entre cards: Verificar virou resumo só dos alertas; cada card mostra o seu assunto. Cartões SD virou card no lugar de Jogos (a biblioteca continua na tela inicial). O processador se ajusta só em Desempenho, e o código do RetroArch saiu.
 - Os cards viraram a tela inicial; Ports é o primeiro card e abre a biblioteca. Testar ports foi para Ferramentas. Ao fechar um port, a biblioteca volta no mesmo lugar.

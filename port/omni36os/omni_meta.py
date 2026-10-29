@@ -1,10 +1,8 @@
-"""Ficha dos ports em 3 camadas, guardada no cartão (busca uma vez por jogo, com Wi-Fi).
+"""Ficha dos ports em 2 camadas, guardada no cartão (busca uma vez por jogo, com Wi-Fi).
 
 1. PortMaster: catálogo oficial dos ports (ports.json do PortMaster-New). Acha o port pelo
    .sh instalado e traz título, descrição, gêneros, quem portou, o que precisa e a imagem.
-2. IGDB (Twitch): base geral, cobre jogos fora da Steam (arcade, console). Precisa de
-   credenciais em ~ark/.config/omni36os/igdb.json: {"client_id": "...", "client_secret": "..."}.
-3. Steam: a loja (a mesma base que o SteamDB mostra), sem chave. Descrição em pt-BR quando há.
+2. Steam: a loja (a mesma base que o SteamDB mostra), sem chave. Descrição em pt-BR quando há.
 
 Antes de tudo vale a pasta "info" do port (<pasta do port>/info/): info.json com os campos
 da ficha (nome, descricao, estudio, lancamento, generos, porter, pronto, capa); sem JSON, a
@@ -24,7 +22,6 @@ import urllib.parse
 import urllib.request
 
 CACHE = os.environ.get("OMNI_META_DIR") or "/home/ark/.config/omni36os/steam"
-IGDB_CONF = os.environ.get("OMNI_IGDB") or "/home/ark/.config/omni36os/igdb.json"
 STEAM = "https://store.steampowered.com/api"
 PM_LIST = "https://github.com/PortsMaster/PortMaster-New/releases/latest/download/ports.json"
 PM_RAW = "https://raw.githubusercontent.com/PortsMaster/PortMaster-New/main/ports"
@@ -205,57 +202,7 @@ def portmaster(name, path):
     return idx.get(_key(sh)) or idx.get(_key(name)) or idx.get(_key(_norm(name)))
 
 
-# --- 2. IGDB ---
-
-def igdb_conf():
-    try:
-        with open(IGDB_CONF) as f:
-            c = json.load(f)
-        return c if c.get("client_id") and c.get("client_secret") else None
-    except (OSError, ValueError):
-        return None
-
-
-def _igdb_token(c):
-    tok = os.path.join(CACHE, "_igdb_token.json")
-    try:
-        with open(tok) as f:
-            t = json.load(f)
-        if t["exp"] > time.time() + 60:
-            return t["token"]
-    except (OSError, ValueError, KeyError):
-        pass
-    q = urllib.parse.urlencode({"client_id": c["client_id"], "client_secret": c["client_secret"],
-                                "grant_type": "client_credentials"})
-    r = json.loads(_get(f"https://id.twitch.tv/oauth2/token?{q}", data=b""))
-    os.makedirs(CACHE, exist_ok=True)
-    with open(tok, "w") as f:
-        json.dump({"token": r["access_token"], "exp": time.time() + r.get("expires_in", 3600)}, f)
-    return r["access_token"]
-
-
-def igdb(term):
-    c = igdb_conf()
-    if not c:
-        return None
-    token = _igdb_token(c)
-    body = (f'search "{term.replace(chr(34), "")}"; fields name,summary,first_release_date,genres.name,'
-            'involved_companies.company.name,involved_companies.developer,cover.image_id; limit 5;')
-    found = json.loads(_get("https://api.igdb.com/v4/games", data=body.encode(),
-                            headers={"Client-ID": c["client_id"], "Authorization": f"Bearer {token}"}))
-    if not found:
-        return None
-    g = next((x for x in found if _key(x.get("name", "")) == _key(term)), found[0])
-    devs = [i["company"]["name"] for i in g.get("involved_companies") or [] if i.get("developer")]
-    ts = g.get("first_release_date")
-    return {"nome": g.get("name"), "descricao": _clean(g.get("summary"))[:600],
-            "estudio": ", ".join(devs[:2]), "lancamento": time.strftime("%d/%m/%Y", time.gmtime(ts)) if ts else "",
-            "generos": ", ".join(x["name"] for x in g.get("genres") or [])[:60],
-            "img": (f"https://images.igdb.com/igdb/image/upload/t_cover_big/{g['cover']['image_id']}.jpg"
-                    if g.get("cover") else "")}
-
-
-# --- 3. Steam ---
+# --- 2. Steam ---
 
 def steam(term):
     q = urllib.parse.urlencode({"term": term, "l": "brazilian", "cc": "BR"})
@@ -283,7 +230,7 @@ def fetch(name, path=""):
     pm = portmaster(name, path)
     term = (pm or {}).get("titulo") or _norm(name)
     info, descs, imgs = {}, [], []
-    for src, d in (("PortMaster", pm), ("IGDB", igdb(term)), ("Steam", steam(term))):
+    for src, d in (("PortMaster", pm), ("Steam", steam(term))):
         if not d:
             continue
         info.setdefault("fontes", []).append(src)
@@ -301,7 +248,7 @@ def fetch(name, path=""):
         info["descricao"] = next((t for t in descs if _pt(t)), descs[0])
     os.makedirs(CACHE, exist_ok=True)
     js, jpg = paths(name)
-    for url in reversed(imgs):        # capa: Steam (larga), depois IGDB, depois PortMaster
+    for url in reversed(imgs):        # capa: Steam (larga), depois PortMaster
         try:
             with open(jpg, "wb") as f:
                 f.write(_get(url))

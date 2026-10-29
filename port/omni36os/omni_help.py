@@ -119,7 +119,7 @@ O Omni36OS avisa quando um cartão passa de 90% de uso ou tem menos de 1 GB livr
 # Ports (primeiro card)
 O console liga nos cards, com Ports já escolhido: A abre a biblioteca. É uma lista só, com os favoritos primeiro e o resto por nome. Cima/baixo escolhem o port, esquerda/direita pulam de 10 em 10 e L1/R1 pulam de letra. Ao lado aparece a ficha do jogo (capa, estúdio, data, gêneros e descrição); A abre o port e, ao fechar, a lista volta no mesmo lugar.
 B volta para os cards. O botão de power abre Energia: suspender, reiniciar ou desligar.
-A ficha vem da pasta info do port (info.json, imagem e .txt), e depois do PortMaster, do IGDB e da Steam, buscados uma vez com Wi-Fi e guardados no cartão.
+A ficha vem da pasta info do port (info.json, imagem e .txt), e depois do PortMaster e da Steam, buscados uma vez com Wi-Fi e guardados no cartão.
 
 # Ferramentas
 "Arquivos": navega pelos cartões (/roms, /roms2) e pelo pendrive. A abre a pasta, B sobe um nível, X abre as opções do item (copiar, mover, renomear, apagar) e START abre as opções da pasta (colar aqui, nova pasta). Para copiar: X > Copiar no item, vá até a pasta de destino e START > Colar aqui.
