@@ -3080,11 +3080,7 @@ class App:
         g.glow(cx - 40, cy - 40, 80, 80, 24, alpha(a1, 90), 20)
         g.image("logo-160", cx - 40, cy - 40, 80, smooth=True)
         g.arc(cx, cy, 62, 4, self.t * 300 % 360, self.t * 300 % 360 + 260, alpha(a1, 230))
-        g.text("Bold", 24, "Omni36OS", cx, cy + 82, TEXT, "c", "m")
-        bw, by = 300, cy + 124
-        g.rrect(cx - bw / 2, by, bw, 8, 4, ink(30))
-        g.rrect(cx - bw / 2, by, max(8, bw * self.load_shown), 8, 4, a1, a2)
-        g.text("Regular", 13, self.load_label, cx, by + 28, MUTED, "c", "m")
+        g.text("Bold", 24, f"Bem-vindo, {self.player}" if self.player else "Bem-vindo", cx, cy + 82, TEXT, "c", "m")
         if self.results and not self.warm and self.load_shown > 0.98:
             self.loading = False
             self.first_screens()
