@@ -1278,8 +1278,10 @@ class App:
         self.warn("Redefinir o sistema", "Volta o Omni36OS ao primeiro boot: apaga o nome do jogador, a trava por "
                   "senha e o tema, desliga a memória extra (zram) e volta processador (Equilibrado, 1296 MHz), "
                   "GPU (520 MHz), atalhos (FN + X, FN + B, FN + Y, todos ligados) e botão de power ao padrão.", go, secs=5,
-                  risk="O nome e a senha da trava somem; o Omni36OS pergunta o nome de novo.",
-                  undo="Ports, jogos, testes e as senhas do sistema e do Samba não mudam.")
+                  risk="O nome e a senha da trava somem; o Omni36OS pergunta o nome de novo. Ports, jogos, testes e as "
+                       "senhas do sistema e do Samba não mudam.",
+                  undo="Não tem volta automática: ajuste de novo em Sistema. Se exportou um backup antes, Backup > "
+                       "Importar devolve nome, tema, atalhos, processador e GPU.")
 
     def lock_screen(self, then):
         def check(pw):
