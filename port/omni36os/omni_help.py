@@ -4,26 +4,23 @@ Linhas que começam com "# " viram títulos no leitor."""
 
 # A versão em uso vem do arquivo VERSION. Aqui fica só ela; o histórico completo está no NOVIDADES.md.
 NOVIDADES = [
-    ("1.6.0", "29/10/2026", [
-        "Sistema > Atalhos (no lugar do Atalho L3+R3): dentro dos jogos, FN + X mostra o contador de FPS com "
-        "temperatura e bateria, FN + B liga o limite de 30 FPS, FN + Y salva a tela e SELECT + START (segurar) "
-        "fecha o jogo. Cada um liga e desliga, e \"Personalizar um atalho\" troca a tecla que vai com o FN; os "
-        "textos acompanham.",
-        "Sem depender do segundo cartão: o backup pergunta onde salvar (cartão do sistema, segundo cartão ou "
-        "pendrive); modo pendrive, reparo e testes usam /roms quando não há /roms2.",
-        "Botão de power num jogo: o menu Energia ganhou mostrar o contador de FPS, limitar a 30 FPS, captura de "
-        "tela e fechar o jogo.",
-        "Restos do EmulationStation removidos: modo pendrive, botão de power e atalhos agora tratam o Omni36OS "
-        "como o menu do console; saíram Mostrar no console, Restaurar o ES, o card Jogos e o manual do ES.",
-        "Sistema: Contraste virou barra (0 a 100%, 50% = normal). Volume, brilho e contraste mudam com o "
-        "analógico esquerdo; o direcional só navega e troca de coluna. Tema subiu para a esquerda, Restaurar "
-        "áudio foi para a direita e Zerar virou Redefinir o sistema.",
-        "Cada página explica a opção escolhida no topo do painel da esquerda (lâmpada roxa); os rótulos AÇÕES, "
-        "DIAGNÓSTICO e STATUS DA BATERIA saíram.",
-        "Rede pelo cabo USB: o NetworkManager não mexe mais na usb0, então o PC volta a receber IP no modo "
-        "universal; o painel mostra o IP entregue.",
-        "Backup: Exportar e Importar direto na página, sem a janela intermediária.",
-        "Modo pendrive: o aviso fala só do Wi-Fi (o console não usa teclado USB).",
+    ("1.7.0", "29/10/2026", [
+        "Sistema > Wi-Fi: ligar e desligar, procurar redes e conectar com senha, redes salvas (conectar ou "
+        "esquecer) e desconectar. O painel mostra a rede, o sinal e o IP do console.",
+        "Botão de power: o menu de energia voltou a abrir (o toque suspendia o console). Com o menu já "
+        "aberto, outro toque desliga com segurança.",
+        "Boas-vindas com o seu nome: a tela do boot e a de carregamento dizem \"Bem-vindo\" com o nome do "
+        "jogador, sem barra de progresso.",
+        "Mais resistente: um erro numa tela não fecha mais o Omni36OS; se ele cair, volta sozinho e o erro "
+        "fica em /var/log/omni36os-crash.log. Configurações são gravadas sem risco de ficarem pela metade se "
+        "a bateria acabar.",
+        "Atalhos e modo pendrive se recuperam sozinhos: o serviço espera o controle no boot, e uma queda no "
+        "modo pendrive devolve a partição e o Omni36OS.",
+        "Ports: o teclado virtual do PortMaster (gptokeyb) é fechado quando o jogo sai, e um port não deixa "
+        "mais as variáveis dele para o próximo.",
+        "USB: Montar e Desmontar pendrive viraram um botão só, que muda conforme o pendrive está montado.",
+        "Ficha dos ports só com PortMaster e Steam (o IGDB saiu: pedia credenciais). Cabeçalho só com "
+        "Omni36OS. Detalhes da tela foi para Verificar.",
     ]),
 ]
 

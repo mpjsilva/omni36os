@@ -2,6 +2,17 @@
 
 Histórico completo. Dentro do console (Ajuda > Novidades) aparece só a versão em uso.
 
+## 1.7.0 (29/10/2026)
+
+- Sistema > Wi-Fi: ligar e desligar, procurar redes e conectar com senha, redes salvas (conectar ou esquecer) e desconectar. O painel mostra a rede, o sinal e o IP do console.
+- Botão de power: o menu de energia voltou a abrir (o toque suspendia o console). Com o menu já aberto, outro toque desliga com segurança.
+- Boas-vindas com o seu nome: a tela do boot e a de carregamento dizem "Bem-vindo" com o nome do jogador, sem barra de progresso.
+- Mais resistente: um erro numa tela não fecha mais o Omni36OS; se ele cair, volta sozinho e o erro fica em /var/log/omni36os-crash.log. Configurações são gravadas sem risco de ficarem pela metade se a bateria acabar.
+- Atalhos e modo pendrive se recuperam sozinhos: o serviço espera o controle no boot, e uma queda no modo pendrive devolve a partição e o Omni36OS.
+- Ports: o teclado virtual do PortMaster (gptokeyb) é fechado quando o jogo sai, e um port não deixa mais as variáveis dele para o próximo.
+- USB: Montar e Desmontar pendrive viraram um botão só, que muda conforme o pendrive está montado.
+- Ficha dos ports só com PortMaster e Steam (o IGDB saiu: pedia credenciais). Cabeçalho só com Omni36OS. Detalhes da tela foi para Verificar.
+
 ## 1.6.0 (29/10/2026)
 
 - Sistema > Atalhos (no lugar do Atalho L3+R3): dentro dos jogos, FN + X mostra o contador de FPS com temperatura e bateria, FN + B liga o limite de 30 FPS, FN + Y salva a tela e SELECT + START (segurar) fecha o jogo. Cada um liga e desliga, e "Personalizar um atalho" troca a tecla que vai com o FN; os textos acompanham.

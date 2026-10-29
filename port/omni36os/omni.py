@@ -41,6 +41,42 @@ def write_text(path, value):
         f.write(str(value))
 
 
+def save_file(path, value):
+    """Grava uma configuração sem risco de ficar pela metade: o R36S apaga quando a bateria
+    acaba, e um arquivo truncado perderia a escolha. Escreve ao lado, força ao cartão e troca de
+    uma vez (os.replace é atômico). Mantém dono e permissões do arquivo antigo. Não serve para
+    /sys e /proc: lá vai write_text."""
+    d = os.path.dirname(path) or "."
+    os.makedirs(d, exist_ok=True)
+    tmp = f"{path}.tmp{os.getpid()}"
+    try:
+        with open(tmp, "w") as f:
+            f.write(value if isinstance(value, str) else str(value))
+            f.flush()
+            os.fsync(f.fileno())
+        try:
+            st = os.stat(path)
+            os.chown(tmp, st.st_uid, st.st_gid)
+            os.chmod(tmp, st.st_mode & 0o7777)
+        except OSError:
+            pass
+        os.replace(tmp, path)
+    except BaseException:
+        try:
+            os.remove(tmp)
+        except OSError:
+            pass
+        raise
+    try:                                   # a troca do nome também precisa chegar ao cartão
+        fd = os.open(d, os.O_RDONLY)
+        try:
+            os.fsync(fd)
+        finally:
+            os.close(fd)
+    except OSError:
+        pass
+
+
 def clamp_pct(value):
     return max(0, min(100, int(value)))
 
@@ -715,8 +751,10 @@ def _systemctl(*args):
 
 
 ATALHOS_CONF = f"{HOME}/.config/omni36os/atalhos.json"   # ver omni_atalho.py
-HOTKEY_UNIT_TEXT = ("[Unit]\nDescription=Omni36OS: atalhos com FN durante os jogos\nAfter=omni36os-launcher.service\n\n"
-                    f"[Service]\nExecStart=/usr/bin/python3 {OMNI_DIR}/omni_atalho.py\nRestart=on-failure\n"
+# Restart=always sem limite: um erro no boot não pode deixar o console sem os atalhos até reiniciar
+HOTKEY_UNIT_TEXT = ("[Unit]\nDescription=Omni36OS: atalhos com FN durante os jogos\nAfter=omni36os-launcher.service\n"
+                    "StartLimitIntervalSec=0\n\n"
+                    f"[Service]\nExecStart=/usr/bin/python3 {OMNI_DIR}/omni_atalho.py\nRestart=always\nRestartSec=2\n"
                     "Nice=10\n\n[Install]\nWantedBy=multi-user.target\n")
 
 
@@ -735,9 +773,7 @@ def set_atalho(args):
     if args["key"] not in c:
         return "Atalho inválido."
     c[args["key"]] = args["value"]
-    os.makedirs(os.path.dirname(ATALHOS_CONF), exist_ok=True)
-    with open(ATALHOS_CONF, "w") as f:
-        json.dump(c, f)
+    save_file(ATALHOS_CONF, json.dumps(c))
     if read_text(HOTKEY_UNIT, "") != HOTKEY_UNIT_TEXT:      # unidade antiga (do tempo do ES) ou faltando
         write_text(HOTKEY_UNIT, HOTKEY_UNIT_TEXT)
         _systemctl("daemon-reload")

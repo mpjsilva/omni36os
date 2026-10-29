@@ -185,15 +185,40 @@ def held(key):
         close_game(game)
 
 
+def safe_call(fn, key):
+    """Um atalho que falha (arquivo, processo sumido) não pode derrubar o serviço."""
+    try:
+        fn(key)
+    except Exception as e:
+        print(f"atalho {key}: {e}", file=sys.stderr, flush=True)
+
+
+def open_pad():
+    """Espera o controle aparecer (no boot ele pode vir depois deste serviço)."""
+    while True:
+        try:
+            return os.open(PAD, os.O_RDONLY)
+        except OSError:
+            time.sleep(1)
+
+
 def main():
     apply_flags()
     signal.signal(signal.SIGHUP, lambda *_: apply_flags())
-    fd = os.open(PAD, os.O_RDONLY)
+    fd = open_pad()
     down, since, waiting = set(), None, None
     while True:
-        r, _, _ = select.select([fd], [], [], 0.2)
-        if r:
-            data = os.read(fd, EVENT.size * 64)
+        try:
+            r, _, _ = select.select([fd], [], [], 0.2)
+            data = os.read(fd, EVENT.size * 64) if r else b""
+        except OSError:                   # controle sumiu (driver reiniciado): abre de novo
+            try:
+                os.close(fd)
+            except OSError:
+                pass
+            fd, down, since, waiting = open_pad(), set(), None, None
+            continue
+        if data:
             for k in range(0, len(data) - EVENT.size + 1, EVENT.size):
                 _s, _us, typ, code, val = EVENT.unpack_from(data, k)
                 if typ != EV_KEY or val == 2:
@@ -202,7 +227,7 @@ def main():
                     down.add(code)
                     for key, cb in active("toque").items():   # a combinação fechou agora
                         if down == cb:
-                            tap(key)
+                            safe_call(tap, key)
                 else:
                     down.discard(code)
                 waiting = next((key for key, cb in active("segurar").items() if down == cb), None)
@@ -210,7 +235,7 @@ def main():
         if since is not None and time.monotonic() - since >= HOLD:
             key, since, waiting = waiting, None, None
             down = set()
-            held(key)
+            safe_call(held, key)
 
 
 if __name__ == "__main__":

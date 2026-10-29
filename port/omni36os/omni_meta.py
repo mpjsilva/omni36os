@@ -49,6 +49,17 @@ def _key(name):
     return re.sub(r"[^a-z0-9]", "", name.lower())
 
 
+def _save(path, text):
+    """Grava sem deixar arquivo pela metade (bateria acabando no meio): escreve ao lado e troca."""
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    tmp = f"{path}.tmp{os.getpid()}"
+    with open(tmp, "w") as f:
+        f.write(text)
+        f.flush()
+        os.fsync(f.fileno())
+    os.replace(tmp, path)
+
+
 def _get(url, data=None, headers=None):
     req = urllib.request.Request(url, data=data, headers={**UA, **(headers or {})})
     with urllib.request.urlopen(req, timeout=10) as r:
@@ -188,11 +199,12 @@ def _pm_index():
                     if it.lower().endswith(".sh"):
                         idx.setdefault(_key(it[:-3]), e)
                 idx.setdefault(_key(e["titulo"]), e)
-            os.makedirs(CACHE, exist_ok=True)
-            with open(PM_INDEX, "w") as f:
-                json.dump(idx, f, ensure_ascii=False)
-        with open(PM_INDEX) as f:
-            _pm = json.load(f)
+            _save(PM_INDEX, json.dumps(idx, ensure_ascii=False))
+        try:
+            with open(PM_INDEX) as f:
+                _pm = json.load(f)
+        except (OSError, ValueError):     # catálogo estragado: baixa de novo na próxima vez
+            _pm = {}
         return _pm
 
 
@@ -256,8 +268,7 @@ def fetch(name, path=""):
             break
         except OSError:
             continue
-    with open(js, "w") as f:
-        json.dump(info, f, ensure_ascii=False)
+    _save(js, json.dumps(info, ensure_ascii=False))
     return info
 
 

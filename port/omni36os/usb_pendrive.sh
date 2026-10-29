@@ -132,7 +132,8 @@ watch_pad() {
   BACK_KEY=$BACK_KEY python3 - <<'PY' &
 import evdev, os
 back = int(os.environ["BACK_KEY"])
-d = evdev.InputDevice("/dev/input/event2"); held = set()
+# pelo caminho fixo do controle: o número do eventN muda conforme o que está ligado
+d = evdev.InputDevice("/dev/input/by-path/platform-odroidgo3-joypad-event-joystick"); held = set()
 for e in d.read_loop():
     if e.type != evdev.ecodes.EV_KEY: continue
     (held.add if e.value else held.discard)(e.code)
@@ -145,6 +146,14 @@ PY
 daemon() {
   [ "$(mode)" = peripheral ] || exit 0
   gadget_up || exit 1
+  # O serviço caiu com a partição no PC (reinício pelo systemd): devolve antes de tudo, senão o
+  # console ficaria sem a partição e sem o Omni36OS.
+  if ! mountpoint -q /$PART || ! systemctl -q is-active omni36os-launcher; then
+    log "daemon: estado deixado por uma queda; devolvendo as partições"
+    echo "" > $LUN/file 2>/dev/null
+    mount -a 2>/dev/null           # o /roms2 entregue já não conta no PART (que caiu para roms)
+    take_back
+  fi
   log "daemon: esperando o cabo (/$PART)"
   local given=0 idle=0 s n last
   PAD=""

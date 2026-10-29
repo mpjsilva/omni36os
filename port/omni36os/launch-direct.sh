@@ -97,8 +97,30 @@ p = sys.argv[2]
 print(omni_meta.port_dir(p) or (p if os.path.isdir(p) else os.path.dirname(p)))' "$OMNI_DIR" "$1" 2>/dev/null
 }
 
+# O launcher caiu (erro no Python): guarda o fim do log, que o /tmp perde na próxima abertura.
+CRASH_LOG=/var/log/omni36os-crash.log
+crash_report() {
+    {
+        echo "=== $(date '+%d/%m/%Y %H:%M:%S') omni_ui.py saiu com código $1 (versão $(cat "$OMNI_DIR/VERSION" 2>/dev/null))"
+        tail -n 60 /tmp/omni.log 2>/dev/null
+    } | sudo tee -a "$CRASH_LOG" >/dev/null
+    # o log não cresce sem fim no cartão
+    if [ "$(sudo stat -c %s "$CRASH_LOG" 2>/dev/null || echo 0)" -gt 262144 ]; then
+        sudo sh -c "tail -n 400 '$CRASH_LOG' > '$CRASH_LOG.tmp' && mv '$CRASH_LOG.tmp' '$CRASH_LOG'"
+    fi
+}
+
+# Port com gptokeyb (teclado virtual do PortMaster): ele não pode sobrar depois do port,
+# senão continua segurando o controle no Omni36OS.
+kill_gptokeyb() {
+    sudo pkill -f gptokeyb 2>/dev/null
+    sleep 0.3
+    sudo pkill -9 -f gptokeyb 2>/dev/null
+}
+
 # Loop principal: launcher → port → launcher → ...
 RESUME=""
+CRASHES=0
 while true; do
     # Limpar sinal anterior
     sudo rm -f /tmp/omni36os-next 2>/dev/null || rm -f /tmp/omni36os-next 2>/dev/null
@@ -106,9 +128,19 @@ while true; do
     # Iniciar o launcher (UI principal)
     sudo OMNI_HUB="boot" OMNI_RESUME="$RESUME" SDL_GAMECONTROLLERCONFIG_FILE=/opt/inttools/gamecontrollerdb.txt \
         python3 omni_ui.py > /tmp/omni.log 2>&1
+    rc=$?
 
-    # Se não houve próximo comando, sair do loop
-    [ -f /tmp/omni36os-next ] || break
+    if [ ! -f /tmp/omni36os-next ]; then
+        [ "$rc" -eq 0 ] && break          # saiu normalmente
+        # caiu: registra e abre de novo, esperando mais a cada queda seguida (não trava o
+        # processador num laço; o systemd também reinicia se este script sair)
+        crash_report "$rc"
+        CRASHES=$((CRASHES + 1))
+        RESUME=""
+        sleep $(( CRASHES < 5 ? CRASHES : 5 ))
+        continue
+    fi
+    CRASHES=0
 
     next="$(cat /tmp/omni36os-next 2>/dev/null)"
     sudo rm -f /tmp/omni36os-next 2>/dev/null || rm -f /tmp/omni36os-next 2>/dev/null
@@ -119,6 +151,7 @@ while true; do
         test:/roms/ports/*.sh|test:/roms2/ports/*.sh)
             port_begin
             bash "$OMNI_DIR/port_test.sh" "${next#test:}"
+            kill_gptokeyb
             port_end
             RESUME="testar"
             continue ;;
@@ -130,6 +163,7 @@ while true; do
                 sudo chmod 666 /dev/tty1
                 port_begin
                 OMNI_GAME_DIR="$(game_dir "$rom")" LD_PRELOAD="$(hud_preload)" bash -c "$cmd" > /tmp/omni36os-game.log 2>&1
+                kill_gptokeyb             # port que caiu antes do pm_finish deixa o gptokeyb rodando
                 port_end
                 printf "\033c" > /dev/tty1
             fi
@@ -148,16 +182,13 @@ while true; do
             port_path="${next#launch:}"
             if [ -n "$port_path" ] && [ -d "$port_path" ]; then
                 # Registrar no histórico via omni.py
-                sudo python3 -c "
-import importlib.util
-spec = importlib.util.spec_from_file_location('omni_ports', 'ports.py')
-mod = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(mod)
-mod.record_port_played('$port_path')
-" 2>/dev/null || true
+                # (o caminho vai como argumento: um nome com aspas não quebra o comando)
+                sudo python3 -c 'import sys; sys.path.insert(0, sys.argv[1]); import ports
+ports.record_port_played(sys.argv[2])' "$OMNI_DIR" "$port_path" 2>/dev/null || true
 
-                # Entrar no diretório do port
-                cd "$port_path"
+                # Num subshell: o control.txt e o cd do port não vazam para o próximo
+                (
+                cd "$port_path" || exit
 
                 # Carregar variáveis do PortMaster
                 [ -f control.txt ] && source control.txt
@@ -190,17 +221,14 @@ mod.record_port_played('$port_path')
                     fi
                     unset LD_PRELOAD OMNI_GAME_DIR
 
+                    kill_gptokeyb
                     port_end
-                    # Port terminou, retornar ao launcher
-                    RESUME="port"
                 else
                     echo "Nenhum executável encontrado em $port_path" > /tmp/omni36os-error
                     sleep 2
-                    RESUME=""
                 fi
-
-                # Voltar ao diretório do launcher
-                cd "$OMNI_DIR"
+                )
+                RESUME="port"
             fi
             continue ;;
 

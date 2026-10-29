@@ -16,6 +16,7 @@ import math
 import os
 import signal
 import struct
+import sys
 import threading
 import time
 
@@ -293,9 +294,7 @@ class Data:
         if what == "tema":
             apply_theme(value)
             if not FAKE:
-                os.makedirs(os.path.dirname(THEME_FILE), exist_ok=True)
-                with open(THEME_FILE, "w") as f:
-                    f.write(value)
+                omni.save_file(THEME_FILE, value)
             return "tema"
         if FAKE:
             self.__dict__.setdefault("fake_vals", {})[what] = value
@@ -1939,8 +1938,7 @@ class App:
             self.toast = (f"Abriria {g['name']}", "ok", self.t + 3)
             return
         try:
-            with open(LIB_POS, "w") as f:
-                json.dump({k: self.lib[k] for k in ("sys", "game")}, f)
+            omni.save_file(LIB_POS, json.dumps({k: self.lib[k] for k in ("sys", "game")}))
         except OSError:
             pass
         omni_games.play(s["name"], g["path"])
@@ -3238,56 +3236,74 @@ class App:
         shot_dir = os.environ.get("OMNI_SHOT_DIR", ".")
         shots, next_demo = 0, time.monotonic() + 1.0
         last = time.monotonic()
+        errors = []                   # horários dos erros recentes
         while self.running:
-            now = time.monotonic()
-            dt = min(0.05, now - last)
-            last = now
-            self.poll()
-            self.capture_poll()
-            self.power_check()
-            if demo and now >= next_demo and not self.busy:
-                cmd = demo.pop(0)
-                next_demo = now + 0.45
-                if cmd.startswith("wait"):
-                    next_demo = now + int(cmd[4:]) / 1000
-                elif cmd == "shot":
-                    shots += 1
-                    self.frame(dt)
-                    self.g.screenshot(os.path.join(shot_dir, f"{shots:02d}.ppm"))
-                    self.g.present()
-                    continue
-                elif cmd == "power":
-                    self.want_power = True
-                elif cmd == "quit":
-                    self.running = False
-                elif cmd.startswith("pad:"):       # teste: aperta (ou solta, com -) um botão no teste do controle
-                    n = int(cmd[4:])
-                    self.pad_event("btn", abs(n), n >= 0 and not cmd[4:].startswith("-"), now)
-                elif cmd.startswith("axis:"):
-                    k, v = cmd[5:].split("=")
-                    self.pad_event("axis", int(k), int(v), now)
-                elif cmd.startswith("warn:"):      # teste: abre o aviso sem rodar nada
-                    secs, hold, risk, undo = DANGER[cmd[5:]]
-                    self.warn(cmd[5:], "Teste do aviso.", lambda: setattr(self, "toast", ("teste: passou", "ok", self.t + 3.5)),
-                              secs, hold, risk=risk, undo=undo)
-                elif cmd in ("hold", "release"):
-                    self.ok_held = cmd == "hold"
-                    if cmd == "hold":
-                        self.handle("ok")
-                else:
-                    self.handle(cmd)
-            self.frame(dt)
-            self.g.present()
-            if self.loading:
-                self.prewarm()
-            # Ritmo: 30 quadros/s em uso e 10 parado. A 60 quadros/s sem parar a
-            # Omni36OS ocupava 70% de um núcleo e deixava o aparelho perto de 80 °C.
-            moving = (self.loading or self.busy or getattr(self, "danger", None) or self.toast or 0.01 < self.page_anim < 0.99
-                      or getattr(self, "kbd", None) or getattr(self, "pad", None)
-                      or now - self.last_input < IDLE_AFTER)
-            spare = 1 / (FPS_ACTIVE if moving else FPS_IDLE) - (time.monotonic() - now)
-            if spare > 0:
-                time.sleep(spare)
+            try:
+                now = time.monotonic()
+                dt = min(0.05, now - last)
+                last = now
+                self.poll()
+                self.capture_poll()
+                self.power_check()
+                if demo and now >= next_demo and not self.busy:
+                    cmd = demo.pop(0)
+                    next_demo = now + 0.45
+                    if cmd.startswith("wait"):
+                        next_demo = now + int(cmd[4:]) / 1000
+                    elif cmd == "shot":
+                        shots += 1
+                        self.frame(dt)
+                        self.g.screenshot(os.path.join(shot_dir, f"{shots:02d}.ppm"))
+                        self.g.present()
+                        continue
+                    elif cmd == "power":
+                        self.want_power = True
+                    elif cmd == "quit":
+                        self.running = False
+                    elif cmd.startswith("pad:"):       # teste: aperta (ou solta, com -) um botão no teste do controle
+                        n = int(cmd[4:])
+                        self.pad_event("btn", abs(n), n >= 0 and not cmd[4:].startswith("-"), now)
+                    elif cmd.startswith("axis:"):
+                        k, v = cmd[5:].split("=")
+                        self.pad_event("axis", int(k), int(v), now)
+                    elif cmd.startswith("warn:"):      # teste: abre o aviso sem rodar nada
+                        secs, hold, risk, undo = DANGER[cmd[5:]]
+                        self.warn(cmd[5:], "Teste do aviso.", lambda: setattr(self, "toast", ("teste: passou", "ok", self.t + 3.5)),
+                                  secs, hold, risk=risk, undo=undo)
+                    elif cmd in ("hold", "release"):
+                        self.ok_held = cmd == "hold"
+                        if cmd == "hold":
+                            self.handle("ok")
+                    else:
+                        self.handle(cmd)
+                self.frame(dt)
+                self.g.present()
+                if self.loading:
+                    self.prewarm()
+                # Ritmo: 30 quadros/s em uso e 10 parado. A 60 quadros/s sem parar a
+                # Omni36OS ocupava 70% de um núcleo e deixava o aparelho perto de 80 °C.
+                moving = (self.loading or self.busy or getattr(self, "danger", None) or self.toast or 0.01 < self.page_anim < 0.99
+                          or getattr(self, "kbd", None) or getattr(self, "pad", None)
+                          or now - self.last_input < IDLE_AFTER)
+                spare = 1 / (FPS_ACTIVE if moving else FPS_IDLE) - (time.monotonic() - now)
+                if spare > 0:
+                    time.sleep(spare)
+            except Exception:
+                # Um erro num botão ou num desenho não derruba o Omni36OS: vai para o log, as janelas
+                # abertas fecham e a tela segue. Erro sem parar (mais de 10 em 5 s) cai de vez e o
+                # launch-direct.sh abre de novo do zero, guardando o log.
+                import traceback
+                traceback.print_exc()
+                sys.stderr.flush()
+                now = time.monotonic()
+                errors = [t for t in errors if now - t < 5] + [now]
+                if len(errors) > 10:
+                    raise
+                self.picker = self.modal = self.kbd = None
+                self.sheet = None
+                self.danger = self.busy = None
+                self.toast = ("Algo deu errado, mas o Omni36OS continuou", "aviso", self.t + 4)
+                last = time.monotonic()
         gfx.SDL_Quit()
 
 

@@ -10,6 +10,8 @@
 # =============================================================================
 
 import os
+
+import omni
 import glob
 import json
 import subprocess
@@ -53,8 +55,7 @@ def save_history(history):
     """Salva histórico de ports jogados."""
     ensure_dirs()
     try:
-        with open(PORTS_HISTORY, "w") as f:
-            json.dump(history, f, indent=2)
+        omni.save_file(PORTS_HISTORY, json.dumps(history, indent=2))
     except Exception:
         pass
 

@@ -200,9 +200,7 @@ def player_name():
 
 def set_player_name(name):
     name = " ".join(name.split())[:20]
-    os.makedirs(CFG, exist_ok=True)
-    with open(PLAYER, "w") as f:
-        f.write(name + "\n")
+    omni.save_file(PLAYER, name + "\n")
     try:
         os.chown(CFG, 1000, 1000)
         os.chown(PLAYER, 1000, 1000)
@@ -240,11 +238,9 @@ def lock_set(pw):
     pw = pw.strip()
     if len(pw) < 3:
         return "A senha precisa de pelo menos 3 letras."
-    os.makedirs(LOCK_DIR, exist_ok=True)
-    with open(LOCK_FILE, "w") as f:
-        f.write("Senha da trava do Omni36OS (pedida ao ligar o console).\n"
-                "Para tirar a trava pelo PC, apague este arquivo.\n\n"
-                f"senha: {pw}\n")
+    omni.save_file(LOCK_FILE, "Senha da trava do Omni36OS (pedida ao ligar o console).\n"
+                              "Para tirar a trava pelo PC, apague este arquivo.\n\n"
+                              f"senha: {pw}\n")
     sh("sync")
     return "Trava ligada. A senha também está em EASYROMS/senha/senha.txt."
 
@@ -711,15 +707,11 @@ def cal_apply():
     if len(s) < MIN_SAMPLES:
         return f"Poucas amostras ({len(s)}): faça uma calibração completa antes."
     curve = _fit(s)
-    with open(CURVE, "w") as f:
-        f.writelines(f"{mv}:{p}\n" for mv, p in curve)
-    with open(f"{CAL_DIR}/curve.source", "w") as f:
-        f.write("session.csv\n")
-    with open(DAEMON, "w") as f:
-        f.write(DAEMON_SH)
+    omni.save_file(CURVE, "".join(f"{mv}:{p}\n" for mv, p in curve))
+    omni.save_file(f"{CAL_DIR}/curve.source", "session.csv\n")
+    omni.save_file(DAEMON, DAEMON_SH)
     os.chmod(DAEMON, 0o755)
-    with open(f"/etc/systemd/system/{CAL_UNIT}", "w") as f:
-        f.write(CAL_SERVICE)
+    omni.save_file(f"/etc/systemd/system/{CAL_UNIT}", CAL_SERVICE)
     sh("systemctl", "daemon-reload")
     sh("systemctl", "enable", "--now", CAL_UNIT)
     pts = {p: mv for mv, p in curve}
@@ -892,9 +884,8 @@ def zram_get():
 def zram_set(mb):
     """Liga o zram com mb MB (até 768) ou desliga (0). Vale na hora e nos próximos boots."""
     mb = max(0, min(768, int(mb)))
-    with open(ZRAM_CONF, "w") as f:
-        f.write(f"ENABLED={1 if mb else 0}\n# O kernel 4.4 do R36S não tem lz4 no crypto: lzo é o mais rápido\n"
-                f"ALGORITHM=lzo\nSIZE={mb * 1024 * 1024}\n")
+    omni.save_file(ZRAM_CONF, f"ENABLED={1 if mb else 0}\n# O kernel 4.4 do R36S não tem lz4 no crypto: lzo é o "
+                              f"mais rápido\nALGORITHM=lzo\nSIZE={mb * 1024 * 1024}\n")
     # o que estiver no swap volta para a RAM antes de trocar o tamanho
     sh("swapoff", "/dev/zram0", timeout=120)
     try:
