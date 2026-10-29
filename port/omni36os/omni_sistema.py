@@ -65,6 +65,7 @@ def samba_password(new):
 
 CFG = os.path.expanduser("~ark/.config/omni36os")
 PLAYER = f"{CFG}/jogador"
+TELA = f"{CFG}/boas-vindas.raw"      # tela do boot com o nome (omni_tela.py); o omni36os-tela usa se existir
 
 
 def player_name():
@@ -80,6 +81,12 @@ def set_player_name(name):
         os.chown(CFG, 1000, 1000)
         os.chown(PLAYER, 1000, 1000)
     except OSError:
+        pass
+    try:
+        import omni_tela
+        if omni_tela.boas_vindas(name, TELA):
+            os.chown(TELA, 1000, 1000)
+    except Exception:   # sem a base ou sem a SDL_ttf: o boot mostra a tela padrão
         pass
     return name
 
@@ -135,7 +142,7 @@ def reset_custom():
     """Volta ao primeiro boot: apaga nome, trava, tema e posição da biblioteca, desliga o zram e
     volta processador, GPU, atalhos e botão de power ao padrão.
     Ports, jogos, senhas do sistema/Samba e testes ficam."""
-    for f in (PLAYER, LOCK_FILE, f"{CFG}/tema", "/tmp/omni36os-biblioteca.json", omni.ATALHOS_CONF):
+    for f in (PLAYER, TELA, LOCK_FILE, f"{CFG}/tema", "/tmp/omni36os-biblioteca.json", omni.ATALHOS_CONF):
         try:
             os.remove(f)
         except OSError:

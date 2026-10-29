@@ -519,6 +519,8 @@ class App:
             pass
         self.toast = None             # (texto, nível, até)
         self.player = os.environ.get("OMNI_JOGADOR", "") if FAKE else omni_sistema.player_name()
+        if not FAKE and self.player and not os.path.exists(omni_sistema.TELA):   # nome de antes da tela com nome
+            threading.Thread(target=omni_sistema.set_player_name, args=(self.player,), daemon=True).start()
         self.want_power = self.want_msg = False
         self.msg_t = -9.0
         signal.signal(signal.SIGUSR1, lambda *_: setattr(self, "want_power", True))
