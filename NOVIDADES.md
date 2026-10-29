@@ -2,6 +2,14 @@
 
 Histórico completo. Dentro do console (Ajuda > Novidades) aparece só a versão em uso.
 
+## 1.8.0 (29/10/2026)
+
+- Ajuda > Procurar atualização: baixa a versão nova do GitHub, confere tudo antes de instalar e guarda a de agora. Se a nova não abrir em 3 tentativas, a anterior volta sozinha; "Voltar à versão anterior" faz o mesmo a pedido.
+- Bateria no fim: aviso em 5% e, em 2%, o jogo é fechado com tempo de salvar e o console desliga com segurança, em vez de apagar de repente.
+- Wi-Fi: ligar e desligar mexem só no rádio, sem derrubar o modo pendrive nem a rede USB.
+- Verificar e reparar os jogos não repara mais uma partição que não desmontou de verdade (o reparo nela podia estragar o cartão).
+- Testes automáticos rodam antes de cada mudança no código do Omni36OS.
+
 ## 1.7.0 (29/10/2026)
 
 - Sistema > Wi-Fi: ligar e desligar, procurar redes e conectar com senha, redes salvas (conectar ou esquecer) e desconectar. O painel mostra a rede, o sinal e o IP do console.

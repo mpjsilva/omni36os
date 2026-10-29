@@ -106,7 +106,7 @@ OMNI_FAKE=1 OMNI_WINDOWED=1 python3 omni_ui.py
 - Use `OMNI_SHOT_DIR=<pasta>` com `OMNI_DEMO="wait6000,start,right,a,shot,quit"`.
 - Comandos extras do demo: `pad:N` (aperta) / `pad:-N` (solta) e `axis:K=V`.
 - O `wait6000` (às vezes `wait8000`) é necessário para passar do carregamento; a tela inicial é a biblioteca, `start` abre os cards e `ok` confirma.
-- O modo `offscreen` do SDL dá core dump; use `OMNI_WINDOWED=1`.
+- Sem janela: `SDL_VIDEODRIVER=offscreen` (é o que os testes usam). `OMNI_DEMO_STEP=<s>` encurta o intervalo entre passos (padrão 0,45).
 
 **Variáveis do modo de teste:**
 - `OMNI_JOGADOR=<nome>`
@@ -120,6 +120,10 @@ OMNI_FAKE=1 OMNI_WINDOWED=1 python3 omni_ui.py
 Ficha dos ports (`omni_meta.py`). Primeiro a pasta `info` do port (`ports/<pasta do port>/info/`; a pasta é a de mesmo nome do .sh, a que o .sh cita ou a que começa igual): `info.json` com `nome`, `descricao`, `estudio`, `lancamento`, `generos` (texto ou lista), `porter`, `pronto`, `capa` (arquivo na pasta); todos opcionais, JSON com erro é ignorado. Reservas: 1º .txt = descrição, 1ª imagem = capa, depois `ports/images/<nome>-image.png` do ES. Manda sobre a internet. Depois 2 camadas: 1) catálogo do PortMaster (ports.json, acha pelo .sh; título, descrição, porter, gêneros, se precisa dos arquivos do jogo, screenshot; índice enxuto renovado a cada 7 dias); 2) loja Steam, sem chave, só com nome igual. Cada camada completa a anterior; descrição em pt-BR quando alguma tiver; capa Steam > PortMaster. Cache em `~ark/.config/omni36os/steam/` (no simulador, `~/.cache/omni36os-steam`).
 
 Prints de cada rodada ficam em `imagens/runN`.
+
+### Testes automáticos
+
+`python3 tests/run.py` (cerca de 30 s). Rodam sozinhos antes de cada commit pelo gancho `.githooks/pre-commit`; num clone novo, ative uma vez com `git config core.hooksPath .githooks`. Cobrem gravação atômica, atalhos, botão de power (inclusive o aviso velho que fazia suspender), bateria crítica, atualização com volta automática (pacote quebrado, pacote que tenta gravar fora da pasta, 3 tentativas e volta), backup, sintaxe de todos os `.sh`, pyflakes, VERSION = NOVIDADES e o simulador sem janela percorrendo todos os cards.
 
 ## O que o Omni36OS mexe no sistema
 
@@ -138,6 +142,10 @@ Prints de cada rodada ficam em `imagens/runN`.
 - **Ao abrir um port** (`launch-direct.sh`, `port_begin`/`port_end`): limpa o cache, compacta a memória, CPU/GPU/DMC em performance, ionice alto, pausa `fn-menu-watcher`, `es-status-daemon` e (sem ninguém conectado) Samba e filebrowser; devolve tudo ao fechar.
 - **Removido do cartão (sistema mais leve, −3,1 GB):** EmulationStation, RetroArch, 25 emuladores, Kodi, DinguxCommander e suas configurações. O `es_systems.cfg` ficou (a biblioteca lê). Não há mais volta ao ES pelo `trocar-shell.sh`.
 - **Serviços desligados no boot:** `es-status-daemon`, `fn-menu-watcher`, `remote-autostart`, `cron` e os timers `apt-daily*`, `dpkg-db-backup`, `e2scrub_all`, `xfs_scrub_all`. O **SSH** sobe direto.
+- **Abertura e atualização:** `omni36os-launcher.service` roda `/usr/local/bin/omni36os-start` (original em `port/omni36os/omni36os-start`), que conta as aberturas depois de uma atualização e volta a `/opt/omni36os.prev` se a nova não chegar ao menu em 3 tentativas. Estado em `/var/lib/omni36os-update/`. Quedas do launcher ficam em `/var/log/omni36os-crash.log`. As duas unidades têm `StartLimitIntervalSec=0` (o systemd nunca desiste).
+- **Bateria crítica:** o `omni36os-atalho` avisa em 5% e, em 2% ou abaixo de 3,35 V (duas leituras seguidas, sem carregador), fecha o jogo com SIGTERM, grava tudo e desliga.
+- **Verificar o cartão:** o `/boot/recovery.sh` é a cópia do `Scan_SD*.sh` do dArkOSen sem o `umount -l` (fsck numa partição ainda em uso pode estragá-la).
+- **Wi-Fi:** liga e desliga só o rádio (`rfkill` + `nmcli`). O `wifi_disable.sh` do dArkOSen não é usado: ele faz blacklist, mascara o `wpa_supplicant` e reinicia o controlador USB.
 - **`emulationstation.service` mascarado** (→ `/dev/null`): o PortMaster roda `systemctl restart emulationstation` depois de instalar um port, e o conflito com o serviço do launcher derrubaria o launcher.
 
 ## Lançar uma versão
@@ -146,7 +154,8 @@ Prints de cada rodada ficam em `imagens/runN`.
 2. Atualize o `MANUAL` e os `CUIDADOS` se algum card mudou.
 3. Teste no PC com prints e instale no cartão (seção acima).
 4. Faça o boot de teste no console: abrir, usar, voltar com B; num port, FN + X/B/Y, SELECT + START e o power no meio.
-5. Commit `vX.Y.Z: resumo` e tag `omni-vX.Y.Z`.
+5. Commit `vX.Y.Z: resumo` (os testes rodam sozinhos) e tag `omni-vX.Y.Z`.
+6. `git push --tags`: o "Procurar atualização" dos consoles só enxerga tags `omni-vX.Y.Z` publicadas no GitHub.
 
 ## Pendências
 

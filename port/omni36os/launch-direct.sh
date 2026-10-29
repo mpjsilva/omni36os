@@ -136,6 +136,11 @@ while true; do
         # processador num laço; o systemd também reinicia se este script sair)
         crash_report "$rc"
         CRASHES=$((CRASHES + 1))
+        # versão recém-atualizada caindo: sai para o omni36os-start contar e, se for o caso, voltar
+        # à anterior
+        if [ -f /var/lib/omni36os-update/pending ] && [ "$CRASHES" -ge 3 ]; then
+            exit 1
+        fi
         RESUME=""
         sleep $(( CRASHES < 5 ? CRASHES : 5 ))
         continue

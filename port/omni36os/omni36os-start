@@ -1,0 +1,25 @@
+#!/bin/bash
+# Omni36OS: abre o launcher (ExecStart do omni36os-launcher.service).
+# Fica em /usr/local/bin, fora de /opt/omni36os, para não ser trocado numa atualização: depois de
+# uma, conta as aberturas da versão nova; se ela não chegou ao menu em 3 tentativas, devolve a
+# anterior (/opt/omni36os.prev). O Omni36OS apaga a contagem quando o menu aparece.
+# Original no repositório: port/omni36os/omni36os-start.
+D=/opt/omni36os
+P=/opt/omni36os.prev
+S=/var/lib/omni36os-update
+
+if [ -f "$S/pending" ]; then
+    n=$(( $(cat "$S/tries" 2>/dev/null || echo 0) + 1 ))
+    echo "$n" | sudo tee "$S/tries" >/dev/null
+    if [ "$n" -gt 3 ] && [ -f "$P/VERSION" ]; then
+        new=$(cat "$D/VERSION" 2>/dev/null); old=$(cat "$P/VERSION")
+        sudo rm -rf "$D".quebrada-*          # só a última quebrada fica (para olhar o log)
+        sudo mv "$D" "$D.quebrada-$(date +%s)"
+        sudo mv "$P" "$D"
+        sudo rm -f "$S/pending" "$S/tries"
+        echo "A versão $new não abriu e o Omni36OS voltou para a $old." | sudo tee "$S/rolled-back" >/dev/null
+        sync
+        sudo systemctl restart omni36os-atalho &
+    fi
+fi
+exec "$D/launch-direct.sh"

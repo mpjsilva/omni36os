@@ -4,23 +4,16 @@ Linhas que começam com "# " viram títulos no leitor."""
 
 # A versão em uso vem do arquivo VERSION. Aqui fica só ela; o histórico completo está no NOVIDADES.md.
 NOVIDADES = [
-    ("1.7.0", "29/10/2026", [
-        "Sistema > Wi-Fi: ligar e desligar, procurar redes e conectar com senha, redes salvas (conectar ou "
-        "esquecer) e desconectar. O painel mostra a rede, o sinal e o IP do console.",
-        "Botão de power: o menu de energia voltou a abrir (o toque suspendia o console). Com o menu já "
-        "aberto, outro toque desliga com segurança.",
-        "Boas-vindas com o seu nome: a tela do boot e a de carregamento dizem \"Bem-vindo\" com o nome do "
-        "jogador, sem barra de progresso.",
-        "Mais resistente: um erro numa tela não fecha mais o Omni36OS; se ele cair, volta sozinho e o erro "
-        "fica em /var/log/omni36os-crash.log. Configurações são gravadas sem risco de ficarem pela metade se "
-        "a bateria acabar.",
-        "Atalhos e modo pendrive se recuperam sozinhos: o serviço espera o controle no boot, e uma queda no "
-        "modo pendrive devolve a partição e o Omni36OS.",
-        "Ports: o teclado virtual do PortMaster (gptokeyb) é fechado quando o jogo sai, e um port não deixa "
-        "mais as variáveis dele para o próximo.",
-        "USB: Montar e Desmontar pendrive viraram um botão só, que muda conforme o pendrive está montado.",
-        "Ficha dos ports só com PortMaster e Steam (o IGDB saiu: pedia credenciais). Cabeçalho só com "
-        "Omni36OS. Detalhes da tela foi para Verificar.",
+    ("1.8.0", "29/10/2026", [
+        "Ajuda > Procurar atualização: baixa a versão nova do GitHub, confere tudo antes de instalar e guarda "
+        "a de agora. Se a nova não abrir em 3 tentativas, a anterior volta sozinha; \"Voltar à versão "
+        "anterior\" faz o mesmo a pedido.",
+        "Bateria no fim: aviso em 5% e, em 2%, o jogo é fechado com tempo de salvar e o console desliga com "
+        "segurança, em vez de apagar de repente.",
+        "Wi-Fi: ligar e desligar mexem só no rádio, sem derrubar o modo pendrive nem a rede USB.",
+        "Verificar e reparar os jogos não repara mais uma partição que não desmontou de verdade (o reparo "
+        "nela podia estragar o cartão).",
+        "Testes automáticos rodam antes de cada mudança no código do Omni36OS.",
     ]),
 ]
 
@@ -50,6 +43,7 @@ Serviços que falham no boot aparecem aqui. A falha do dmc-governor (ajuste da R
 
 # Bateria
 Mostra a carga, se está carregando, o brilho e o modo do processador. Com o brilho alto ou o processador no máximo, aparece a dica de economia com um botão. O brilho se ajusta em Sistema e o processador em Desempenho.
+Bateria no fim: em 5% aparece um aviso (num jogo, o contador surge com a bateria em vermelho). Em 2%, sem o carregador, o Omni36OS fecha o jogo dando tempo de ele salvar, grava tudo e desliga, em vez de o console apagar de repente.
 "Calibrar a bateria" abre a página da calibração. Calibre quando a porcentagem pular ou o aparelho desligar com carga sobrando:
 1. Carregue até o fim e tire o carregador.
 2. Toque em "Iniciar a calibração" e use o console normalmente (pode jogar) até ele desligar sozinho. Uma amostra por minuto fica gravada em /usr/local/etc/battery-cal.
@@ -145,7 +139,8 @@ Só configurações: saves, estados, cores, shaders, temas e bancos de dados fic
 
 # Ajuda
 Este manual, os cuidados, as novidades de cada versão, os créditos (com os projetos usados como base) e o botão de power.
-"Botão de power": Menu de energia (um toque abre Cancelar, Suspender, Reiniciar e Desligar; outro toque com o menu aberto faz o que o power fazia antes) ou Como no Omni36OS (suspende, ou desliga se a opção de trocar power e suspender estiver ligada). Com o menu ligado, FN + power é o modo pânico: fecha o que estiver na tela, tira o overclock, põe o processador no modo normal, sobe o brilho se estiver quase apagado e abaixa o som se estiver no máximo. Duas vezes em menos de 10 s, o console grava tudo e reinicia. Segurar o power por uns 8 s sempre desliga à força: isso é do chip de energia, não do Omni36OS. O botão de reset reinicia por hardware e não pode ser mudado."""
+"Botão de power": Menu de energia (um toque abre Cancelar, Suspender, Reiniciar e Desligar; outro toque com o menu aberto desliga com segurança) ou Como no Omni36OS (suspende, ou desliga se a opção de trocar power e suspender estiver ligada). Com o menu ligado, FN + power é o modo pânico: fecha o que estiver na tela, tira o overclock, põe o processador no modo normal, sobe o brilho se estiver quase apagado e abaixa o som se estiver no máximo. Duas vezes em menos de 10 s, o console grava tudo e reinicia. Segurar o power por uns 8 s sempre desliga à força: isso é do chip de energia, não do Omni36OS. O botão de reset reinicia por hardware e não pode ser mudado.
+"Procurar atualização" (precisa de Wi-Fi): procura uma versão nova no GitHub. Antes de instalar, o Omni36OS baixa e confere tudo; a versão de agora fica guardada. Se a nova não chegar ao menu em 3 tentativas, a anterior volta sozinha e um aviso explica. "Voltar à versão anterior" aparece depois de uma atualização e troca de volta a pedido. Deixe o carregador ligado durante a atualização."""
 
 CUIDADOS = """# Antes de qualquer coisa
 Faça backup do cartão do sistema no PC de vez em quando. Uma imagem do cartão inteiro salva você de quase qualquer problema.

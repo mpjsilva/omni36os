@@ -62,9 +62,12 @@ def samba_password(new):
 
 
 # --- Wi-Fi (Sistema > Wi-Fi) ---
-# Liga e desliga com os scripts do dArkOSen (carregam o módulo do adaptador USB); o resto pelo nmcli.
+# Ligar e desligar mexem só no rádio (rfkill + nmcli): leve e reversível. O wifi_disable.sh do
+# dArkOSen não serve aqui: ele põe os módulos em blacklist, mascara o wpa_supplicant e reinicia o
+# controlador USB (dwc2), o que derruba o modo pendrive e a rede USB. O wifi_enable.sh só entra
+# quando o adaptador não aparece (módulo bloqueado por ele ou não carregado).
 
-WIFI_ON, WIFI_OFF = "/usr/local/bin/wifi_enable.sh", "/usr/local/bin/wifi_disable.sh"
+WIFI_ON = "/usr/local/bin/wifi_enable.sh"
 
 
 def _nm_fields(line):
@@ -91,14 +94,17 @@ def wifi_on():
 
 
 def wifi_set(on):
-    script = WIFI_ON if on else WIFI_OFF
-    if os.path.exists(script):
-        sh(script, timeout=60)
-    else:
-        sh("nmcli", "radio", "wifi", "on" if on else "off")
-    if on and not wifi_iface():
+    if not on:
+        sh("nmcli", "radio", "wifi", "off")
+        sh("rfkill", "block", "wifi")
+        return "Wi-Fi desligado."
+    sh("rfkill", "unblock", "wifi")
+    if not wifi_iface() and os.path.exists(WIFI_ON):
+        sh(WIFI_ON, timeout=60)
+    sh("nmcli", "radio", "wifi", "on")
+    if not wifi_iface():
         return "Não achei o adaptador de Wi-Fi. Confira se ele está no USB."
-    return "Wi-Fi ligado." if on else "Wi-Fi desligado."
+    return "Wi-Fi ligado."
 
 
 def wifi_current():

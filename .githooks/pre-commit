@@ -1,0 +1,10 @@
+#!/bin/bash
+# Omni36OS: os testes rodam antes de cada commit; se algum falhar, o commit não acontece.
+# Ativar (uma vez por clone): git config core.hooksPath .githooks
+# Pular numa emergência: git commit --no-verify
+cd "$(git rev-parse --show-toplevel)" || exit 1
+echo "Omni36OS: rodando os testes..."
+if ! python3 tests/run.py -q; then
+    echo "Testes falharam: commit cancelado. Corrija ou use --no-verify se for mesmo preciso."
+    exit 1
+fi

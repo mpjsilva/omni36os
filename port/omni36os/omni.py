@@ -556,7 +556,11 @@ def schedule_scan(args):
     src, _log, _ = SCANS[args.get("part") or ("roms2" if os.path.ismount("/roms2") else "roms")]
     if not os.path.exists(src):
         return "Este sistema não tem o verificador de cartão do Omni36OS."
-    shutil.copy(src, "/boot/recovery.sh")
+    # Sem o "umount -l" do original: desmontar "preguiçoso" deixa a partição em uso, e o fsck -y
+    # numa partição em uso pode estragar o cartão. Se não desmontar, o script não repara (só registra).
+    with open(src) as f:
+        script = f.read().replace(' || umount -l "$MP" 2>>"$LOG_FILE"', "")
+    save_file("/boot/recovery.sh", script)
     os.chmod("/boot/recovery.sh", 0o755)
     os.sync()
     subprocess.Popen(["sh", "-c", "sleep 2; reboot"])

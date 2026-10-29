@@ -37,6 +37,10 @@ HUD_FLAG = "/dev/shm/omni36os-hud"
 CAP_FLAG = "/dev/shm/omni36os-fpscap"
 SHOT_FLAG = "/dev/shm/omni36os-shot"
 HUD_LIB = os.path.join(HERE, "hud", "omni_hud.so")
+BAT = "/sys/class/power_supply/battery"
+POWER_SHM = "/dev/shm/omni36os-power"           # o mesmo do power_button.py: o aviso aparece no Omni36OS
+BAT_WARN, BAT_OFF, BAT_OFF_MV = 5, 2, 3350      # % do aviso, % e mV do desligamento
+BAT_EVERY = 30                                  # segundos entre leituras
 _conf = (None, None)
 
 
@@ -185,6 +189,81 @@ def held(key):
         close_game(game)
 
 
+# --- bateria crítica ---
+# Com a bateria no fim o R36S apaga de repente: o jogo perde o save e o cartão pode ficar com
+# arquivo pela metade. Aqui ele avisa em 5% e, em 2% (ou abaixo de 3,35 V), fecha o jogo com
+# SIGTERM (dá tempo de salvar), grava tudo e desliga. Duas leituras seguidas: um pico de consumo
+# não desliga ninguém. Carregando, nada acontece.
+
+def battery():
+    """(%, mV, carregando) ou None sem bateria (simulador, PC)."""
+    try:
+        pct = int(read_flag(f"{BAT}/capacity", "-1"))
+        mv = int(read_flag(f"{BAT}/voltage_now", "0")) // 1000
+    except ValueError:
+        return None
+    if pct < 0:
+        return None
+    return pct, mv, read_flag(f"{BAT}/status", "") in ("Charging", "Full")
+
+
+def notify(msg):
+    """Aviso no Omni36OS (se estiver na tela) e, num jogo, o contador aparece com a bateria em vermelho."""
+    os.makedirs(POWER_SHM, exist_ok=True)
+    try:
+        os.chmod(POWER_SHM, 0o777)
+    except OSError:
+        pass
+    put(f"{POWER_SHM}/panic-msg", msg)
+    try:
+        ui = int(read_flag(f"{POWER_SHM}/ui-pid", "0"))
+        if ui:
+            os.kill(ui, signal.SIGUSR2)
+    except (ValueError, OSError):
+        pass
+    if game_pids():
+        put(HUD_FLAG, "1")
+
+
+def safe_poweroff():
+    game = game_pids()
+    if game:
+        close_game(game)
+    os.sync()
+    subprocess.run(["systemd-run", "--no-block", "--collect", "--unit", f"omni36os-bateria-{int(time.time())}",
+                    "bash", "-c", "systemctl stop omni36os-launcher; /usr/local/bin/omni36os-tela desligando; "
+                                  "mountpoint -q /boot && umount /boot; sync; sleep 1; systemctl poweroff"])
+
+
+class BatteryGuard:
+    def __init__(self):
+        self.last, self.low, self.warned = 0.0, 0, False
+
+    def tick(self):
+        now = time.monotonic()
+        if now - self.last < BAT_EVERY:
+            return
+        self.last = now
+        b = battery()
+        if not b:
+            return
+        pct, mv, charging = b
+        if charging:
+            self.low, self.warned = 0, False
+            return
+        critical = pct <= BAT_OFF or 0 < mv <= BAT_OFF_MV
+        self.low = self.low + 1 if critical else 0
+        if self.low >= 2:
+            print(f"bateria crítica ({pct}%, {mv} mV): desligando", file=sys.stderr, flush=True)
+            notify("Bateria no fim: salvando e desligando...")
+            time.sleep(3)
+            safe_poweroff()
+            self.low = -999                  # uma vez só
+        elif pct <= BAT_WARN and not self.warned:
+            self.warned = True
+            notify(f"Bateria em {pct}%: ligue o carregador. Em {BAT_OFF}% o console desliga sozinho.")
+
+
 def safe_call(fn, key):
     """Um atalho que falha (arquivo, processo sumido) não pode derrubar o serviço."""
     try:
@@ -207,7 +286,12 @@ def main():
     signal.signal(signal.SIGHUP, lambda *_: apply_flags())
     fd = open_pad()
     down, since, waiting = set(), None, None
+    guard = BatteryGuard()
     while True:
+        try:
+            guard.tick()
+        except Exception as e:           # a leitura da bateria nunca derruba os atalhos
+            print(f"bateria: {e}", file=sys.stderr, flush=True)
         try:
             r, _, _ = select.select([fd], [], [], 0.2)
             data = os.read(fd, EVENT.size * 64) if r else b""

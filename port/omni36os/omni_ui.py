@@ -24,6 +24,7 @@ import gfx
 from gfx import W, H, hexc, mix, alpha
 
 FAKE = os.environ.get("OMNI_FAKE") == "1"
+DEMO_STEP = float(os.environ.get("OMNI_DEMO_STEP", "0.45"))   # segundos entre passos do OMNI_DEMO (testes: menos)
 if not FAKE:
     import omni
     import omni_backup
@@ -32,6 +33,7 @@ if not FAKE:
     import omni_ports_fix
     import omni_sistema
     import omni_tools
+    import omni_update
 else:   # simulador: a ficha da Steam vem de verdade, mas o cache fica no PC
     os.environ.setdefault("OMNI_META_DIR", os.path.expanduser("~/.cache/omni36os-steam"))
 import omni_meta  # noqa: E402
@@ -953,8 +955,39 @@ class App:
                     A("Cuidados", "alert-triangle", lambda: self.read("Cuidados", "alert-triangle", omni_help.CUIDADOS)),
                     A("Novidades", "tag", lambda: self.read(f"Novidades · Omni36OS {omni_version()}", "tag",
                                                           omni_help.novidades_text())),
-                    A("Créditos", "users", lambda: self.read("Créditos", "users", omni_help.CREDITOS))]
+                    A("Créditos", "users", lambda: self.read("Créditos", "users", omni_help.CREDITOS)),
+                    tip(A("Procurar atualização", "refresh", self.update_check),
+                        "Procura uma versão nova do Omni36OS no GitHub (precisa de Wi-Fi). Antes de instalar, ela é "
+                        "conferida inteira; se não abrir depois, a versão de agora volta sozinha."),
+                    *([tip(A("Voltar à versão anterior", "rotate", self.update_back,
+                             confirm="Voltar à versão anterior do Omni36OS?\nA de agora fica guardada e dá para voltar "
+                                     "a ela do mesmo jeito."),
+                           "Troca pela versão guardada da última atualização.")]
+                      if not FAKE and omni_update.can_go_back() else [])]
         return [recheck]
+
+    # --- atualização ---
+
+    def update_check(self):
+        def done(r):
+            if isinstance(r, Exception):
+                self.toast = ("Sem resposta do GitHub. O Wi-Fi está ligado?", "aviso", self.t + 4)
+            elif not r["nova"]:
+                self.toast = (f"Você já está na versão mais nova ({r['atual']})", "ok", self.t + 3.5)
+            else:
+                self.modal = {"title": f"Omni36OS {r['nova']}", "icon": "refresh", "sel": 0,
+                              "buttons": ["Atualizar", "Agora não"],
+                              "text": f"Versão nova disponível (você tem a {r['atual']}).\nO Omni36OS baixa, confere e "
+                                      "abre de novo. Se a nova não abrir, a de agora volta sozinha. Deixe o "
+                                      "carregador ligado.",
+                              "fn": lambda: self.worker((lambda: "Teste: instalaria") if FAKE else
+                                                        (lambda: omni_update.install(r["tag"], r["nova"])),
+                                                        self._sys_done, busy="Baixando e conferindo... (até 2 minutos)")}
+        fake = {"atual": omni_version(), "nova": "9.9.9", "tag": "omni-v9.9.9"}
+        self.worker((lambda: fake) if FAKE else omni_update.check, done, busy="Procurando atualização...")
+
+    def update_back(self):
+        self.worker(omni_update.go_back, self._sys_done, busy="Voltando...")
 
     # --- ações ---
 
@@ -3180,6 +3213,12 @@ class App:
         g.text("Bold", 24, f"Bem-vindo, {self.player}" if self.player else "Bem-vindo", cx, cy + 82, TEXT, "c", "m")
         if self.results and not self.warm and self.load_shown > 0.98:
             self.loading = False
+            if not FAKE:                  # o menu abriu: uma atualização recente está aprovada
+                omni_update.confirm_ok()
+                back = omni_update.rolled_back_message()
+                if back:
+                    self.modal = {"title": "Atualização desfeita", "icon": "alert-triangle", "sel": 0,
+                                  "buttons": ["OK"], "text": back + "\nO erro ficou em /var/log/omni36os-crash.log."}
             self.first_screens()
             if RESUME == "testar":
                 self.sel = next(i for i, c in enumerate(CARDS) if c[0] == "ferramentas")
@@ -3247,7 +3286,7 @@ class App:
                 self.power_check()
                 if demo and now >= next_demo and not self.busy:
                     cmd = demo.pop(0)
-                    next_demo = now + 0.45
+                    next_demo = now + DEMO_STEP
                     if cmd.startswith("wait"):
                         next_demo = now + int(cmd[4:]) / 1000
                     elif cmd == "shot":
