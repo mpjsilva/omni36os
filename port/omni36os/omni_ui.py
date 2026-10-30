@@ -210,6 +210,7 @@ class Data:
             "carregando": omni.read_text("/sys/class/power_supply/battery/status") in ("Charging", "Full"),
             "temp": int(t) // 1000 if t.isdigit() else 0,
             "wifi": os.path.exists("/sys/class/net/wlan0"),
+            "conectado": omni.read_text("/sys/class/net/wlan0/operstate") == "up",
             "gov": omni.get_preferred_governor(),
             "cpu_max": omni.get_cpu_max(),
         }
@@ -784,6 +785,15 @@ class App:
             self._got_findings(self.results[cid])
         else:
             self.reload_findings()
+
+    def recheck(self, cid):
+        """Refaz a verificação de um cartão em segundo plano (a página, se aberta, é atualizada)."""
+        def done(res):
+            if not isinstance(res, Exception):
+                self.set_result(cid, res)
+                if self.page == cid:
+                    self._got_findings(res)
+        self.worker(lambda: self.card_check(cid), done)
 
     def reload_findings(self, quiet=False):
         cid = self.page
@@ -2992,7 +3002,10 @@ class App:
     def draw_header(self):
         g = self.g
         if self.t - self.status_at > 5:
+            old = self.status
             self.status, self.status_at = D.status(), self.t
+            if (old.get("wifi"), old.get("conectado")) != (self.status.get("wifi"), self.status.get("conectado")):
+                self.recheck("rede")      # o Wi-Fi conectou (ou caiu) depois da verificação: sem alerta fantasma
         s = self.status
         # marca
         g.image("logo-64", 22, 18, 30, smooth=True)
