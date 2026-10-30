@@ -54,6 +54,16 @@ echo "== refazendo o roms.tar (só ports, PortMaster e backup)"
 T=$(mktemp -d)
 tar -xf "$R/roms.tar" -C "$T" roms/ports roms/backup roms/tools/PortMaster roms/tools/PortMaster.sh
 mkdir -p "$T/roms/themes" "$T/roms/bios"
+# runtimes mais usados do PortMaster já no cartão (Mono, GameMaker, Godot/FRT 3.x-4.x, Weston/Mesa):
+# os ports que pedem um deles abrem sem baixar nada. Lista e cópia em $RUNTIMES (fora do repositório).
+RUNTIMES=${RUNTIMES:-$HOME/Apps/Omni36OS/runtimes}
+if compgen -G "$RUNTIMES/*.squashfs" >/dev/null; then
+  mkdir -p "$T/roms/tools/PortMaster/libs"
+  cp "$RUNTIMES"/*.squashfs "$T/roms/tools/PortMaster/libs/"
+  echo "   runtimes do PortMaster: $(ls "$RUNTIMES"/*.squashfs | wc -l) ($(du -sh "$RUNTIMES" | cut -f1))"
+else
+  echo "   AVISO: sem runtimes em $RUNTIMES (a imagem sai sem eles)"
+fi
 tar -cf "$R/roms.tar" -C "$T" roms
 rm -rf "$T"
 
