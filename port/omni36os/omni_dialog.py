@@ -382,48 +382,19 @@ def run_list(w, o, text, items, mode):
         w.present()
 
 
-KEYS = ["1234567890", "qwertyuiop", "asdfghjkl@", "zxcvbnm.-_"]
-
-
 def run_osk(w, o, prompt, init="", password=False):
-    """Teclado na tela: direcional escolhe, A digita, B apaga, X espaço, Y maiúsculas, START confirma."""
-    text, r, c, upper = init, 1, 0, False
-    extra = ["Espaço", "Apagar", "Maiúsc.", "OK", "Cancelar"]
+    """Teclado na tela, o mesmo do launcher (omni_teclado): direcional escolhe, A digita, B apaga,
+    X letras/símbolos, Y trava as maiúsculas, START confirma, SELECT cancela."""
+    sys.path.insert(0, HERE)
+    import omni_teclado
+    tk = omni_teclado.Teclado(init, password, 256)
     while True:
         for cmd in w.events():
-            rows = len(KEYS) + 1
-            if cmd in ("up", "down"):
-                r = (r + (1 if cmd == "down" else -1)) % rows
-                c = min(c, (len(extra) if r == len(KEYS) else len(KEYS[r])) - 1)
-            elif cmd in ("left", "right"):
-                n = len(extra) if r == len(KEYS) else len(KEYS[r])
-                c = (c + (1 if cmd == "right" else -1)) % n
-            elif cmd == "back":
-                text = text[:-1]
-            elif cmd == "x":
-                text += " "
-            elif cmd == "y":
-                upper = not upper
-            elif cmd == "start":
-                return 0, text
-            elif cmd == "select":
+            res = tk.input(cmd)
+            if res == "ok":
+                return 0, tk.value
+            if res == "cancel":
                 return 1, ""
-            elif cmd == "ok":
-                if r < len(KEYS):
-                    ch = KEYS[r][c]
-                    text += ch.upper() if upper else ch
-                else:
-                    act = extra[c]
-                    if act == "Espaço":
-                        text += " "
-                    elif act == "Apagar":
-                        text = text[:-1]
-                    elif act == "Maiúsc.":
-                        upper = not upper
-                    elif act == "OK":
-                        return 0, text
-                    else:
-                        return 1, ""
         g = w.g
         w.frame_start(o["title"], o["backtitle"])
         mx, my, mw, mh, y = w.panel(o["title"] or "Digite")
@@ -432,26 +403,30 @@ def run_osk(w, o, prompt, init="", password=False):
             n, _v = w.text_block(prompt, mx + 24, y, mw - 48, y + 40, 0, 12)
             y2 = y + min(2, n) * 18 + 4
         g.rrect(mx + 20, y2, mw - 40, 34, 10, w.ink(20))
-        shown = ("•" * len(text)) if password else text
+        shown = ("•" * len(tk.value)) if password else tk.value
         g.text("SemiBold", 15, shown[-40:] + "_", mx + 32, y2 + 8, w.TEXT)
-        ky = y2 + 46
-        kw, kh = (mw - 40) / 10, 34
-        for rr, row in enumerate(KEYS):
-            for cc, ch in enumerate(row):
-                x = mx + 20 + cc * kw
-                yy = ky + rr * (kh + 4)
-                cur = rr == r and cc == c
-                g.rrect(x + 2, yy, kw - 4, kh, 8, (w.A1 if cur else w.ink(22)), (w.A2 if cur else w.ink(22)))
-                g.text("SemiBold", 14, ch.upper() if upper else ch, x + kw / 2, yy + kh / 2,
+        ky, kh, gap = y2 + 46, 32, 6
+        rows = tk.rows()
+        for rr, row in enumerate(rows):
+            if rr < len(rows) - 1:
+                ws = [(mw - 40 - gap * (len(row) - 1)) / len(row)] * len(row)
+            else:
+                unit = (mw - 40 - gap * (len(row) - 1)) / 7
+                ws = [unit, unit * 3, unit, unit * 2]
+            x = mx + 20
+            for cc, key in enumerate(row):
+                cur = rr == tk.r and cc == tk.c
+                lab = tk.label(key)
+                act = key == "shift" and (tk.shift != "off" or tk.symbols)
+                g.rrect(x, ky, ws[cc], kh, 8, (w.A1 if cur else w.ink(40 if act else 22)),
+                        (w.A2 if cur else w.ink(40 if act else 22)))
+                g.text("SemiBold", 14 if len(lab) == 1 else 12, lab, x + ws[cc] / 2, ky + kh / 2,
                        (255, 255, 255, 255) if cur else w.TEXT, "c", "m")
-        yy = ky + len(KEYS) * (kh + 4)
-        ew = (mw - 40) / len(extra)
-        for cc, lab in enumerate(extra):
-            x = mx + 20 + cc * ew
-            cur = r == len(KEYS) and cc == c
-            g.rrect(x + 2, yy, ew - 4, kh, 8, (w.A1 if cur else w.ink(22)), (w.A2 if cur else w.ink(22)))
-            g.text("SemiBold", 12, lab, x + ew / 2, yy + kh / 2, (255, 255, 255, 255) if cur else w.TEXT, "c", "m")
-        g.text("Regular", 11, "A digita · B apaga · X espaço · Y maiúsculas · START confirma · SELECT cancela",
+                if key == "shift" and tk.shift == "lock" and not tk.symbols:
+                    g.rrect(x + ws[cc] / 2 - 10, ky + kh - 6, 20, 3, 1.5, (255, 255, 255, 255) if cur else w.A1)
+                x += ws[cc] + gap
+            ky += kh + 4
+        g.text("Regular", 11, "A digita · B apaga · X símbolos · Y caps · START confirma · SELECT cancela",
                W / 2, my + mh - 18, w.FAINT, "c")
         w.present()
 

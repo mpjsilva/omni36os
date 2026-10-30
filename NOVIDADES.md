@@ -2,6 +2,10 @@
 
 Histórico completo. Dentro do console (Geral > Sobre > Novidades) aparece só a versão em uso.
 
+## 1.14.0 (30/10/2026)
+
+- Teclado novo, igual em todo o sistema e parecido com o do Android: começa em maiúscula e volta à minúscula depois da primeira letra (e maiúscula de novo depois de ponto), a tecla de maiúsculas trava com dois toques, Y trava direto e X troca letras e símbolos. Senhas começam em minúscula.
+
 ## 1.13.0 (30/10/2026)
 
 - Aplicativos ganha Vídeos (tocador simples com os codecs abertos do ffmpeg) e Notas (bloco de notas com teclado e pontuação).

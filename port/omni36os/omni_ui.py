@@ -142,6 +142,7 @@ STATE_MAX_AGE = 30 * 60
 import omni_help
 import omni_musica  # noqa: E402
 import omni_video  # noqa: E402
+import omni_teclado  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 
@@ -1451,64 +1452,27 @@ class App:
         self.live_at = self.t + every
         self.reload_findings(quiet=True)
 
-    # --- teclado na tela ---
-
-    KEYS = ["1234567890", "qwertyuiop", "asdfghjkl-", "zxcvbnm_.@", ["ABC", "espaço", "apagar", "OK"]]
-
-    TEXT_ROW = ",.!?:;()'\""
-
-    def kbd_keys(self):
-        """As linhas do teclado; no bloco de notas entra uma de pontuação."""
-        if self.kbd and self.kbd.get("texto"):
-            return self.KEYS[:3] + [self.KEYS[3].replace("_.@", "_@#"), self.TEXT_ROW] + self.KEYS[4:]
-        return self.KEYS
+    # --- teclado na tela (a lógica é a do omni_teclado, igual em todo o sistema) ---
 
     def keyboard(self, title, on_done, secret=False, value="", hint="", locked=False, texto=False):
-        """Teclado do Omni36OS: direcional escolhe, A digita, B apaga, Start confirma, Select cancela.
-        locked: tela da trava (não dá para cancelar; o power abre Energia)."""
-        self.kbd = {"title": title, "value": value, "secret": secret, "fn": on_done, "r": 1, "c": 0,
-                    "shift": False, "hint": hint, "locked": locked,
-                    "texto": texto, "limit": 500 if texto else 64}
-
-    def kbd_row(self, r):
-        row = self.kbd_keys()[r]
-        if isinstance(row, str):
-            return list(row.upper() if self.kbd["shift"] else row)
-        return ["abc" if self.kbd["shift"] else "ABC"] + row[1:]
+        """Teclado do Omni36OS: direcional escolhe, A digita, B apaga, X letras/símbolos, Y trava as
+        maiúsculas, Start confirma, Select cancela. locked: tela da trava (não dá para cancelar; o power
+        abre Energia). texto: linhas longas (bloco de notas)."""
+        self.kbd = {"title": title, "fn": on_done, "hint": hint, "locked": locked,
+                    "tk": omni_teclado.Teclado(value, secret, 500 if texto else 64)}
 
     def kbd_input(self, cmd):
         k = self.kbd
-        if cmd in ("up", "down"):
-            old = len(self.kbd_row(k["r"]))
-            k["r"] = (k["r"] + (1 if cmd == "down" else -1)) % len(self.kbd_keys())
-            new = len(self.kbd_row(k["r"]))
-            k["c"] = min(new - 1, round(k["c"] * (new - 1) / max(1, old - 1)))
-        elif cmd in ("left", "right"):
-            k["c"] = (k["c"] + (1 if cmd == "right" else -1)) % len(self.kbd_row(k["r"]))
-        elif cmd == "back":
-            k["value"] = k["value"][:-1]
-        elif cmd == "select":
-            if not k.get("locked"):   # travado: nada (Energia é pelo botão de power)
-                self.kbd = None
-        elif cmd == "start":
+        res = k["tk"].input(cmd)
+        if res == "cancel" and not k.get("locked"):   # travado: nada (Energia é pelo botão de power)
             self.kbd = None
-            k["fn"](k["value"])
-        elif cmd == "ok":
-            key = self.kbd_row(k["r"])[k["c"]]
-            if key in ("ABC", "abc"):
-                k["shift"] = not k["shift"]
-            elif key == "espaço":
-                k["value"] += " "
-            elif key == "apagar":
-                k["value"] = k["value"][:-1]
-            elif key == "OK":
-                self.kbd = None
-                k["fn"](k["value"])
-            elif len(k["value"]) < k["limit"]:
-                k["value"] += key
+        elif res == "ok":
+            self.kbd = None
+            k["fn"](k["tk"].value)
 
     def draw_keyboard(self, dt):
         g, k = self.g, self.kbd
+        tk = k["tk"]
         a1, a2 = self.accent
         if k.get("locked"):               # travado: nada do que está atrás aparece
             self.draw_bg(dt)
@@ -1521,7 +1485,7 @@ class App:
         g.icon("lock" if k.get("locked") else "keyboard", mx + 28, my + 24, 20, ON_TEXT)
         g.text("Bold", 17, k["title"], mx + 68, my + 23, TEXT)
         # campo
-        shown = "•" * len(k["value"]) if k["secret"] else k["value"]
+        shown = "•" * len(tk.value) if tk.secret else tk.value
         g.rrect(mx + 20, my + 64, mw - 40, 40, 12, ink(16))
         g.stroke(mx + 20, my + 64, mw - 40, 40, 12, alpha(a1, 160))
         while shown and g.measure("SemiBold", 17, shown)[0] > mw - 80:
@@ -1529,33 +1493,37 @@ class App:
         tw = g.text("SemiBold", 17, shown, mx + 34, my + 84.5, TEXT, "l", "m") if shown else 0
         if int(self.t * 2) % 2 == 0:
             g.rrect(mx + 36 + tw, my + 74, 2, 21, 1, a1)
-        if k["hint"] and not k["value"]:
+        if k["hint"] and not tk.value:
             g.text("Regular", 13, k["hint"], mx + 44, my + 84.5, FAINT, "l", "m")
         # teclas
-        ky, kh, gap = my + 118, 34, 6
-        keys = self.kbd_keys()
-        for r in range(len(keys)):
-            row = self.kbd_row(r)
-            if r < len(keys) - 1:
+        ky, kh, gap = my + 120, 36, 7
+        rows = tk.rows()
+        for r, row in enumerate(rows):
+            if r < len(rows) - 1:
                 ws = [(mw - 40 - gap * (len(row) - 1)) / len(row)] * len(row)
             else:
                 unit = (mw - 40 - gap * (len(row) - 1)) / 7
                 ws = [unit, unit * 3, unit, unit * 2]
             x = mx + 20
             for c, key in enumerate(row):
-                on = r == k["r"] and c == k["c"]
-                act = key == "abc"
+                on = r == tk.r and c == tk.c
+                label = tk.label(key)
+                act = key == "shift" and (tk.shift != "off" or tk.symbols)
                 if on:
                     g.rrect(x, ky, ws[c], kh, 10, a1, a2)
                 else:
                     g.rrect(x, ky, ws[c], kh, 10, alpha(a1, 70) if act else ink(18))
-                g.text("SemiBold", 15 if len(key) == 1 else 12, key, x + ws[c] / 2, ky + kh / 2 + 0.5,
+                g.text("SemiBold", 15 if len(label) == 1 else 12, label, x + ws[c] / 2, ky + kh / 2 + 0.5,
                        ON_TEXT if on else TEXT, "c", "m")
+                if key == "shift" and tk.shift == "lock" and not tk.symbols:   # travada: um traço embaixo
+                    g.rrect(x + ws[c] / 2 - 10, ky + kh - 7, 20, 3, 1.5, ON_TEXT if on else a1)
                 x += ws[c] + gap
             ky += kh + gap
         self.draw_footer_at(my + mh - 30, [("A", "Digitar", TEXT), ("B", "Apagar", TEXT),
-                                           ("START", "Confirmar", TEXT),
-                                           *([] if k.get("locked") else [("SELECT", "Cancelar", TEXT)])], mx + 22)
+                                           ("X", "Letras" if tk.symbols else "Símbolos", TEXT),
+                                           ("Y", "Caps", TEXT), ("START", "OK", TEXT),
+                                           *([] if k.get("locked") else [("SELECT", "Cancelar", TEXT)])],
+                            center=W / 2)
 
     def _hint_glyph_w(self, letter):
         if letter in ("A", "B", "X", "Y"):

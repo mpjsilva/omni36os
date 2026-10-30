@@ -4,6 +4,9 @@ Linhas que começam com "# " viram títulos no leitor."""
 
 # A versão em uso vem do arquivo VERSION. Aqui fica só ela; o histórico completo está no NOVIDADES.md.
 NOVIDADES = [
+    ("1.14.0", "30/10/2026", [
+        "Teclado novo, igual em todo o sistema e parecido com o do Android: começa em maiúscula e volta à minúscula depois da primeira letra (e maiúscula de novo depois de ponto), a tecla de maiúsculas trava com dois toques, Y trava direto e X troca letras e símbolos. Senhas começam em minúscula.",
+    ]),
     ("1.13.0", "30/10/2026", [
         "Aplicativos ganha Vídeos (tocador simples com os codecs abertos do ffmpeg) e Notas (bloco de notas com teclado e pontuação).",
         "No Arquivos, músicas, vídeos e textos abrem direto no app certo.",
@@ -159,7 +162,7 @@ Na tela Tocando: A pausa, esquerda/direita trocam de música, L1/R1 voltam e ava
 Opções (START, dentro do app): "Visualização": Capa do álbum (a imagem da pasta, como cover.jpg, ou a capa embutida no mp3), Barras, Ondas, Anel ou Aurora, dançando com o som. "Apagar a tela": com a música tocando e sem apertar nada, a luz da tela apaga em 30 s, 1, 2 ou 5 minutos (ou Manter ligada); qualquer botão acende.
 As pastas ficam num índice (nome, título e artista das tags): só a pasta que mudou é lida de novo, e a lista guarda só os caminhos.
 "Vídeos" toca os vídeos das pastas videos dos cartões (ROMS/videos, criada sozinha, e ROMS2/videos), com os codecs abertos do ffmpeg: mp4, mkv, webm, avi e outros (H.264, H.265, VP8, VP9, AV1, MPEG-4). A pausa, esquerda/direita voltam e avançam 10 s, L1/R1 1 minuto, B volta. Vídeos até 720p rodam bem; acima disso, depende do codec. A música para enquanto o vídeo toca.
-"Notas" é um bloco de notas simples: textos na pasta notas do cartão 1 (ROMS/notas). Na lista, a primeira linha cria uma nota e X apaga. Dentro da nota, cada linha é editada no teclado (com pontuação): A edita a linha, X cria uma linha abaixo, Y apaga a linha, B fecha. Tudo é salvo na hora.
+"Notas" é um bloco de notas simples: textos na pasta notas do cartão 1 (ROMS/notas). Na lista, a primeira linha cria uma nota e X apaga. Dentro da nota, cada linha é editada no teclado (X mostra os símbolos): A edita a linha, X cria uma linha abaixo, Y apaga a linha, B fecha. Tudo é salvo na hora.
 No Arquivos, abrir uma música, um vídeo ou um texto (txt, md, log, ini, cfg, conf) abre o app certo; B volta para a pasta.
 
 # Desempenho
@@ -212,7 +215,7 @@ O que é seu e do Omni36OS, como nos Ajustes do iPhone, nesta ordem:
 
 # Segurança (dentro de Geral)
 Tudo o que é senha fica aqui. B volta para Geral.
-"Trocar a senha" muda a senha do usuário omni (SSH, SFTP e Samba; a senha padrão é omni) com o teclado na tela: direcional escolhe, A digita, B apaga, START confirma e SELECT cancela. A senha é pedida duas vezes.
+"Trocar a senha" muda a senha do usuário omni (SSH, SFTP e Samba; a senha padrão é omni) com o teclado na tela: direcional escolhe, A digita, B apaga, X troca letras e símbolos, Y trava as maiúsculas, START confirma e SELECT cancela (como no teclado do Android, começa em maiúscula; senha começa em minúscula). A senha é pedida duas vezes.
 "Senha do Samba" redefine só a senha das pastas compartilhadas (usuário omni), sem mexer na do SSH.
 "Trava por senha": com ela ligada, o console pede a senha ao ligar, antes de mostrar os jogos (o botão de power ainda abre Energia para desligar). A senha fica em texto simples em EASYROMS/senha/senha.txt: esqueceu, abra o cartão no PC e leia. Apagar esse arquivo desliga a trava. Para desligar pelo console, a senha atual é pedida.
 
