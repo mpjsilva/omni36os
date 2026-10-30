@@ -49,7 +49,7 @@ Cor do LED: verde ou vermelho, também no boot. Com a bateria em 10% ou menos, o
 # Rede
 "Ligar o Wi-Fi" liga e desliga o adaptador, "Procurar redes" lista as redes por perto (com cadeado pede a senha no teclado; START confirma), "Redes salvas" conecta de novo ou esquece uma, "Desconectar" sai da rede atual. O painel mostra a rede, o sinal e o IP do console, e se atualiza sozinho.
 "Rede pelo cabo USB": o console vira uma placa de rede no cabo.
-- Modo universal: o console dá o IP ao PC. No PC: ssh ark@10.44.44.1.
+- Modo universal: o console dá o IP ao PC. No PC: ssh omni@10.44.44.1.
 - Internet pelo PC: o PC compartilha a internet pelo cabo e o console recebe o IP dele.
 - Serviços remotos: liga o Samba e o navegador web de arquivos (usuário e senha: ark).
 A página mostra o IP e os comandos para o PC, e se atualiza sozinha. A rede USB e o modo pendrive usam a mesma porta: desligue um antes de ligar o outro.
@@ -131,8 +131,8 @@ O que é seu e do Omni36OS, como nos Ajustes do iPhone, nesta ordem:
 
 # Segurança (dentro de Geral)
 Tudo o que é senha fica aqui. B volta para Geral.
-"Trocar a senha" muda a senha do usuário ark (SSH, SFTP e Samba) com o teclado na tela: direcional escolhe, A digita, B apaga, START confirma e SELECT cancela. A senha é pedida duas vezes.
-"Senha do Samba" redefine só a senha das pastas compartilhadas (usuário ark), sem mexer na do SSH.
+"Trocar a senha" muda a senha do usuário omni (SSH, SFTP e Samba; a senha padrão é omni) com o teclado na tela: direcional escolhe, A digita, B apaga, START confirma e SELECT cancela. A senha é pedida duas vezes.
+"Senha do Samba" redefine só a senha das pastas compartilhadas (usuário omni), sem mexer na do SSH.
 "Trava por senha": com ela ligada, o console pede a senha ao ligar, antes de mostrar os jogos (o botão de power ainda abre Energia para desligar). A senha fica em texto simples em EASYROMS/senha/senha.txt: esqueceu, abra o cartão no PC e leia. Apagar esse arquivo desliga a trava. Para desligar pelo console, a senha atual é pedida.
 
 # Backup

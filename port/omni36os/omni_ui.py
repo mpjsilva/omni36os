@@ -433,7 +433,7 @@ TIPS = {
     "Parar a calibração": "Interrompe a medição. O que já foi medido fica guardado.",
     "Aplicar a curva": "Usa a última calibração completa: a % da bateria passa a seguir a sua bateria.",
     "Voltar à curva de fábrica": "Apaga a curva calibrada e volta à % padrão do sistema.",
-    "Trocar a senha": "Troca a senha do usuário ark, usada no SSH e no sftp.",
+    "Trocar a senha": "Troca a senha do usuário omni, usada no SSH e no SFTP.",
     "Senha do Samba": "Troca a senha das pastas compartilhadas na rede (Samba).",
     "Trava por senha": "Pede a senha ao ligar o console, antes de abrir o menu.",
     "Limite do processador": "Frequência máxima do processador. Acima de 1296 MHz é overclock: esquenta mais.",
@@ -442,7 +442,7 @@ TIPS = {
                             "falta de memória, com um pouco mais de uso do processador.",
     "Liberar overclock": "Libera 1512 MHz no processador e 600 MHz na GPU. Pode esquentar e travar; o aviso "
                          "explica como desfazer.",
-    "Ligar: modo universal": "O console dá o IP ao PC (funciona em qualquer PC). Depois use ssh ark@10.44.44.1.",
+    "Ligar: modo universal": "O console dá o IP ao PC (funciona em qualquer PC). Depois use ssh omni@10.44.44.1.",
     "Ligar: internet pelo PC": "Usa a internet do PC no console. O PC precisa compartilhar a conexão pelo cabo.",
     "Serviços remotos: ligar": "Liga o gerenciador de arquivos pela web e o Samba, para mexer no cartão pelo PC.",
     "Serviços remotos: desligar": "Desliga a web e o Samba. O SSH continua.",
@@ -623,7 +623,7 @@ class App:
             return {"nivel": "ok", "acoes": [], "achados": [
                 ("ok", "Trava ligada: o console pede a senha ao ligar. A senha fica em EASYROMS/senha/senha.txt."
                  if locked else "Trava desligada: o console abre direto nos jogos."),
-                ("ok", "Usuário do sistema e do Samba: ark. Trocar a senha muda as duas.")]}
+                ("ok", "Usuário do sistema e do Samba: omni (senha padrão omni). Trocar a senha muda as duas.")]}
         if cid == "tela" and not FAKE:    # Tela e som: as duas verificações juntas
             a, b = D.check("atualizar"), D.check("sem_som")
             return omni_checks.finish(a["achados"] + b["achados"], a["acoes"] + b["acoes"],
@@ -938,7 +938,7 @@ class App:
             run = lambda fn, busy: (lambda: self.worker(fn if S else (lambda: "teste"), self._sys_done, busy=busy))
             return [A("Ligar: modo universal", "usb", run(S and S.usbnet_universal, "Ligando a rede USB..."),
                       confirm="Ligar a rede USB no modo universal?\nO console dá o IP ao PC: ligue o cabo de dados "
-                              "na porta OTG e use ssh ark@10.44.44.1."),
+                              "na porta OTG e use ssh omni@10.44.44.1."),
                     A("Ligar: internet pelo PC", "wifi", run(S and S.usbnet_internet, "Pedindo IP ao PC... (até 30 s)"),
                       confirm="Ligar a rede USB usando a internet do PC?\nO PC precisa já estar compartilhando a "
                               "conexão pelo cabo."),
@@ -1357,7 +1357,7 @@ class App:
                 fn = (lambda: "teste") if FAKE else (lambda: omni_sistema.change_password(new))
                 self.worker(fn, self._sys_done, busy="Trocando a senha...")
             self.keyboard("Repita a nova senha", check, secret=True)
-        self.keyboard("Nova senha do usuário ark", second, secret=True, hint="SSH, Samba e SFTP usam esta senha")
+        self.keyboard("Nova senha do usuário omni", second, secret=True, hint="SSH, Samba e SFTP usam esta senha")
 
     # --- jogador, trava e Samba ---
 

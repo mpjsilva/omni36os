@@ -295,6 +295,11 @@ def main():
         omni.set_power_button({"mode": "menu"})
     except Exception as e:
         print(f"power: {e}", file=sys.stderr, flush=True)
+    try:                                 # apelido omni/omni para o SSH e o SFTP
+        import omni_sistema
+        omni_sistema.ensure_alias()
+    except Exception as e:
+        print(f"apelido: {e}", file=sys.stderr, flush=True)
     signal.signal(signal.SIGHUP, lambda *_: apply_flags())
     fd = open_pad()
     down, since, waiting = set(), None, None

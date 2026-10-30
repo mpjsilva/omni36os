@@ -36,15 +36,40 @@ def has(cmd):
 
 # --- senha ---
 
+# Apelido "omni": outro nome para o mesmo usuário (UID 1000, casa /home/ark). Por fora entra-se
+# como omni/omni (SSH, SFTP); por dentro tudo continua sendo ark, porque o dArkOSen tem o nome
+# fixo em centenas de scripts. Fica depois do ark no /etc/passwd, então o UID 1000 se chama ark
+# para whoami, sudo e os arquivos.
+ALIAS = "omni"
+
+
+def ensure_alias():
+    """Cria o apelido (senha omni) se ele não existe. Roda no boot pelo serviço de atalhos."""
+    rc, _ = sh("id", "-u", ALIAS)
+    if rc == 0:
+        return "ok"
+    rc, out = sh("useradd", "-o", "-u", "1000", "-g", "1000", "-M", "-d", "/home/ark", "-s", "/bin/bash",
+                 "-c", "Omni36OS (apelido do ark)", ALIAS)
+    if rc:
+        return f"Erro: {out or 'useradd falhou'}"
+    sh("chpasswd", inp=f"{ALIAS}:{ALIAS}\n")
+    if has("smbpasswd"):
+        sh("smbpasswd", "-s", "-a", ALIAS, inp=f"{ALIAS}\n{ALIAS}\n")
+    return "ok"
+
+
 def change_password(new):
-    """Troca a senha do usuário ark (SSH, console) e a do Samba, se existir."""
+    """Troca a senha do usuário (omni e ark: SSH, console) e a do Samba, se existir."""
     if len(new) < 3:
         return "A senha precisa de pelo menos 3 letras."
     rc, out = sh("chpasswd", inp=f"ark:{new}\n")
     if rc:
         return f"Erro: {out or 'chpasswd falhou'}"
+    if sh("id", "-u", ALIAS)[0] == 0:
+        sh("chpasswd", inp=f"{ALIAS}:{new}\n")
     if has("smbpasswd"):
-        sh("smbpasswd", "-s", "-a", "ark", inp=f"{new}\n{new}\n")
+        for u in ("ark", ALIAS):
+            sh("smbpasswd", "-s", "-a", u, inp=f"{new}\n{new}\n")
     return "Senha trocada. Vale para SSH, Samba e SFTP."
 
 
@@ -58,7 +83,8 @@ def samba_password(new):
     if rc:
         return f"Erro: {out or 'smbpasswd falhou'}"
     sh("smbpasswd", "-e", "ark")
-    return "Senha do Samba redefinida (usuário ark)."
+    sh("smbpasswd", "-s", "-a", ALIAS, inp=f"{new}\n{new}\n")
+    return f"Senha do Samba redefinida (usuário {ALIAS})."
 
 
 # --- Wi-Fi (Rede) ---
@@ -187,7 +213,7 @@ def wifi_status():
     out = [("ok", f"Conectado a {rede}, sinal {sinal}%."),
            ("ok" if ip else "aviso", f"IP do console: {ip}" if ip else "Ainda sem IP.")]
     if ip:
-        out.append(("info", f"No PC: ssh ark@{ip}  ·  sftp://ark@{ip}"))
+        out.append(("info", f"No PC: ssh omni@{ip}  ·  sftp://omni@{ip}"))
     if sinal < 35:
         out.append(("aviso", "Sinal fraco: downloads podem falhar."))
     return out
@@ -343,7 +369,7 @@ def usbnet_status():
                 out.append(("ok" if leases else "info", "IP entregue ao PC: " + ", ".join(l[2] for l in leases if len(l) > 2)
                             if leases else "Servidor DHCP ativo, esperando o PC pedir IP."))
         if ip:
-            out.append(("info", f"No PC: ssh ark@{ip}  ·  sftp://ark@{ip}"))
+            out.append(("info", f"No PC: ssh omni@{ip}  ·  sftp://omni@{ip}"))
             if remote_on():
                 out.append(("info", f"Web: http://{ip}  ·  Samba: smb://{ip}  (\\\\{ip} no Windows)"))
     out.append(("info", "Serviços remotos (web e Samba): " + ("ligados." if remote_on() else "desligados.")))
@@ -422,7 +448,7 @@ def usbnet_universal():
         return "Erro: o servidor DHCP não subiu. " + (err or omni.read_text(USBNET_LOG, "")[-160:]).strip()
     if usb_ip() != UNIVERSAL_IP:
         return "Erro: o IP do console sumiu da usb0 (outro programa mexeu nela)."
-    return f"Modo universal ligado. Ligue o cabo no PC e use: ssh ark@{UNIVERSAL_IP}"
+    return f"Modo universal ligado. Ligue o cabo no PC e use: ssh omni@{UNIVERSAL_IP}"
 
 
 def _ask_ip():
