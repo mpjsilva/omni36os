@@ -2,6 +2,10 @@
 
 Histórico completo. Dentro do console (Geral > Sobre > Novidades) aparece só a versão em uso.
 
+## 1.12.7 (30/10/2026)
+
+- O card Armazenamento passa a se chamar Cartões, com a fonte do mesmo tamanho dos outros; legenda Pendrive, espaço e reparo.
+
 ## 1.12.6 (30/10/2026)
 
 - O card Tela e som volta a ter esse título (o texto saía do card); a legenda continua com brilho, som e bateria.

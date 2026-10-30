@@ -4,6 +4,9 @@ Linhas que começam com "# " viram títulos no leitor."""
 
 # A versão em uso vem do arquivo VERSION. Aqui fica só ela; o histórico completo está no NOVIDADES.md.
 NOVIDADES = [
+    ("1.12.7", "30/10/2026", [
+        "O card Armazenamento passa a se chamar Cartões, com a fonte do mesmo tamanho dos outros; legenda Pendrive, espaço e reparo.",
+    ]),
     ("1.12.6", "30/10/2026", [
         "O card Tela e som volta a ter esse título (o texto saía do card); a legenda continua com brilho, som e bateria.",
     ]),
@@ -160,7 +163,7 @@ O overclock só é liberado com o aparelho abaixo de 70 °C. Se ele esquentar co
 Memória extra (zram): desligada por padrão. 256, 512 ou 768 MB de memória comprimida na RAM, que segura ports pesados que fecham por falta de memória. Vale na hora e nos próximos boots; custa um pouco de processador.
 "Liberar overclock" mexe no arquivo de hardware do boot (DTB): libera as frequências de 1368 a 1512 MHz e a GPU de 600 MHz. Tem trava: aviso vermelho com contagem e depois A apertado 5 vezes. Antes de mudar, o Omni36OS guarda uma cópia do DTB. Vale depois de reiniciar; o limite se escolhe em "Limite do processador" e "Limite da GPU".
 
-# Armazenamento
+# Cartões
 Tudo sobre onde ficam os jogos: os cartões, o pendrive e a porta USB. As ações que reiniciam ou apagam ficam no fim da página.
 "Origem dos jogos": ROMS (cartão 1), ROMS2 (cartão 2) ou ROMS e ROMS2. Ao sair da página depois de trocar (B ou START), o Omni36OS procura os jogos e os ports de novo, uma vez só, e atualiza a biblioteca e o Testar ports. Com as duas, o mesmo sistema dos dois cartões vira uma lista só. ROMS2 só entra se o segundo cartão estiver no console.
 "Detalhe do cartão" (com dois cartões, "Detalhe dos cartões"): mostra a marca, o tamanho, o espaço livre e o ocupado do cartão inteiro e testa a escrita e a leitura de cada cartão; leva até um minuto. O espaço livre aparece no painel. Cartões genéricos sem marca costumam ser lentos e falhar mais: o detalhe avisa quando o cartão não tem marca identificada (não é alerta).
@@ -178,10 +181,10 @@ Ao conectar o PC, o Omni36OS fecha para soltar a partição. Ao tirar o cabo ou 
 # Ferramentas
 "Arquivos": navega pelos cartões (/roms, /roms2) e pelo pendrive. A abre a pasta (ou a imagem, em tela cheia: esquerda/direita passa para a próxima, A mostra ou esconde o nome, B volta), B sobe um nível, X abre as opções do item (copiar, mover, renomear, apagar) e START abre as opções da pasta (colar aqui, nova pasta). Para copiar: X > Copiar no item, vá até a pasta de destino e START > Colar aqui. Apagar pede confirmação, com Cancelar já escolhido.
 "PortMaster" abre em tela cheia; o Omni36OS volta quando ele fecha. Para copiar, mover, renomear e apagar, use "Arquivos", aqui mesmo no Omni36OS.
-As outras ferramentas do sistema ficam nos cards: Testar o controle (Controles), Trocar a senha (Geral > Segurança), Wi-Fi e rede pelo cabo (Rede), pendrive (Armazenamento), Calibrar a bateria (Bateria), Liberar overclock (Desempenho). Tudo o que mexe no boot abre um aviso vermelho com contagem; Cancelar fica escolhido desde o início.
+As outras ferramentas do sistema ficam nos cards: Testar o controle (Controles), Trocar a senha (Geral > Segurança), Wi-Fi e rede pelo cabo (Rede), pendrive (Cartões), Calibrar a bateria (Tela e som), Liberar overclock (Desempenho). Tudo o que mexe no boot abre um aviso vermelho com contagem; Cancelar fica escolhido desde o início.
 
 # Testar ports (dentro de Ferramentas)
-Mostra os ports das pastas escolhidas em Armazenamento > Origem dos jogos.
+Mostra os ports das pastas escolhidas em Cartões > Origem dos jogos.
 Escolha um port e aperte A: o Omni36OS fecha, o port abre como pela biblioteca e, depois de 15 segundos, é encerrado sozinho. O Omni36OS volta com o resultado.
 Passou: o port ficou aberto os 15 segundos.
 Falhou: o port fechou antes. O relatório fica em omni36os/logs/<nome do port>/ (dentro de /opt/omni36os) com a saída do port, os logs da pasta dele, as mensagens do kernel e o estado do sistema.
@@ -221,7 +224,7 @@ Faça backup do cartão do sistema no PC de vez em quando. Uma imagem do cartão
 Sempre ejete o pendrive no PC antes de tirar o cabo. Tirar no meio de uma cópia pode corromper os arquivos.
 Não desligue o console enquanto ele estiver ligado no PC.
 Com segundo cartão, prefira compartilhar /roms2. Sem ele, o PC recebe /roms (a partição de jogos do cartão do sistema): copie só para as pastas de jogos e ports.
-Se o console não voltar ao normal, use "Restaurar boot" em Armazenamento (último item).
+Se o console não voltar ao normal, use "Restaurar boot" em Cartões (último item).
 Não ligue a rede USB e o modo pendrive ao mesmo tempo.
 
 # Verificar e reparar o cartão

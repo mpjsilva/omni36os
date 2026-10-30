@@ -91,7 +91,7 @@ CARDS = [
     ("desempenho", "Desempenho", "gauge", "fb7185", "e11d48"),
     ("ports", "Ports", "device-gamepad-2", "c084fc", "7c3aed"),     # abre a biblioteca
     ("apps", "Aplicativos", "apps", "f472b6", "db2777"),
-    ("cartoes", "Armazenamento", "device-sd-card", "2dd4bf", "0284c7"),
+    ("cartoes", "Cartões", "device-sd-card", "2dd4bf", "0284c7"),
     ("ferramentas", "Ferramentas", "adjustments", "94a3b8", "475569"),
     ("geral", "Geral", "settings", "60a5fa", "a78bfa"),
 ]
@@ -502,7 +502,7 @@ def tip(item, text):
     return item
 
 
-# Mini explicações por rótulo (o começo basta); Armazenamento põe as dele direto nos itens.
+# Mini explicações por rótulo (o começo basta); Cartões põe as dele direto nos itens.
 TIPS = {
     "Wi-Fi": "Liga e desliga o Wi-Fi, conecta a uma rede, esquece as salvas e mostra o IP do console.",
     "Atualizar status": "Roda a verificação deste card de novo e atualiza o painel.",
@@ -558,7 +558,7 @@ def add_tips(items):
 
 
 def joined(*rs):
-    """Junta verificações num painel só (cards que reúnem assuntos: Armazenamento, Controles)."""
+    """Junta verificações num painel só (cards que reúnem assuntos: Cartões, Controles)."""
     found = [f for r in rs for f in r["achados"]]
     acts = [a for r in rs for a in r.get("acoes", [])]
     lv = [lvl for lvl, _ in found]
@@ -712,7 +712,7 @@ class App:
     def card_check(self, cid):
         if cid == "desempenho" and not FAKE:
             return self._lento_rapido()
-        if cid == "cartoes" and not FAKE:   # Armazenamento = cartões + porta USB
+        if cid == "cartoes" and not FAKE:   # Cartões = cartões + porta USB
             return joined(self._cartoes(), D.check("pc"))
         if cid == "controles":
             out, acts = [], []
@@ -1375,7 +1375,7 @@ class App:
         ts = self.tool_list()
         self.tool_count = len(ts) + 1
         out = [("info", "Testar o controle fica em Controles; senha em Geral; Wi-Fi e rede pelo cabo em Rede; "
-                        "pendrive em Armazenamento; calibração em Bateria; overclock em Desempenho.")]
+                        "pendrive em Cartões; calibração em Tela e som; overclock em Desempenho.")]
         return {"nivel": "ok", "achados": out, "acoes": []} if FAKE else omni_checks.finish(out, [], {})
 
     def ask_tool(self, t):
@@ -3563,7 +3563,7 @@ class App:
             "sobre": "Manual, cuidados e créditos",
             "tela": "Brilho, som e bateria",
             "desempenho": "Processador, GPU e memória",
-            "cartoes": "Cartões, pendrive e espaço",
+            "cartoes": "Pendrive, espaço e reparo",
             "ferramentas": "Arquivos, testes e PortMaster",
             "ports": "Jogos, capas e descrições",
             "apps": "Músicas, playlists e animações",
@@ -3807,7 +3807,7 @@ class App:
                 ih = max(44 if two else 50, 16 + 19 * len(lines) + extra)
             layout.append((y, ih, lines))
             y += ih + (5 if two else gap)
-        # muitas ações (Geral, Armazenamento): a coluna rola para o item escolhido caber acima do rodapé
+        # muitas ações (Geral, Cartões): a coluna rola para o item escolhido caber acima do rodapé
         top, bottom = cy - 4, py + ph
         sy, sh = layout[self.item_sel][:2] if layout else (cy, 50)
         want = max(0, sy + sh - bottom) if sy - cy > 0 else 0
