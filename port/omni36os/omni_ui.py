@@ -97,7 +97,7 @@ CARDS = [
 COLS = 3
 # Páginas abertas de dentro de outro card: B volta para o card de origem e os
 # alertas delas aparecem no ponto do card de origem.
-TWO_COLS = {"tela"}   # cartões sem painel de diagnóstico: as ações vêm em duas colunas
+TWO_COLS = set()      # cartões sem painel de diagnóstico: as ações vêm em duas colunas (hoje nenhum)
 SUBPAGES = {            "calibracao": ("Calibrar a bateria", "battery-2", "a3e635", "16a34a", "bateria"),
             "usbrede": ("Rede pelo cabo USB", "network", "38bdf8", "4f46e5", "rede"),
             "seguranca": ("Segurança", "lock", "60a5fa", "a78bfa", "geral"),
@@ -629,9 +629,12 @@ class App:
                 ("ok", "Trava ligada: o console pede a senha ao ligar. A senha fica em EASYROMS/senha/senha.txt."
                  if locked else "Trava desligada: o console abre direto nos jogos."),
                 ("ok", "Usuário do sistema e do Samba: omni (senha padrão omni). Trocar a senha muda as duas.")]}
-        if cid == "tela" and not FAKE:    # Tela e som: as duas verificações juntas
+        if cid == "tela":                 # Tela e som: brilho e contraste + as duas verificações (o som já diz volume e saída)
+            now = [("info", f"Brilho {D.get('brilho')}%  ·  Contraste {D.get('contraste')}%")]
+            if FAKE:
+                return joined({"achados": now, "acoes": []}, D.check("atualizar"))
             a, b = D.check("atualizar"), D.check("sem_som")
-            return omni_checks.finish(a["achados"] + b["achados"], a["acoes"] + b["acoes"],
+            return omni_checks.finish(now + a["achados"] + b["achados"], a["acoes"] + b["acoes"],
                                       {**a.get("fatos", {}), **b.get("fatos", {})})
         if FAKE and cid == "cartoes":
             return joined(D.check("cartoes"), D.check("pc"))
@@ -1958,6 +1961,7 @@ class App:
                     self.vol = new
         elif cmd == "ok":
             self.levels = None
+            self.reload_findings()            # o painel da esquerda mostra os níveis novos
         elif cmd == "back":                   # desfaz o que mudou desde que o painel abriu
             for x in lv["items"]:
                 if x.value != lv["orig"][x.key]:
