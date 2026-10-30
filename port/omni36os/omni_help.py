@@ -4,6 +4,9 @@ Linhas que começam com "# " viram títulos no leitor."""
 
 # A versão em uso vem do arquivo VERSION. Aqui fica só ela; o histórico completo está no NOVIDADES.md.
 NOVIDADES = [
+    ("1.15.2", "30/10/2026", [
+        "Desligar e reiniciar: a tela de despedida aparece direto, sem piscar o menu ou a boas-vindas antes.",
+    ]),
     ("1.15.1", "30/10/2026", [
         "Teclado: X dá espaço e Y troca letras e símbolos. A trava das maiúsculas fica só na tecla da tela (dois toques). Vale em todo o sistema.",
     ]),

@@ -116,9 +116,10 @@ def close_front():
 def safe(what):
     """Como o finish.sh original: fecha o Omni36OS, desmonta o /boot e grava tudo."""
     os.sync()
+    # a despedida vai para o framebuffer antes de o launcher fechar (sem piscar a boas-vindas)
+    tela = f"/usr/local/bin/omni36os-tela {'reiniciando' if what == 'reboot' else 'desligando'}"
     subprocess.run(["systemd-run", "--no-block", "--collect", "--unit", f"omni36os-power-{int(time.time())}",
-                    "bash", "-c", "/usr/local/bin/omni36os-turbo; systemctl stop omni36os-launcher; "
-                                  f"/usr/local/bin/omni36os-tela {'reiniciando' if what == 'reboot' else 'desligando'}; "
+                    "bash", "-c", f"/usr/local/bin/omni36os-turbo; {tela}; systemctl stop omni36os-launcher; {tela}; "
                                   "mountpoint -q /boot && umount /boot; "
                                   f"sync; sleep 1; systemctl {what}"])
 

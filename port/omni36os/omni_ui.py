@@ -2915,6 +2915,10 @@ class App:
             done()
             if r["do"] in ("hud", "cap", "shot", "close"):
                 return self.game_action(r["do"])
+            if r["do"] in ("reboot", "poweroff"):
+                self.goodbye = "reiniciando" if r["do"] == "reboot" else "desligando"
+                self.frame(0)             # a despedida já na tela do launcher, antes de ele fechar
+                self.g.present()
             if r["do"] != "cancel" and not FAKE:
                 omni.power({"what": r["do"]})
         self.show_list("Energia", "power", rows, go, "Escolher")
@@ -4404,6 +4408,10 @@ class App:
         self.page_anim = approach(self.page_anim, 1.0 if self.page else 0.0, dt, 12)
         g = self.g
         g.clear()
+        if getattr(self, "goodbye", None):   # desligando/reiniciando: só a despedida até o fim
+            folder = os.path.expanduser("~/Apps/Omni36OS/telas/out") if FAKE else "/opt/omni36os-telas"
+            g.picture(os.path.join(folder, self.goodbye + ".png"), 0, 0, W, H)
+            return
         self.draw_bg(dt)
         if self.loading:
             self.draw_loading(dt)

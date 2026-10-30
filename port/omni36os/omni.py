@@ -859,9 +859,11 @@ def power(args):
     if what == "suspend":
         subprocess.Popen(["systemctl", "suspend"])
         return "ok"
+    # a despedida vai para o framebuffer antes de o launcher fechar: é ela (e não a boas-vindas do
+    # boot) que o vídeo mostra no instante em que ele solta a tela
+    tela = f"/usr/local/bin/omni36os-tela {'reiniciando' if what == 'reboot' else 'desligando'}"
     subprocess.run(["systemd-run", "--no-block", "--collect", "--unit", f"omni36os-power-{int(time.time())}",
-                    "bash", "-c", "systemctl stop emulationstation omni36os-launcher; "
-                                  f"/usr/local/bin/omni36os-tela {'reiniciando' if what == 'reboot' else 'desligando'}; "
+                    "bash", "-c", f"{tela}; systemctl stop emulationstation omni36os-launcher; {tela}; "
                                   "mountpoint -q /boot && umount /boot; "
                                   f"sync; sleep 1; systemctl {what}"])
     return "ok"
