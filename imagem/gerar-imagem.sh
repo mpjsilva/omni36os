@@ -74,6 +74,7 @@ SIS=(etc/hostname etc/hosts etc/zram.conf etc/hostapd/hostapd.conf
      usr/local/bin/omni36os-wifi-boot etc/systemd/system/omni36os-wifi-boot.service
      etc/systemd/system/multi-user.target.wants/omni36os-wifi-boot.service
      etc/systemd/system/wifi-usb-old-scheme.service.d
+     etc/systemd/system/omni36os-boas-vindas.service etc/systemd/system/sysinit.target.wants/omni36os-boas-vindas.service
      etc/systemd/system/omni36os-launcher.service.wants
      etc/systemd/system/multi-user.target.wants/omni36os-atalho.service
      etc/systemd/system/multi-user.target.wants/omni36os-launcher.service
@@ -108,6 +109,8 @@ echo "== BOOT: logo, bateria e textos do primeiro boot"
 grep -q "usbcore.old_scheme_first" "$B/boot.ini" || sed -i "0,/rootwait rw /s//rootwait rw usbcore.old_scheme_first=1 /" "$B/boot.ini"
 grep -q "usbcore.old_scheme_first=1" "$B/boot.ini" || { echo "boot.ini sem o parâmetro de USB."; exit 1; }
 cp "$TELAS/logo.bmp" "$TELAS/low_battery.bmp" "$B/"
+# logo redesenhado no começo do initramfs (o kernel apaga o do u-boot): sem tela preta até o systemd
+"$REPO/imagem/initrd-logo.sh" "$B/uInitrd" "$OUT/uInitrd" "$TELAS/carregando.raw" && mv "$OUT/uInitrd" "$B/uInitrd"
 sed -i -e 's/Firstboot setup of dArkOSen/Primeira inicialização do Omni36OS/' \
        -e 's/Expanding rootfs and exfat partitions.  Please wait.../Preparando o cartão. Isso leva alguns minutos, não desligue.../' \
        -e 's/EASYROMS partition expansion and conversion to exfat in process.  The device will now reboot to continue the process.../Preparando o cartão. O console vai reiniciar uma vez e continuar sozinho.../' \

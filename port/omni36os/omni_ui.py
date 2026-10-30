@@ -530,6 +530,13 @@ class App:
         if not FAKE:
             os.environ.setdefault("SDL_GAMECONTROLLERCONFIG_FILE", "/opt/inttools/gamecontrollerdb.txt")
         self.g = gfx.Gfx()
+        # o SDL apaga a tela ao assumir o vídeo: redesenha a boas-vindas do boot já no primeiro
+        # quadro, antes de montar o resto, para a passagem do boot ao launcher não piscar preto
+        self.player = os.environ.get("OMNI_JOGADOR", "") if FAKE else omni_sistema.player_name()
+        self.t = 0.0
+        self.draw_welcome()
+        self.g.present()
+        print(f"abertura na tela {time.clock_gettime(time.CLOCK_BOOTTIME):.1f} s após ligar", file=sys.stderr, flush=True)
         self.swap = swapped_ab()
         self.swap_xy = os.path.exists("/var/cache/Switch_XY") and not FAKE
         self.running = True
@@ -563,7 +570,6 @@ class App:
         except (OSError, ValueError):
             pass
         self.toast = None             # (texto, nível, até)
-        self.player = os.environ.get("OMNI_JOGADOR", "") if FAKE else omni_sistema.player_name()
         if not FAKE and self.player and not os.path.exists(omni_sistema.TELA):   # nome de antes da tela com nome
             threading.Thread(target=omni_sistema.set_player_name, args=(self.player,), daemon=True).start()
         self.want_power = self.want_msg = False

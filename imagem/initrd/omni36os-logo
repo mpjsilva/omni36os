@@ -1,0 +1,6 @@
+#!/bin/sh
+# Omni36OS: o driver de vídeo do kernel apaga o logo do u-boot; redesenha o mesmo logo já aqui,
+# no começo do initramfs, para o boot não ficar ~2 s de tela preta até o sistema subir.
+[ "$1" = prereqs ] && exit 0
+[ -e /dev/fb0 ] && dd if=/omni36os/carregando.raw of=/dev/fb0 bs=2560 conv=notrunc 2>/dev/null
+exit 0
