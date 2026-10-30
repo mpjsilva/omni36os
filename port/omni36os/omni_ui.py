@@ -2024,8 +2024,8 @@ class App:
             g.text("Regular", 11, info["generos"], px + 14, y + 2, MUTED)
             y += 18
         desc = (info or {}).get("descricao") or game.get("desc") or (
-            "Buscando a ficha..." if info is None and self.status.get("wifi") else
-            "Sem ficha: ligue o Wi-Fi para buscar." if info is None else "Sem ficha no PortMaster ou na Steam.")
+            "Buscando a descrição..." if info is None and self.status.get("wifi") else
+            "Sem descrição: ligue o Wi-Fi para buscar." if info is None else "Descrição não encontrada.")
         local = []
         if (info or {}).get("porter"):
             local.append("Port: " + info["porter"][:28])

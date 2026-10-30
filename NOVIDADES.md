@@ -2,6 +2,10 @@
 
 Histórico completo. Dentro do console (Geral > Sobre > Novidades) aparece só a versão em uso.
 
+## 1.11.5 (30/10/2026)
+
+- Biblioteca: "Buscando a descrição...", "Sem descrição: ligue o Wi-Fi para buscar." e "Descrição não encontrada." no lugar dos textos com "ficha" (agora são 4 fontes, não só PortMaster e Steam).
+
 ## 1.11.4 (30/10/2026)
 
 - Fichas dos ports: Wikipédia como terceira camada (antes do DuckDuckGo). Busca na inglesa e só aceita a página com o nome do jogo (ou da série); a descrição vem da mesma página em português pelo link de idioma, com ano e imagem quando livres. Fichas incompletas são buscadas de novo uma vez.
