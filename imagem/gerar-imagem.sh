@@ -73,7 +73,7 @@ SIS=(etc/hostname etc/hosts etc/zram.conf etc/hostapd/hostapd.conf
      etc/NetworkManager/dispatcher.d/90-omni36os-remoto etc/systemd/system/omni36os-hora.service usr/local/bin/omni36os-hora usr/local/bin/omni36os-volume
      usr/local/bin/omni36os-wifi-boot etc/systemd/system/omni36os-wifi-boot.service
      etc/systemd/system/multi-user.target.wants/omni36os-wifi-boot.service
-     etc/modprobe.d/omni36os-wifi.conf
+     etc/systemd/system/wifi-usb-old-scheme.service.d
      etc/systemd/system/omni36os-launcher.service.wants
      etc/systemd/system/multi-user.target.wants/omni36os-atalho.service
      etc/systemd/system/multi-user.target.wants/omni36os-launcher.service
@@ -103,6 +103,10 @@ install -m644 -o 1000 -g 1000 "$REPO/imagem/filebrowser.db" "$H/.config/filebrow
 touch "$R/var/log/omni36os.log"
 
 echo "== BOOT: logo, bateria e textos do primeiro boot"
+# Wi-Fi USB Realtek: esquema antigo de enumeração desde o boot (sem ele o RTL8821CU falha com
+# "Chip id is undefined" e o dArkOSen só corrigia no fim do boot, reiniciando o USB)
+grep -q "usbcore.old_scheme_first" "$B/boot.ini" || sed -i "0,/rootwait rw /s//rootwait rw usbcore.old_scheme_first=1 /" "$B/boot.ini"
+grep -q "usbcore.old_scheme_first=1" "$B/boot.ini" || { echo "boot.ini sem o parâmetro de USB."; exit 1; }
 cp "$TELAS/logo.bmp" "$TELAS/low_battery.bmp" "$B/"
 sed -i -e 's/Firstboot setup of dArkOSen/Primeira inicialização do Omni36OS/' \
        -e 's/Expanding rootfs and exfat partitions.  Please wait.../Preparando o cartão. Isso leva alguns minutos, não desligue.../' \

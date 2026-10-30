@@ -144,6 +144,23 @@ def save_original():
     os.sync()
 
 
+USB_PARAM = "usbcore.old_scheme_first=1"   # adaptadores Wi-Fi Realtek só sobem no boot com ele
+
+
+def usb_param(path):
+    """Põe o esquema antigo de USB na linha do kernel do boot.ini (o do catálogo não tem)."""
+    try:
+        with open(path) as f:
+            text = f.read()
+    except OSError:
+        return
+    if USB_PARAM in text or "rootwait rw " not in text:
+        return
+    with open(path + ".tmp", "w") as f:
+        f.write(text.replace("rootwait rw ", f"rootwait rw {USB_PARAM} ", 1))
+    os.replace(path + ".tmp", path)
+
+
 def install(folder):
     """Como o SELECT MODEL do dArkOSen: tira os .dtb da raiz e copia os .dtb e o boot.ini da pasta.
     O logo e a tela de bateria do Omni36OS ficam (não copia as imagens do dArkOSen)."""
@@ -151,6 +168,7 @@ def install(folder):
         os.remove(f)
     for f in glob.glob(f"{folder}/*.dtb") + glob.glob(f"{folder}/boot.ini"):
         shutil.copy2(f, BOOT)
+    usb_param(f"{BOOT}/boot.ini")
     os.sync()
 
 
