@@ -141,6 +141,7 @@ STATE_MAX_AGE = 30 * 60
 
 import omni_help
 import omni_musica  # noqa: E402
+import omni_video  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 
@@ -486,6 +487,14 @@ def music_save(**kw):
     return cfg
 
 
+TEXT_EXT = (".txt", ".md", ".log", ".ini", ".cfg", ".conf")
+NOTES_DIR = "/roms/notas"
+
+
+def is_text(name):
+    return name.lower().endswith(TEXT_EXT)
+
+
 def is_image(name):
     return name.lower().endswith(IMAGE_EXT)
 
@@ -766,7 +775,9 @@ class App:
             return {"nivel": "ok", "acoes": [], "achados": [
                 ("ok", "Pastas de música: " + ", ".join(f"{n} ({p})" for p, n in here)) if here else
                 ("info", "Crie a pasta musicas no cartão (ROMS ou ROMS2) e coloque seus mp3 nela."),
-                ("info", "Soltas na pasta, as músicas tocam juntas; cada subpasta vira uma lista.")]}
+                ("info", "Soltas na pasta, as músicas tocam juntas; cada subpasta vira uma lista."),
+                ("info", "Vídeos: pasta videos dos cartões. Notas: pasta notas do cartão 1."),
+                ("info", "No Arquivos, abrir uma música, um vídeo ou um texto abre o app certo.")]}
         if FAKE and cid == "cartoes":
             return joined(D.check("cartoes"), D.check("pc"))
         name = {"tela": "atualizar"}.get(cid, cid)
@@ -1013,7 +1024,11 @@ class App:
         if cid == "apps":
             return [tip(A("Músicas", "music", self.open_music),
                         "Toca os mp3 das pastas musicas dos cartões (ROMS/musicas e ROMS2/musicas). "
-                        "As opções ficam dentro do app: START.")]
+                        "As opções ficam dentro do app: START."),
+                    tip(A("Vídeos", "movie", lambda: self.open_videos()),
+                        "Toca os vídeos das pastas videos dos cartões (ROMS/videos e ROMS2/videos): mp4, mkv, webm e outros."),
+                    tip(A("Notas", "notes", lambda: self.open_notes()),
+                        "Bloco de notas: textos simples na pasta notas do cartão 1 (ROMS/notas).")]
         if cid == "tela":
             return [tip(A("Brilho, contraste e volume", "adjustments", self.open_levels),
                         "Abre os três ajustes: cima/baixo escolhe, esquerda/direita ajusta, A confirma e B desfaz."),
@@ -1440,14 +1455,23 @@ class App:
 
     KEYS = ["1234567890", "qwertyuiop", "asdfghjkl-", "zxcvbnm_.@", ["ABC", "espaço", "apagar", "OK"]]
 
-    def keyboard(self, title, on_done, secret=False, value="", hint="", locked=False):
+    TEXT_ROW = ",.!?:;()'\""
+
+    def kbd_keys(self):
+        """As linhas do teclado; no bloco de notas entra uma de pontuação."""
+        if self.kbd and self.kbd.get("texto"):
+            return self.KEYS[:3] + [self.KEYS[3].replace("_.@", "_@#"), self.TEXT_ROW] + self.KEYS[4:]
+        return self.KEYS
+
+    def keyboard(self, title, on_done, secret=False, value="", hint="", locked=False, texto=False):
         """Teclado do Omni36OS: direcional escolhe, A digita, B apaga, Start confirma, Select cancela.
         locked: tela da trava (não dá para cancelar; o power abre Energia)."""
         self.kbd = {"title": title, "value": value, "secret": secret, "fn": on_done, "r": 1, "c": 0,
-                    "shift": False, "hint": hint, "locked": locked}
+                    "shift": False, "hint": hint, "locked": locked,
+                    "texto": texto, "limit": 500 if texto else 64}
 
     def kbd_row(self, r):
-        row = self.KEYS[r]
+        row = self.kbd_keys()[r]
         if isinstance(row, str):
             return list(row.upper() if self.kbd["shift"] else row)
         return ["abc" if self.kbd["shift"] else "ABC"] + row[1:]
@@ -1456,7 +1480,7 @@ class App:
         k = self.kbd
         if cmd in ("up", "down"):
             old = len(self.kbd_row(k["r"]))
-            k["r"] = (k["r"] + (1 if cmd == "down" else -1)) % len(self.KEYS)
+            k["r"] = (k["r"] + (1 if cmd == "down" else -1)) % len(self.kbd_keys())
             new = len(self.kbd_row(k["r"]))
             k["c"] = min(new - 1, round(k["c"] * (new - 1) / max(1, old - 1)))
         elif cmd in ("left", "right"):
@@ -1480,7 +1504,7 @@ class App:
             elif key == "OK":
                 self.kbd = None
                 k["fn"](k["value"])
-            elif len(k["value"]) < 64:
+            elif len(k["value"]) < k["limit"]:
                 k["value"] += key
 
     def draw_keyboard(self, dt):
@@ -1509,9 +1533,10 @@ class App:
             g.text("Regular", 13, k["hint"], mx + 44, my + 84.5, FAINT, "l", "m")
         # teclas
         ky, kh, gap = my + 118, 34, 6
-        for r in range(len(self.KEYS)):
+        keys = self.kbd_keys()
+        for r in range(len(keys)):
             row = self.kbd_row(r)
-            if r < len(self.KEYS) - 1:
+            if r < len(keys) - 1:
                 ws = [(mw - 40 - gap * (len(row) - 1)) / len(row)] * len(row)
             else:
                 unit = (mw - 40 - gap * (len(row) - 1)) / 7
@@ -1887,6 +1912,12 @@ class App:
             self.open_files(r["path"])
         elif r.get("img"):
             self.open_viewer(r["path"])
+        elif r["name"].lower().endswith(omni_musica.EXT):
+            self.open_music_file(r["path"])
+        elif omni_video.is_video(r["name"]):
+            self.play_video(r["path"])
+        elif is_text(r["name"]):
+            self.open_note(r["path"])
         else:
             self.file_menu(r)
 
@@ -2061,6 +2092,285 @@ class App:
                 self.music_rows(keep=left)
             else:
                 self.music_close()
+
+    # --- abrir pelo Arquivos ---
+
+    def open_music_file(self, path):
+        """Uma música escolhida no Arquivos: o tocador abre na pasta dela, tocando a partir dela."""
+        self.open_music()
+        folder = os.path.dirname(path)
+        self.music["stack"] = [(folder, os.path.basename(folder))]
+        self.music_rows(keep=None)
+        self.music_play(start_song=path)
+
+    # --- Vídeos ---
+
+    def video_roots(self):
+        if FAKE:
+            return [(os.environ.get("OMNI_VIDEOS", "/tmp/omni36os-videos"), "Cartão 1")]
+        return omni_video.roots()
+
+    def open_videos(self, path=None, start=None):
+        """Lista das pastas de vídeo (como no Arquivos): A entra numa pasta ou toca o vídeo, B volta."""
+        roots = self.video_roots()
+        if path is None and len(roots) == 1:
+            path = roots[0][0]
+        if path is None:
+            if not roots:
+                self.toast = ("Crie a pasta videos no cartão e copie seus vídeos para ela", "aviso", self.t + 4)
+                return
+            rows = [{"name": n, "icon": "device-sd-card", "path": p, "dir": True} for p, n in roots]
+            self.show_list("Vídeos", "movie", rows, lambda r: self.open_videos(r["path"]), "Abrir")
+            self.picker["hints"] = []
+            return
+        top = path in [p for p, _ in roots]
+        try:
+            names = sorted(os.listdir(path), key=str.lower)
+        except OSError:
+            names = []
+        dirs = [n for n in names if not n.startswith(".") and os.path.isdir(os.path.join(path, n))]
+        vids = [n for n in names if omni_video.is_video(n)]
+        rows = [] if top and len(roots) == 1 else [{"name": "..", "icon": "arrow-up", "up": True}]
+        rows += [{"name": n, "icon": "folder", "dir": True, "path": os.path.join(path, n)} for n in dirs]
+        rows += [{"name": n, "icon": "movie", "path": os.path.join(path, n)} for n in vids]
+        if not rows:
+            self.picker = None
+            self.toast = ("Nenhum vídeo ainda: copie para a pasta videos do cartão", "aviso", self.t + 4)
+            return
+        title = "Vídeos" if top else os.path.basename(path)
+        self.show_list(title, "movie", rows, lambda r: self.video_pick(path, r), "Abrir", start)
+        self.picker["hints"] = []
+        if not (top and len(roots) == 1):
+            self.picker["on_back"] = lambda: self.open_videos(None if top else os.path.dirname(path))
+
+    def video_pick(self, path, r):
+        if r.get("up"):
+            roots = [p for p, _ in self.video_roots()]
+            self.open_videos(None if path in roots else os.path.dirname(path))
+        elif r.get("dir"):
+            self.open_videos(r["path"])
+        else:
+            self.play_video(r["path"])
+
+    def play_video(self, path):
+        """Vídeo em tela cheia (ffmpeg): A pausa, esquerda/direita 10 s, L1/R1 1 min, B volta."""
+        mp = getattr(self, "music_player", None)
+        if mp and mp.current() and not mp.paused:
+            mp.toggle()                   # a música para enquanto o vídeo toca
+        if not hasattr(self, "video_player"):
+            self.video_player = omni_video.Player()
+        pl = self.video_player
+
+        def done(ok):
+            if ok is True:
+                if not FAKE:
+                    omni.video_clocks()
+                self.video = {"pl": pl, "name": os.path.splitext(os.path.basename(path))[0], "ui": self.t}
+            else:
+                self.toast = (pl.error or "Não consegui abrir este vídeo", "problema", self.t + 4)
+        self.worker(lambda: pl.open(path), done, busy="Abrindo o vídeo...")
+
+    def video_input(self, cmd):
+        v, pl = self.video, self.video["pl"]
+        v["ui"] = self.t
+        if cmd == "back":
+            pl.close()
+            self.video = None
+            if not FAKE:
+                omni.relax_clocks()
+        elif cmd == "ok":
+            if pl.ended:
+                pl.start(0.0)
+            else:
+                pl.toggle()
+        elif cmd in ("left", "right", "l1", "r1"):
+            pl.seek({"left": -10, "right": 10, "l1": -60, "r1": 60}[cmd])
+
+    def draw_video(self, dt):
+        g, v = self.g, self.video
+        pl = v["pl"]
+        g.rrect(0, 0, W, H, 0, (0, 0, 0, 255), feather=0)
+        w, h = pl.size
+        with pl.lock:
+            frame, serial = pl.frame, pl.serial
+        if frame is not None:
+            g.video(frame, serial, w, h, (W - w) // 2, (H - h) // 2)
+        elif pl.ended:
+            g.text("Medium", 14, "Não consegui tocar este vídeo.", W / 2, H / 2, TEXT, "c", "m")
+        else:
+            g.arc(W / 2, H / 2, 26, 4, self.t * 400, self.t * 400 + 280, alpha(hexc("38bdf8"), 255))
+        if not (pl.paused or pl.ended or frame is None or self.t - v["ui"] < 3):
+            return
+        a1, a2 = hexc("38bdf8"), hexc("8b5cf6")
+        g.rrect(0, 0, W, 64, 0, (0, 0, 0, 170), feather=0)
+        g.text("SemiBold", 16, v["name"][:52], 22, 22, ON_TEXT)
+        g.rrect(0, H - 92, W, 92, 0, (0, 0, 0, 170), feather=0)
+        tm = lambda x: f"{int(x) // 3600}:{int(x) % 3600 // 60:02d}:{int(x) % 60:02d}" if x >= 3600 else \
+            f"{int(x) // 60}:{int(x) % 60:02d}"
+        pos, dur = pl.position(), pl.duration()
+        bx, by, bw = 72, H - 80, W - 144
+        g.rrect(bx, by, bw, 6, 3, (255, 255, 255, 50))
+        if dur:
+            g.rrect(bx, by, max(6, bw * min(1, pos / dur)), 6, 3, a1, a2)
+        g.text("Medium", 12, tm(pos), bx - 12, by + 3, ON_TEXT, "r", "m")
+        g.text("Medium", 12, tm(dur) if dur else "--:--", bx + bw + 12, by + 3, ON_TEXT, "l", "m")
+        if pl.paused:
+            g.circle(W / 2, H / 2, 34, (0, 0, 0, 150))
+            g.icon("player-pause", W / 2 - 18, H / 2 - 18, 36, ON_TEXT)
+        hints = ([("A", "De novo")] if pl.ended else [("A", "Continuar" if pl.paused else "Pausar")]) + \
+            [("LR", "10 s"), ("L1", "−1 min"), ("R1", "+1 min"), ("B", "Voltar")]
+        self.draw_footer_at(H - 40, [(*h, ON_TEXT) for h in hints], center=W / 2)
+
+    # --- Notas ---
+
+    def notes_dir(self):
+        return os.environ.get("OMNI_NOTAS", "/tmp/omni36os-notas") if FAKE else NOTES_DIR
+
+    def open_notes(self, start=None):
+        """Bloco de notas: a primeira linha cria uma nota; A abre, X apaga."""
+        folder = self.notes_dir()
+        try:
+            os.makedirs(folder, exist_ok=True)
+            names = [n for n in os.listdir(folder) if is_text(n)]
+        except OSError:
+            names = []
+        names.sort(key=lambda n: -os.path.getmtime(os.path.join(folder, n)))
+        rows = [{"name": "Nova nota", "icon": "plus", "new": True}]
+        rows += [{"name": os.path.splitext(n)[0], "icon": "file-text", "path": os.path.join(folder, n),
+                  "right": (time.strftime("%d/%m %H:%M", time.localtime(os.path.getmtime(os.path.join(folder, n)))), MUTED)}
+                 for n in names]
+        self.show_list("Notas", "notes", rows, self.note_pick, "Abrir", start)
+        self.picker["on_x"] = self.note_delete
+        self.picker["hints"] = [("X", "Apagar")] if names else []
+
+    def note_pick(self, r):
+        if not r.get("new"):
+            self.open_note(r["path"])
+            return
+
+        def create(name):
+            name = "".join(c for c in name.strip() if c not in '/\\:*?"<>|').strip(". ")
+            if not name:
+                return
+            path = os.path.join(self.notes_dir(), name + ".txt")
+            if not os.path.exists(path):
+                self.note_write(path, "")
+            self.open_note(path)
+        self.keyboard("Nome da nota", create, hint="Ex.: senhas do wifi, dicas")
+
+    def note_delete(self, r):
+        if r.get("new"):
+            return
+        self.modal = {"title": "Apagar a nota?", "icon": "trash", "sel": 1, "buttons": ["Apagar", "Cancelar"],
+                      "text": f"\"{r['name']}\" some do cartão. Não dá para desfazer.",
+                      "fns": [lambda: self.note_remove(r["path"]), lambda: None]}
+
+    def note_remove(self, path):
+        try:
+            os.remove(path)
+        except OSError as e:
+            self.toast = (f"Não consegui apagar: {e.strerror}", "problema", self.t + 3.5)
+        self.open_notes()
+
+    def note_write(self, path, text):
+        tmp = path + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as f:
+            f.write(text)
+        os.replace(tmp, path)
+        if not FAKE:
+            try:
+                os.chown(path, 1000, 1000)
+            except OSError:
+                pass
+
+    def open_note(self, path):
+        try:
+            if os.path.getsize(path) > 256 * 1024:
+                self.toast = ("Texto grande demais para o bloco de notas", "aviso", self.t + 3.5)
+                return
+            with open(path, encoding="utf-8", errors="replace") as f:
+                text = f.read()
+        except OSError as e:
+            self.toast = (f"Não consegui abrir: {e.strerror}", "problema", self.t + 3.5)
+            return
+        self.note = {"path": path, "lines": text.split("\n"), "sel": 0, "top": 0.0,
+                     "notes": path.startswith(self.notes_dir() + "/")}
+
+    def note_save(self):
+        n = self.note
+        try:
+            self.note_write(n["path"], "\n".join(n["lines"]))
+        except OSError as e:
+            self.toast = (f"Não consegui salvar: {e.strerror}", "problema", self.t + 3.5)
+
+    def note_edit(self, i):
+        n = self.note
+
+        def done(val):
+            n["lines"][i] = val
+            self.note_save()
+        self.keyboard(f"Linha {i + 1}", done, value=n["lines"][i], texto=True)
+
+    def note_input(self, cmd):
+        n = self.note
+        lines = n["lines"]
+        step = {"up": -1, "down": 1, "l1": -10, "r1": 10, "left": -10, "right": 10}.get(cmd)
+        if step:
+            n["sel"] = max(0, min(len(lines) - 1, n["sel"] + step))
+        elif cmd == "ok":
+            self.note_edit(n["sel"])
+        elif cmd == "x":
+            lines.insert(n["sel"] + 1, "")
+            n["sel"] += 1
+            self.note_save()
+            self.note_edit(n["sel"])
+        elif cmd == "y":
+            if len(lines) > 1:
+                del lines[n["sel"]]
+                n["sel"] = min(n["sel"], len(lines) - 1)
+            else:
+                lines[0] = ""
+            self.note_save()
+        elif cmd == "back":
+            self.note = None
+            if n["notes"] and self.picker and self.picker.get("title") == "Notas":
+                self.open_notes()         # a nota sobe para o topo da lista
+
+    def draw_note(self, dt):
+        g, n = self.g, self.note
+        a1, a2 = hexc("fbbf24"), hexc("f97316")
+        g.rrect(22, 22, 40, 40, 12, a1, a2)
+        g.icon("notes", 30, 30, 24, ON_TEXT)
+        name = os.path.basename(n["path"])
+        if n["notes"]:
+            name = os.path.splitext(name)[0]
+        g.text("Bold", 22, name[:24], 74, 22, TEXT)
+        g.text("Regular", 12, os.path.dirname(n["path"])[-34:], 75, 49, MUTED)
+        self.draw_status()
+        lines, rh, ly, bot = n["lines"], 28, 80, 426
+        g.rrect(16, ly - 6, W - 32, bot - ly + 6, 18, alpha(GLASS, 14))
+        vis = int((bot - ly) // rh)
+        want = max(0, min(n["sel"] - vis // 2, len(lines) - vis))
+        n["top"] = approach(n["top"], want * rh, dt, 18)
+        g.clip(16, ly, W - 32, bot - ly)
+        first = max(0, int(n["top"] // rh) - 1)
+        for i in range(first, min(len(lines), first + vis + 3)):
+            y, on = ly + i * rh - n["top"], i == n["sel"]
+            if on:
+                g.rrect(24, y, W - 48, rh - 2, 10, a1, a2)
+            g.text("Regular", 11, str(i + 1), 52, y + rh / 2 - 1, ON_TEXT if on else FAINT, "r", "m")
+            txt = lines[i]
+            limit = W - 110
+            if g.measure("Regular", 14, txt)[0] > limit:
+                while txt and g.measure("Regular", 14, txt + "…")[0] > limit:
+                    txt = txt[:-1]
+                txt += "…"
+            g.text("Medium" if on else "Regular", 14, txt, 64, y + rh / 2 - 1, ON_TEXT if on else TEXT, "l", "m")
+        g.clip()
+        if lines == [""]:
+            g.text("Regular", 13, "Nota vazia: A escreve a primeira linha.", W / 2, 240, MUTED, "c")
+        self.draw_footer_at(H - 29, [("A", "Editar"), ("X", "Nova linha"), ("Y", "Apagar linha"), ("B", "Fechar")],
+                            center=W / 2)
 
     MUSIC_OPTIONS = (("Visualização", "wave-sine", "vis", list(VIS_NAMES), VIS_NAMES,
                       "A animação que dança com a música. Tocando, Y troca."),
@@ -3270,6 +3580,12 @@ class App:
                 if m.get("on_back"):
                     m["on_back"]()
             return
+        if getattr(self, "video", None):
+            self.video_input(cmd)
+            return
+        if getattr(self, "note", None):
+            self.note_input(cmd)
+            return
         if getattr(self, "music", None):
             self.music_input(cmd)
             return
@@ -3566,7 +3882,7 @@ class App:
             "cartoes": "Pendrive, espaço e reparo",
             "ferramentas": "Arquivos, testes e PortMaster",
             "ports": "Jogos, capas e descrições",
-            "apps": "Músicas, playlists e animações",
+            "apps": "Músicas, vídeos e notas",
             "testar": f"{self.port_count} Ports instalados" if getattr(self, "port_count", 0) else "Abre e fecha em 15 s",
         }[cid]
 
@@ -4037,9 +4353,13 @@ class App:
             return
         if not self.warm and not FAKE and os.path.exists(TURBO):
             self.turbo_off()
-        if getattr(self, "music", None):    # tocador em tela cheia: o menu não é desenhado por baixo
-            self.draw_music(dt)
+        app = ((getattr(self, "video", None) and self.draw_video) or (getattr(self, "note", None) and self.draw_note)
+               or (getattr(self, "music", None) and self.draw_music))
+        if app:                           # app em tela cheia (vídeo, nota, músicas): o menu não aparece por baixo,
+            app(dt)                       # nem a lista de onde ele foi aberto (Arquivos, Vídeos, Notas)
+            pk, self.picker = self.picker, None
             self.draw_overlays(dt)
+            self.picker = pk
             return
         self.draw_header()
         p = self.page_anim
@@ -4240,7 +4560,7 @@ class App:
                 # Ritmo: 30 quadros/s em uso e 10 parado. A 60 quadros/s sem parar a
                 # Omni36OS ocupava 70% de um núcleo e deixava o aparelho perto de 80 °C.
                 music = getattr(self, "music", None)
-                moving = (self.loading or self.busy or getattr(self, "danger", None) or self.toast or 0.01 < self.page_anim < 0.99
+                moving = (getattr(self, "video", None) or self.loading or self.busy or getattr(self, "danger", None) or self.toast or 0.01 < self.page_anim < 0.99
                           or (music and not music["off"] and music["player"].current() and not music["player"].paused)
                           or getattr(self, "kbd", None) or getattr(self, "pad", None)
                           or now - self.last_input < IDLE_AFTER)

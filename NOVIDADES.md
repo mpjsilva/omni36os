@@ -2,6 +2,11 @@
 
 Histórico completo. Dentro do console (Geral > Sobre > Novidades) aparece só a versão em uso.
 
+## 1.13.0 (30/10/2026)
+
+- Aplicativos ganha Vídeos (tocador simples com os codecs abertos do ffmpeg) e Notas (bloco de notas com teclado e pontuação).
+- No Arquivos, músicas, vídeos e textos abrem direto no app certo.
+
 ## 1.12.7 (30/10/2026)
 
 - O card Armazenamento passa a se chamar Cartões, com a fonte do mesmo tamanho dos outros; legenda Pendrive, espaço e reparo.

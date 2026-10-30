@@ -416,9 +416,21 @@ def relax_clocks(_args=None):
     está na tela. Um menu não precisa de mais, e assim o console esfria e a bateria rende. Os limites
     de Desempenho só valem nos ports: o launch-direct.sh põe tudo em desempenho até eles ao abrir um
     port, e o Omni36OS volta ao mínimo quando o port fecha. Sem o modo economia, o mais próximo."""
-    for path, govs in ((f"{CPUFREQ}/scaling_governor", ("powersave", "conservative", "ondemand")),
-                       (f"{GPU_DEV}/governor", ("powersave", "simple_ondemand")),
-                       ("/sys/class/devfreq/dmc/governor", ("powersave", "dmc_ondemand", "simple_ondemand"))):
+    _governors(((f"{CPUFREQ}/scaling_governor", ("powersave", "conservative", "ondemand")),
+                (f"{GPU_DEV}/governor", ("powersave", "simple_ondemand")),
+                ("/sys/class/devfreq/dmc/governor", ("powersave", "dmc_ondemand", "simple_ondemand"))))
+
+
+def video_clocks(_args=None):
+    """Vídeo tocando: o ffmpeg decodifica no processador, então CPU e memória sobem conforme a carga
+    (sem passar dos limites de Desempenho). relax_clocks volta ao mínimo quando o vídeo fecha."""
+    _governors(((f"{CPUFREQ}/scaling_governor", ("schedutil", "ondemand", "performance")),
+                ("/sys/class/devfreq/dmc/governor", ("dmc_ondemand", "simple_ondemand", "performance"))))
+
+
+def _governors(pairs):
+    """O primeiro governador de cada lista que o sistema tiver."""
+    for path, govs in pairs:
         try:
             avail = read_text(path.rsplit("/", 1)[0] + ("/scaling_available_governors" if "cpufreq" in path
                                                          else "/available_governors"), "").split()

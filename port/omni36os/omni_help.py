@@ -4,6 +4,10 @@ Linhas que começam com "# " viram títulos no leitor."""
 
 # A versão em uso vem do arquivo VERSION. Aqui fica só ela; o histórico completo está no NOVIDADES.md.
 NOVIDADES = [
+    ("1.13.0", "30/10/2026", [
+        "Aplicativos ganha Vídeos (tocador simples com os codecs abertos do ffmpeg) e Notas (bloco de notas com teclado e pontuação).",
+        "No Arquivos, músicas, vídeos e textos abrem direto no app certo.",
+    ]),
     ("1.12.7", "30/10/2026", [
         "O card Armazenamento passa a se chamar Cartões, com a fonte do mesmo tamanho dos outros; legenda Pendrive, espaço e reparo.",
     ]),
@@ -154,6 +158,9 @@ Cada pasta mostra as músicas soltas nela e as subpastas; A numa subpasta entra 
 Na tela Tocando: A pausa, esquerda/direita trocam de música, L1/R1 voltam e avançam 10 s, Y troca a visualização e B volta à lista (a música continua; X volta para a tela Tocando). Sair das Músicas para a música.
 Opções (START, dentro do app): "Visualização": Capa do álbum (a imagem da pasta, como cover.jpg, ou a capa embutida no mp3), Barras, Ondas, Anel ou Aurora, dançando com o som. "Apagar a tela": com a música tocando e sem apertar nada, a luz da tela apaga em 30 s, 1, 2 ou 5 minutos (ou Manter ligada); qualquer botão acende.
 As pastas ficam num índice (nome, título e artista das tags): só a pasta que mudou é lida de novo, e a lista guarda só os caminhos.
+"Vídeos" toca os vídeos das pastas videos dos cartões (ROMS/videos, criada sozinha, e ROMS2/videos), com os codecs abertos do ffmpeg: mp4, mkv, webm, avi e outros (H.264, H.265, VP8, VP9, AV1, MPEG-4). A pausa, esquerda/direita voltam e avançam 10 s, L1/R1 1 minuto, B volta. Vídeos até 720p rodam bem; acima disso, depende do codec. A música para enquanto o vídeo toca.
+"Notas" é um bloco de notas simples: textos na pasta notas do cartão 1 (ROMS/notas). Na lista, a primeira linha cria uma nota e X apaga. Dentro da nota, cada linha é editada no teclado (com pontuação): A edita a linha, X cria uma linha abaixo, Y apaga a linha, B fecha. Tudo é salvo na hora.
+No Arquivos, abrir uma música, um vídeo ou um texto (txt, md, log, ini, cfg, conf) abre o app certo; B volta para a pasta.
 
 # Desempenho
 No menu, o processador, a GPU e a memória ficam sempre no mínimo: o console esfria e a bateria rende. Ao abrir um port, tudo sobe até os limites abaixo; ao voltar, desce de novo.

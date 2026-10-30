@@ -57,6 +57,7 @@ SDL_RenderCopyF = _f(sdl, "SDL_RenderCopyF", C.c_int, P, P, P, C.POINTER(FRect))
 SDL_RenderSetClipRect = _f(sdl, "SDL_RenderSetClipRect", C.c_int, P, C.POINTER(Rect))
 SDL_RenderReadPixels = _f(sdl, "SDL_RenderReadPixels", C.c_int, P, P, C.c_uint32, P, C.c_int)
 SDL_CreateTexture = _f(sdl, "SDL_CreateTexture", P, P, C.c_uint32, C.c_int, C.c_int, C.c_int)
+SDL_UpdateTexture = _f(sdl, "SDL_UpdateTexture", C.c_int, P, P, P, C.c_int)
 SDL_SetRenderTarget = _f(sdl, "SDL_SetRenderTarget", C.c_int, P, P)
 SDL_GetRenderTarget = _f(sdl, "SDL_GetRenderTarget", P, P)
 SDL_CreateTextureFromSurface = _f(sdl, "SDL_CreateTextureFromSurface", P, P, P)
@@ -89,6 +90,7 @@ BLEND = 1
 PIXELFORMAT_RGB24 = 0x17101803
 PIXELFORMAT_ABGR8888 = 0x16762004
 TEXTUREACCESS_TARGET = 2
+TEXTUREACCESS_STREAMING = 1
 
 W, H = 640, 480
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -490,6 +492,18 @@ class Gfx:
 
     def end_layer(self):
         SDL_SetRenderTarget(self.r, None)
+
+    def video(self, frame, serial, w, h, x, y):
+        """Um quadro RGB (w×h) de vídeo em (x, y). A textura é reaproveitada; só sobe quando o quadro muda."""
+        v = getattr(self, "_video", None)
+        if not v or v[1:3] != (w, h):
+            if v:
+                SDL_DestroyTexture(v[0])
+            v = self._video = [SDL_CreateTexture(self.r, PIXELFORMAT_RGB24, TEXTUREACCESS_STREAMING, w, h), w, h, -1]
+        if frame is not None and v[3] != serial:
+            SDL_UpdateTexture(v[0], None, frame, w * 3)
+            v[3] = serial
+        SDL_RenderCopyF(self.r, v[0], None, C.byref(FRect(x, y, w, h)))
 
     def draw_layer(self, tex, x, a):
         SDL_SetTextureAlphaMod(tex, int(max(0, min(255, a))))
