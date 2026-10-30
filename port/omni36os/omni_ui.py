@@ -1671,7 +1671,7 @@ class App:
         if path is None:
             roots = [r for r in (["/roms", "/roms2", "/mnt/usbdrive"] if not FAKE else ["/roms", "/roms2"])
                      if FAKE or os.path.ismount(r) or os.path.isdir(r)]
-            names = {"/roms": "Cartão do sistema (/roms)", "/roms2": "Cartão de jogos (/roms2)",
+            names = {"/roms": "Cartão 1 (/roms)", "/roms2": "Cartão 2 (/roms2)",
                      "/mnt/usbdrive": "Pendrive (/mnt/usbdrive)"}
             rows = [{"name": names[r], "icon": "device-sd-card" if r != "/mnt/usbdrive" else "usb", "path": r,
                      "dir": True} for r in roots]

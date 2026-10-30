@@ -118,6 +118,25 @@ kill_gptokeyb() {
     sudo pkill -9 -f gptokeyb 2>/dev/null
 }
 
+# Cartão 2: monta em /roms2 sempre que ele estiver no console. O dArkOSen só montava depois do
+# "Switch to SD2 for Roms" (que também mexe no ES); aqui ele aparece em Arquivos, na busca de
+# ports e em Origem dos jogos sem nada a fazer. Mesmas opções do script do dArkOSen.
+mount_card2() {
+    local dev=/dev/mmcblk1p1 fs
+    [ -b "$dev" ] || return
+    mountpoint -q /roms2 && return
+    fs=$(lsblk -no FSTYPE "$dev" 2>/dev/null)
+    [ -n "$fs" ] || return
+    [ "$fs" = "ntfs" ] && fs="ntfs-3g"
+    sudo mkdir -p /roms2
+    if [ "$fs" = "ext4" ]; then
+        sudo mount -t ext4 -o noatime "$dev" /roms2
+    else
+        sudo mount -t "$fs" -o umask=0000,iocharset=utf8,uid=1000,gid=1000,noatime "$dev" /roms2
+    fi
+}
+mount_card2
+
 # Loop principal: launcher → port → launcher → ...
 RESUME=""
 CRASHES=0
