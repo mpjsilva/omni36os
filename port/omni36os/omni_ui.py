@@ -1024,12 +1024,12 @@ class App:
                     recheck]
         if cid == "apps":
             return [tip(A("Músicas", "music", self.open_music),
-                        "Toca os mp3 das pastas musicas dos cartões (ROMS/musicas e ROMS2/musicas). "
+                        "Toca os mp3 das pastas musicas dos cartões (EASYROMS/musicas e ROMS2/musicas). "
                         "As opções ficam dentro do app: START."),
                     tip(A("Vídeos", "movie", lambda: self.open_videos()),
-                        "Toca os vídeos das pastas videos dos cartões (ROMS/videos e ROMS2/videos): mp4, mkv, webm e outros."),
+                        "Toca os vídeos das pastas videos dos cartões (EASYROMS/videos e ROMS2/videos): mp4, mkv, webm e outros."),
                     tip(A("Notas", "notes", lambda: self.open_notes()),
-                        "Bloco de notas: textos simples na pasta notas do cartão 1 (ROMS/notas).")]
+                        "Bloco de notas: textos simples na pasta notas do cartão 1 (EASYROMS/notas).")]
         if cid == "tela":
             return [tip(A("Brilho, contraste e volume", "adjustments", self.open_levels),
                         "Abre os três ajustes: cima/baixo escolhe, esquerda/direita ajusta, A confirma e B desfaz."),

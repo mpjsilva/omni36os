@@ -2,6 +2,10 @@
 
 Histórico completo. Dentro do console (Geral > Sobre > Novidades) aparece só a versão em uso.
 
+## 1.14.1 (30/10/2026)
+
+- Manual revisado para o lançamento: apresentação nova, caminhos EASYROMS das pastas de vídeos e notas, Cartões no Verificar tudo, créditos do SDL2 e do FFmpeg, e sem a menção ao RetroArch, que não vem mais no sistema.
+
 ## 1.14.0 (30/10/2026)
 
 - Teclado novo, igual em todo o sistema e parecido com o do Android: começa em maiúscula e volta à minúscula depois da primeira letra (e maiúscula de novo depois de ponto), a tecla de maiúsculas trava com dois toques, Y trava direto e X troca letras e símbolos. Senhas começam em minúscula.

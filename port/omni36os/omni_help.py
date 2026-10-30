@@ -4,6 +4,9 @@ Linhas que começam com "# " viram títulos no leitor."""
 
 # A versão em uso vem do arquivo VERSION. Aqui fica só ela; o histórico completo está no NOVIDADES.md.
 NOVIDADES = [
+    ("1.14.1", "30/10/2026", [
+        "Manual revisado para o lançamento: apresentação nova, caminhos EASYROMS das pastas de vídeos e notas, Cartões no Verificar tudo, créditos do SDL2 e do FFmpeg, e sem a menção ao RetroArch, que não vem mais no sistema.",
+    ]),
     ("1.14.0", "30/10/2026", [
         "Teclado novo, igual em todo o sistema e parecido com o do Android: começa em maiúscula e volta à minúscula depois da primeira letra (e maiúscula de novo depois de ponto), a tecla de maiúsculas trava com dois toques, Y trava direto e X troca letras e símbolos. Senhas começam em minúscula.",
     ]),
@@ -86,8 +89,8 @@ NOVIDADES = [
 ]
 
 MANUAL = """# O que é o Omni36OS
-O Omni36OS é um assistente para o R36S com Omni36OS. Ele verifica bateria, som, tela, processador e cartões, aponta o que está errado e corrige com um botão.
-Ele não usa internet nem inteligência artificial: são verificações e scripts fixos.
+O Omni36OS é um sistema só de ports para o R36S, feito sobre o dArkOSen. Abre os ports, toca músicas e vídeos, guarda notas e cuida do console: verifica bateria, som, tela, processador e cartões, aponta o que está errado e corrige com um botão.
+Não usa inteligência artificial: são verificações e scripts fixos. A internet só é usada para buscar capas e descrições, acertar a hora e procurar atualizações.
 
 # Como usar
 Direcional ou analógico: andar pelos cards e opções.
@@ -161,12 +164,12 @@ Cada pasta mostra as músicas soltas nela e as subpastas; A numa subpasta entra 
 Na tela Tocando: A pausa, esquerda/direita trocam de música, L1/R1 voltam e avançam 10 s, Y troca a visualização e B volta à lista (a música continua; X volta para a tela Tocando). Sair das Músicas para a música.
 Opções (START, dentro do app): "Visualização": Capa do álbum (a imagem da pasta, como cover.jpg, ou a capa embutida no mp3), Barras, Ondas, Anel ou Aurora, dançando com o som. "Apagar a tela": com a música tocando e sem apertar nada, a luz da tela apaga em 30 s, 1, 2 ou 5 minutos (ou Manter ligada); qualquer botão acende.
 As pastas ficam num índice (nome, título e artista das tags): só a pasta que mudou é lida de novo, e a lista guarda só os caminhos.
-"Vídeos" toca os vídeos das pastas videos dos cartões (ROMS/videos, criada sozinha, e ROMS2/videos), com os codecs abertos do ffmpeg: mp4, mkv, webm, avi e outros (H.264, H.265, VP8, VP9, AV1, MPEG-4). A pausa, esquerda/direita voltam e avançam 10 s, L1/R1 1 minuto, B volta. Vídeos até 720p rodam bem; acima disso, depende do codec. A música para enquanto o vídeo toca.
-"Notas" é um bloco de notas simples: textos na pasta notas do cartão 1 (ROMS/notas). Na lista, a primeira linha cria uma nota e X apaga. Dentro da nota, cada linha é editada no teclado (X mostra os símbolos): A edita a linha, X cria uma linha abaixo, Y apaga a linha, B fecha. Tudo é salvo na hora.
+"Vídeos" toca os vídeos das pastas videos dos cartões (EASYROMS/videos, criada sozinha, e ROMS2/videos), com os codecs abertos do ffmpeg: mp4, mkv, webm, avi e outros (H.264, H.265, VP8, VP9, AV1, MPEG-4). A pausa, esquerda/direita voltam e avançam 10 s, L1/R1 1 minuto, B volta. Vídeos até 720p rodam bem; acima disso, depende do codec. A música para enquanto o vídeo toca.
+"Notas" é um bloco de notas simples: textos na pasta notas do cartão 1 (EASYROMS/notas). Na lista, a primeira linha cria uma nota e X apaga. Dentro da nota, cada linha é editada no teclado (X mostra os símbolos): A edita a linha, X cria uma linha abaixo, Y apaga a linha, B fecha. Tudo é salvo na hora.
 No Arquivos, abrir uma música, um vídeo ou um texto (txt, md, log, ini, cfg, conf) abre o app certo; B volta para a pasta.
 
 # Desempenho
-No menu, o processador, a GPU e a memória ficam sempre no mínimo: o console esfria e a bateria rende. Ao abrir um port, tudo sobe até os limites abaixo; ao voltar, desce de novo.
+No menu, o processador, a GPU e a memória ficam no mínimo: o console esfria e a bateria rende. Só um vídeo tocando faz o processador subir conforme a carga. Ao abrir um port, tudo sobe até os limites abaixo; ao voltar, desce de novo.
 Limite do processador (nos ports): 1296 MHz é o padrão. De 1368 a 1512 MHz é overclock (OC).
 Limite da GPU (nos ports): 520 MHz é o padrão; 600 MHz é overclock.
 O overclock só é liberado com o aparelho abaixo de 70 °C. Se ele esquentar com o OC ligado, o Omni36OS sugere voltar ao padrão.
@@ -189,7 +192,7 @@ Ao conectar o PC, o Omni36OS fecha para soltar a partição. Ao tirar o cabo ou 
 "Montar pendrive" monta um pendrive ligado no OTG em /mnt/usbdrive (FAT, exFAT ou NTFS). Com ele montado, o mesmo botão vira "Desmontar pendrive": use antes de tirar. Com essa opção escolhida, o painel da esquerda diz se o pendrive foi reconhecido, qual é e se já está montado.
 
 # Ferramentas
-"Arquivos": navega pelos cartões (/roms, /roms2) e pelo pendrive. A abre a pasta (ou a imagem, em tela cheia: esquerda/direita passa para a próxima, A mostra ou esconde o nome, B volta), B sobe um nível, X abre as opções do item (copiar, mover, renomear, apagar) e START abre as opções da pasta (colar aqui, nova pasta). Para copiar: X > Copiar no item, vá até a pasta de destino e START > Colar aqui. Apagar pede confirmação, com Cancelar já escolhido.
+"Arquivos": navega pelos cartões (/roms, /roms2) e pelo pendrive. A abre a pasta (ou a imagem, em tela cheia: esquerda/direita passa para a próxima, A mostra ou esconde o nome, B volta), B sobe um nível, X abre as opções do item (copiar, mover, renomear, apagar) e START abre as opções da pasta (colar aqui, nova pasta). Músicas, vídeos e textos abrem direto no app de Aplicativos. Para copiar: X > Copiar no item, vá até a pasta de destino e START > Colar aqui. Apagar pede confirmação, com Cancelar já escolhido.
 "PortMaster" abre em tela cheia; o Omni36OS volta quando ele fecha. Para copiar, mover, renomear e apagar, use "Arquivos", aqui mesmo no Omni36OS.
 As outras ferramentas do sistema ficam nos cards: Testar o controle (Controles), Trocar a senha (Geral > Segurança), Wi-Fi e rede pelo cabo (Rede), pendrive (Cartões), Calibrar a bateria (Tela e som), Liberar overclock (Desempenho). Tudo o que mexe no boot abre um aviso vermelho com contagem; Cancelar fica escolhido desde o início.
 
@@ -209,7 +212,7 @@ O que é seu e do Omni36OS, como nos Ajustes do iPhone, nesta ordem:
 "Segurança": senhas e trava (veja abaixo).
 "Backup": exporta e importa as configurações (veja Backup abaixo).
 "Procurar atualização" (precisa de Wi-Fi): procura uma versão nova no GitHub. Antes de instalar, o Omni36OS baixa e confere tudo; a versão de agora fica guardada. Se a nova não chegar ao menu em 3 tentativas, a anterior volta sozinha e um aviso explica. "Voltar à versão anterior" aparece depois de uma atualização e troca de volta a pedido. Deixe o carregador ligado durante a atualização.
-"Verificar tudo": mostra só o que precisa de atenção em todos os cards (bateria, tela e som, desempenho, armazenamento e serviços), cada linha com o card de origem. Sem alertas, aparece "Tudo certo". O detalhe fica em cada card.
+"Verificar tudo": mostra só o que precisa de atenção em todos os cards (tela e som, bateria, desempenho, cartões e serviços), cada linha com o card de origem. Sem alertas, aparece "Tudo certo". O detalhe fica em cada card.
 "Sobre": este manual, os cuidados, as novidades de cada versão e os créditos (com os projetos usados como base).
 "Redefinir o sistema": volta ao primeiro boot. Apaga o nome do jogador, a trava por senha e o tema, desliga a memória extra (zram) e volta processador (Equilibrado, 1296 MHz), GPU (520 MHz) e atalhos ao padrão; depois pergunta o nome de novo. Ports, jogos, testes e as senhas do sistema e do Samba ficam.
 
@@ -242,7 +245,6 @@ O aparelho reinicia e passa alguns minutos verificando. Não desligue nem tire o
 O reparo apaga entradas corrompidas: se o cartão já estava com erros, algum arquivo danificado pode sumir. Tenha backup.
 
 # Restaurar e atualizar
-"Restaurar de fábrica" do RetroArch apaga os seus ajustes (uma cópia fica guardada).
 Antes de atualizar o Omni36OS, copie a partição BOOT do cartão para o PC e veja em Tela e som > "Detalhes da tela" qual modelo escolher.
 
 # Primeiro boot
@@ -255,7 +257,7 @@ O kernel do Omni36OS protege o aparelho: freia a 70 °C, limita a 85 °C e desli
 O Omni36OS não libera o overclock com o aparelho acima de 70 °C.
 
 # Bateria e calor
-Evite o modo Máximo com a bateria fraca ou o aparelho quente.
+Evite o overclock com a bateria fraca ou o aparelho quente.
 Com a bateria fraca, carregue antes de usar o pendrive ou atualizar.
 
 # Cartões
@@ -275,7 +277,7 @@ Desligue pelo menu Energia (botão de power), nunca segurando o power: pelo menu
 Para fechar um port travado, use SELECT + START (segure 1 s) antes de pensar em desligar à força."""
 
 CREDITOS = """# Omni36OS
-Assistente do R36S, feita por mpjsilva.
+Sistema só de ports para o R36S, feito por mpjsilva.
 
 # Projetos usados como base
 ArkOS, de christianhaitian: o sistema original do R36S e de vários portáteis RK3326. github.com/christianhaitian/arkos
@@ -285,7 +287,9 @@ PortMaster: a loja de ports. github.com/PortsMaster/PortMaster-GUI
 
 # Bibliotecas
 Fonte Poppins, licença OFL: github.com/itfoundry/Poppins
-Ícones Tabler, licença MIT: github.com/tabler/tabler-icons"""
+Ícones Tabler, licença MIT: github.com/tabler/tabler-icons
+SDL2 e SDL2_mixer, licença zlib: tela, controles e músicas. libsdl.org
+FFmpeg, licença LGPL/GPL: os vídeos. ffmpeg.org"""
 
 
 def novidades_text():
