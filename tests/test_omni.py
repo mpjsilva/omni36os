@@ -151,7 +151,7 @@ class Bateria(unittest.TestCase):
         self.at = at
         self.saved = (at.battery, at.notify, at.safe_poweroff, at.BAT_EVERY, at.time.sleep)
         self.msgs, self.offs = [], []
-        at.notify, at.safe_poweroff, at.BAT_EVERY = self.msgs.append, lambda: self.offs.append(1), 0
+        at.notify, at.safe_poweroff, at.BAT_EVERY = (lambda t, m: self.msgs.append(m)), lambda: self.offs.append(1), 0
         at.time.sleep = lambda s: None
 
     def tearDown(self):
@@ -187,13 +187,13 @@ class Bateria(unittest.TestCase):
                         (14, 3690, False), (12, 3680, False)])
         self.assertEqual(len(self.msgs), 2)
         self.assertIn("carregador", self.msgs[0])
-        self.assertIn("feche o jogo", self.msgs[1])
+        self.assertIn("Salve seu progresso", self.msgs[1])
         self.assertEqual(self.offs, [])
 
     def test_caiu_direto_para_15_so_pede_para_fechar(self):
         self.run_guard([(15, 3700, False), (14, 3690, False)])
         self.assertEqual(len(self.msgs), 1)
-        self.assertIn("feche o jogo", self.msgs[0])
+        self.assertIn("Salve seu progresso", self.msgs[0])
 
     def test_carregou_e_descarregou_avisa_de_novo(self):
         self.run_guard([(30, 3800, False), (30, 3800, True), (29, 3790, False)])

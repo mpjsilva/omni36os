@@ -5,8 +5,9 @@ Linhas que começam com "# " viram títulos no leitor."""
 # A versão em uso vem do arquivo VERSION. Aqui fica só ela; o histórico completo está no NOVIDADES.md.
 NOVIDADES = [
     ("1.8.1", "29/10/2026", [
-        "Bateria: como a porcentagem do R36S não é confiável, os limites subiram. Aviso para carregar em 30%, "
-        "pedido para salvar e fechar o jogo em 15% e, em 10%, o Omni36OS salva e desliga sozinho.",
+        "Bateria: como a porcentagem do R36S não é confiável, os limites subiram. Em 30% o Omni36OS sugere "
+        "conectar o carregador, em 15% sugere salvar o progresso e, em 10%, salva tudo e desliga com "
+        "segurança. Os avisos aparecem num alerta com OK, como no iPhone.",
     ]),
 ]
 
@@ -36,7 +37,7 @@ Serviços que falham no boot aparecem aqui. A falha do dmc-governor (ajuste da R
 
 # Bateria
 Mostra a carga, se está carregando, o brilho e o modo do processador. Com o brilho alto ou o processador no máximo, aparece a dica de economia com um botão. O brilho se ajusta em Sistema e o processador em Desempenho.
-Bateria no fim (a porcentagem do R36S não é confiável, por isso os limites são altos): em 30% aparece um aviso para ligar o carregador; em 15%, o pedido para salvar e fechar o jogo (num jogo, o contador surge com a bateria em vermelho). Em 10%, sem o carregador, o Omni36OS fecha o jogo dando tempo de ele salvar, grava tudo e desliga, em vez de o console apagar de repente.
+Bateria no fim (a porcentagem do R36S não é confiável, por isso os limites são altos): em 30% o Omni36OS sugere conectar o carregador; em 15%, sugere salvar o progresso (num jogo, o contador surge com a bateria em vermelho). Em 10%, sem o carregador, o Omni36OS fecha o jogo dando tempo de ele salvar, grava tudo e desliga, em vez de o console apagar de repente.
 "Calibrar a bateria" abre a página da calibração. Calibre quando a porcentagem pular ou o aparelho desligar com carga sobrando:
 1. Carregue até o fim e tire o carregador.
 2. Toque em "Iniciar a calibração" e use o console normalmente (pode jogar) até ele desligar sozinho. Uma amostra por minuto fica gravada em /usr/local/etc/battery-cal.

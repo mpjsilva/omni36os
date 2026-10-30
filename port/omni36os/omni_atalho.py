@@ -209,14 +209,14 @@ def battery():
     return pct, mv, read_flag(f"{BAT}/status", "") in ("Charging", "Full")
 
 
-def notify(msg):
-    """Aviso no Omni36OS (se estiver na tela) e, num jogo, o contador aparece com a bateria em vermelho."""
+def notify(title, msg):
+    """Alerta no Omni36OS (se estiver na tela) e, num jogo, o contador aparece com a bateria em vermelho."""
     os.makedirs(POWER_SHM, exist_ok=True)
     try:
         os.chmod(POWER_SHM, 0o777)
     except OSError:
         pass
-    put(f"{POWER_SHM}/panic-msg", msg)
+    put(f"{POWER_SHM}/bat-msg", f"{title}\n{msg}")
     try:
         ui = int(read_flag(f"{POWER_SHM}/ui-pid", "0"))
         if ui:
@@ -257,16 +257,17 @@ class BatteryGuard:
         self.low = self.low + 1 if critical else 0
         if self.low >= 2:
             print(f"bateria crítica ({pct}%, {mv} mV): desligando", file=sys.stderr, flush=True)
-            notify("Bateria no fim: salvando e desligando...")
+            notify("Desligando", "A bateria está muito fraca. Salvando tudo e desligando com segurança.")
             time.sleep(3)
             safe_poweroff()
             self.low = -999                  # uma vez só
         elif pct <= BAT_CLOSE and "fechar" not in self.warned:
             self.warned |= {"fechar", "aviso"}
-            notify(f"Bateria em {pct}%: salve e feche o jogo agora. Em {BAT_OFF}% o console salva e desliga sozinho.")
+            notify("Bateria fraca", f"Restam {pct}%. Salve seu progresso quando puder. Em {BAT_OFF}%, o "
+                   "console salva tudo e desliga com segurança.")
         elif pct <= BAT_WARN and "aviso" not in self.warned:
             self.warned.add("aviso")
-            notify(f"Bateria em {pct}%: ligue o carregador logo.")
+            notify("Bateria fraca", f"Restam {pct}%. Conecte o carregador quando puder.")
 
 
 def safe_call(fn, key):

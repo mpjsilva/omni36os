@@ -129,6 +129,7 @@ POWER_PRESS = f"{POWER_SHM}/press"               # menu na tela: o pid deste Omn
 POWER_PENDING = f"{POWER_SHM}/pending"
 POWER_FLAG = f"{POWER_SHM}/menu"                 # abrir já no menu de energia
 PANIC_MSG = f"{POWER_SHM}/panic-msg"
+BAT_MSG = f"{POWER_SHM}/bat-msg"                 # omni_atalho.py: título na 1ª linha, texto depois
 RESUME = os.environ.get("OMNI_RESUME", "")   # "testar": o Omni36OS voltou de um teste de port
 
 import omni_help
@@ -1913,6 +1914,14 @@ class App:
                 os.remove(PANIC_MSG)
                 if msg:
                     self.toast = (msg, "aviso", self.t + 3.5)
+            except OSError:
+                pass
+            try:                          # bateria: alerta com título e OK, como no iPhone
+                with open(BAT_MSG) as f:
+                    title, _, text = f.read().strip().partition("\n")
+                os.remove(BAT_MSG)
+                if title:
+                    self.modal = {"title": title, "icon": "battery-2", "sel": 0, "buttons": ["OK"], "text": text}
             except OSError:
                 pass
 
