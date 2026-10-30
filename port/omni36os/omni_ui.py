@@ -203,7 +203,7 @@ def swapped_ab():
 class Data:
     def status(self):
         if FAKE:
-            return {"bat": 87, "carregando": False, "temp": 52, "wifi": True, "gov": "ondemand", "cpu_max": 1296}
+            return {"bat": 87, "carregando": False, "temp": 52, "wifi": True, "conectado": True, "gov": "ondemand", "cpu_max": 1296}
         t = omni.read_text("/sys/class/thermal/thermal_zone0/temp", "0")
         return {
             "bat": int(omni.read_text("/sys/class/power_supply/battery/capacity", "0")),
@@ -1945,14 +1945,14 @@ class App:
 
     def meta(self, name, path=""):
         """Ficha do jogo (cache em memória): pasta info do port + PortMaster/Steam.
-        Pede a busca na internet uma vez, se houver Wi-Fi; a pasta info manda sobre ela."""
+        Pede a busca na internet uma vez, só com o Wi-Fi conectado; a pasta info manda sobre ela."""
         cache = self.__dict__.setdefault("meta_cache", {})
         if name not in cache:
             net = omni_meta.cached(name)
             loc = omni_meta.local(path)
             cache[name] = (net, dict(net or {}, **loc) if loc else net)
         net, info = cache[name]
-        if net is None and self.status.get("wifi") and name not in self.__dict__.setdefault("meta_tried", set()):
+        if net is None and self.status.get("conectado") and name not in self.__dict__.setdefault("meta_tried", set()):
             self.meta_tried.add(name)
             omni_meta.want(name, path, lambda n: cache.pop(n, None))   # ao terminar, relê do disco
         return info
@@ -2024,7 +2024,7 @@ class App:
             g.text("Regular", 11, info["generos"], px + 14, y + 2, MUTED)
             y += 18
         desc = (info or {}).get("descricao") or game.get("desc") or (
-            "Buscando a descrição..." if info is None and self.status.get("wifi") else
+            "Buscando a descrição..." if info is None and self.status.get("conectado") else
             "Sem descrição: ligue o Wi-Fi para buscar." if info is None else "Descrição não encontrada.")
         local = []
         if (info or {}).get("porter"):

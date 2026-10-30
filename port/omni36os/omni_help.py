@@ -4,6 +4,9 @@ Linhas que começam com "# " viram títulos no leitor."""
 
 # A versão em uso vem do arquivo VERSION. Aqui fica só ela; o histórico completo está no NOVIDADES.md.
 NOVIDADES = [
+    ("1.11.6", "30/10/2026", [
+        "A busca de capas e descrições só acontece com o Wi-Fi conectado.",
+    ]),
     ("1.11.5", "30/10/2026", [
         "Biblioteca: \"Buscando a descrição...\" e \"Descrição não encontrada\" no lugar dos textos de ficha.",
     ]),

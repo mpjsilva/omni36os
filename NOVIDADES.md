@@ -2,6 +2,10 @@
 
 Histórico completo. Dentro do console (Geral > Sobre > Novidades) aparece só a versão em uso.
 
+## 1.11.6 (30/10/2026)
+
+- Biblioteca: a busca de capas e descrições só dispara com o Wi-Fi conectado (`operstate` up), não apenas com o adaptador presente. Sem conexão, mostra "Sem descrição: ligue o Wi-Fi para buscar." e não marca o jogo como tentado.
+
 ## 1.11.5 (30/10/2026)
 
 - Biblioteca: "Buscando a descrição...", "Sem descrição: ligue o Wi-Fi para buscar." e "Descrição não encontrada." no lugar dos textos com "ficha" (agora são 4 fontes, não só PortMaster e Steam).
