@@ -6,6 +6,7 @@ sem janela).
 """
 import io
 import json
+import glob
 import os
 import pwd
 import shutil
@@ -391,10 +392,11 @@ class TelaCerta(unittest.TestCase):
         shutil.copy(f"{self.CAT}/r36s/R36S-V21 2024-12-18 2529/rk3326-r36s-linux.dtb", boot)
         with open(f"{boot}/boot.ini", "w") as f:
             f.write("original\n")
-        self.saved = {k: getattr(op, k) for k in ("BOOT", "CATALOG", "DIR", "STATE", "ORIG", "DONE", "RETRY", "LOG")}
+        self.saved = {k: getattr(op, k) for k in ("BOOT", "CATALOG", "DIR", "STATE", "ORIG", "DONE", "RETRY", "LOG", "TEST_DTB")}
         op.BOOT, op.CATALOG, op.DIR = boot, f"{boot}/dtb", f"{boot}/omni36os-tela"
         op.STATE, op.ORIG, op.DONE = f"{op.DIR}/estado.json", f"{op.DIR}/original", f"{op.DIR}/pronto"
         op.RETRY, op.LOG = f"{op.DIR}/testar", f"{op.DIR}/log.txt"
+        op.TEST_DTB = f"{op.DIR}/teste.dtb"
         info = op.panel_info(f"{boot}/rk3326-r36s-linux.dtb")
         self.live = info[0]
         self.saved_live = op.panel_hash_live
@@ -419,9 +421,13 @@ class TelaCerta(unittest.TestCase):
         op = self.op
         orig = open(f"{op.BOOT}/rk3326-r36s-linux.dtb", "rb").read()
         op.save_original()
-        op.install(f"{op.CATALOG}/clone/G80C-MB V1.1-20250319 Panel 9")
+        clone = f"{op.CATALOG}/clone/G80C-MB V1.1-20250319 Panel 9"
+        self.assertTrue(op.install(clone))
         self.assertNotEqual(open(f"{op.BOOT}/rk3326-r36s-linux.dtb", "rb").read(), orig)
-        self.assertNotEqual(open(f"{op.BOOT}/boot.ini").read(), "original\n")
+        # só a tela muda: a do clone dentro do DTB original; boot.ini e u-boot do clone nunca entram
+        self.assertEqual(op.panel_info(f"{op.BOOT}/rk3326-r36s-linux.dtb"), op.panel_info(op.kernel_dtb(clone)))
+        self.assertEqual(open(f"{op.BOOT}/boot.ini").read(), "original\n")
+        self.assertEqual(sorted(os.path.basename(f) for f in glob.glob(f"{op.BOOT}/*.dtb")), ["rk3326-r36s-linux.dtb"])
         op.restore_original()
         self.assertEqual(open(f"{op.BOOT}/rk3326-r36s-linux.dtb", "rb").read(), orig)
         self.assertEqual(open(f"{op.BOOT}/boot.ini").read(), "original\n")

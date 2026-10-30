@@ -2,6 +2,12 @@
 
 Histórico completo. Dentro do console (Geral > Sobre > Novidades) aparece só a versão em uso.
 
+## 1.15.9 (30/10/2026)
+
+- Tela certa no primeiro boot mais segura: cada teste troca só a tela dentro do DTB original do console. O boot.ini, o u-boot e o resto do hardware nunca são trocados, então uma tela errada só deixa a tela apagada, sem travar o boot.
+- Tela certa mais rápida: espera 10 s em cada tela e começa logo no início do boot. O pior caso, com 12 telas, caiu de uns 8 para uns 5 minutos.
+- Durante a busca da tela, o LED pisca em vermelho e verde. A pergunta toca um ding-dong no alto-falante e a confirmação, um arpejo.
+
 ## 1.15.8 (30/10/2026)
 
 - Textos curtos (novidades, ajuda) não mostram mais os botões de rolar quando não há nada para rolar.
