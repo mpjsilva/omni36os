@@ -990,7 +990,7 @@ class App:
                     A("Cuidados", "alert-triangle", lambda: self.read("Cuidados", "alert-triangle", omni_help.CUIDADOS)),
                     A("Novidades", "tag", lambda: self.read(f"Novidades · Omni36OS {omni_version()}", "tag",
                                                           omni_help.novidades_text())),
-                    A("Créditos", "users", lambda: self.read("Créditos", "users", omni_help.CREDITOS))]
+                    A("Créditos", "users", self.open_credits)]
         return [recheck]
 
     # --- atualização ---
@@ -2335,8 +2335,19 @@ class App:
         g.text("Medium", 12, f"Sem tecla em {left:.0f} s, cancela." if left is not None else "",
                W / 2, my + mh - 30, FAINT, "c")
 
-    def read(self, title, icon, text):
-        self.reader = {"title": title, "icon": icon, "text": text, "scroll": 0.0, "top": 0}
+    def read(self, title, icon, text, link=None):
+        """link: (palavra, função) — a palavra aparece como link e A abre a função."""
+        self.reader = {"title": title, "icon": icon, "text": text, "scroll": 0.0, "top": 0, "link": link}
+
+    def open_credits(self):
+        self.read("Créditos", "users", omni_help.CREDITOS, link=("mpjsilva", self.repo_qr))
+
+    def repo_qr(self):
+        self.reader = None
+        self.modal = {"title": "Omni36OS no GitHub", "icon": "users", "sel": 0, "buttons": ["OK"],
+                      "text": "Aponte a câmera do celular para abrir o repositório.",
+                      "image": "qr-repo", "url": "github.com/mpjsilva/omni36os",
+                      "fns": [self.open_credits], "on_back": self.open_credits}
 
     def ask(self, text, fn, danger=False):
         if danger:
@@ -2489,6 +2500,8 @@ class App:
             step = {"up": -1, "down": 1, "left": -8, "right": 8, "l1": -8, "r1": 8}.get(cmd)
             if step:
                 r["top"] = max(0, min(r.get("max", 0), r["top"] + step))
+            elif cmd == "ok" and r.get("link"):
+                r["link"][1]()
             elif cmd in ("back", "ok"):
                 self.reader = None
             return
@@ -3186,8 +3199,15 @@ class App:
         y = ty - r["scroll"]
         for weight, size, txt, h_ in lines:
             if y + h_ > ty - 30 and y < ty + th and txt:
-                col = TEXT if weight == "SemiBold" else TEXT
-                g.text(weight, size, txt, mx + 32, y, col)
+                g.text(weight, size, txt, mx + 32, y, TEXT)
+                word = (r.get("link") or ("\0",))[0]
+                if word in txt:            # o link: na cor do card e sublinhado, por cima do texto
+                    pre = txt[:txt.index(word)]
+                    lx = mx + 32 + (g.measure(weight, size, pre)[0] if pre else 0)
+                    lw = g.measure(weight, size, word)[0]
+                    g.rrect(lx - 2, y - 1, lw + 4, size + 6, 4, MODAL_A)
+                    g.text("SemiBold", size, word, lx, y, a1)
+                    g.rrect(lx, y + size + 3, lw, 1.5, 0.75, a1, feather=0)
             y += h_
         g.clip()
         if total > th:   # barra de rolagem
@@ -3195,7 +3215,8 @@ class App:
             by = ty + (th - bh) * (r["scroll"] / max(1, sum(heights[:r["max"]])))
             g.rrect(mx + mw - 14, ty, 4, th, 2, ink(18))
             g.rrect(mx + mw - 14, by, 4, bh, 2, alpha(a1, 220))
-        g.text("Regular", 12, "Cima/baixo: rolar  ·  Esquerda/direita: pular", mx + 24, my + mh - 30, MUTED)
+        g.text("Regular", 12, "Cima/baixo: rolar  ·  Esquerda/direita: pular" +
+               ("  ·  A: abrir o repositório" if r.get("link") else ""), mx + 24, my + mh - 30, MUTED)
         self.btn_glyph(mx + mw - 110, my + mh - 32, "B", TEXT)
         g.text("Regular", 12, "Voltar", mx + mw - 82, my + mh - 30, MUTED)
 

@@ -189,9 +189,6 @@ Para fechar um port travado, use SELECT + START (segure 1 s) antes de pensar em 
 CREDITOS = """# Omni36OS
 Assistente do R36S, feita por mpjsilva.
 
-# Origem
-O Omni36OS nasceu da Sab, o assistente do R36S feito em homenagem a Sabrina Broch, youtuber que fala de ports do R36S. Omni (tudo) + R36S: a mesma ajuda, agora tomando conta do console inteiro.
-
 # Projetos usados como base
 ArkOS, de christianhaitian: o sistema original do R36S e de vários portáteis RK3326. github.com/christianhaitian/arkos
 dArkOS, de christianhaitian: o ArkOS sobre Debian. github.com/christianhaitian/dArkOS
