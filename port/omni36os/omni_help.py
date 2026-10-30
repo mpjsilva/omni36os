@@ -4,6 +4,9 @@ Linhas que começam com "# " viram títulos no leitor."""
 
 # A versão em uso vem do arquivo VERSION. Aqui fica só ela; o histórico completo está no NOVIDADES.md.
 NOVIDADES = [
+    ("1.12.1", "30/10/2026", [
+        "Samba com senha: só o usuário omni entra, e a rede mostra apenas Cartão 1 e Cartão 2.",
+    ]),
     ("1.12.0", "30/10/2026", [
         "Aplicativos, o card novo: Músicas toca os mp3 das pastas musicas dos cartões, com pastas e subpastas, visualizações (Barras, Ondas, Anel e Aurora) e a tela apagando sozinha enquanto a música toca.",
         "Bateria agora mora em Tela, som e bateria. Ports fica no centro e recebe o destaque toda vez que o menu aparece.",

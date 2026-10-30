@@ -2,6 +2,10 @@
 
 Histórico completo. Dentro do console (Geral > Sobre > Novidades) aparece só a versão em uso.
 
+## 1.12.1 (30/10/2026)
+
+- Samba (`/etc/samba/smb.conf`, original guardado em `smb.conf.omni36os-orig`): sem acesso anônimo (`map to guest = never`, `restrict anonymous = 2`, `valid users = omni`). Saem da rede root, boot, opt, ark e Tools (que qualquer um na mesma rede abria sem senha); ficam `roms` (Cartão 1) e `roms2` (Cartão 2). Usuário omni com a senha do sistema.
+
 ## 1.12.0 (30/10/2026)
 
 - Card Aplicativos (`omni_musica.py`): tocador de música com SDL_mixer dentro do Omni36OS. Lê `/roms/musicas` e `/roms2/musicas` (a do cartão 1 é criada); cada pasta mostra as músicas soltas e as subpastas, e "Ler subpastas" inclui as subpastas, nível por nível, ao tocar. Índice por pasta em `~/.config/omni36os/musicas.json` (data da pasta, títulos e artistas das tags ID3): só a pasta que mudou é relida, e a lista guarda só caminhos.

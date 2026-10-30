@@ -75,6 +75,7 @@ SIS=(etc/hostname etc/hosts etc/zram.conf etc/hostapd/hostapd.conf
      etc/systemd/system/multi-user.target.wants/omni36os-wifi-boot.service
      etc/systemd/system/wifi-usb-old-scheme.service.d
      usr/local/bin/omni36os-turbo etc/systemd/system/omni36os-turbo.service etc/systemd/system/sysinit.target.wants/omni36os-turbo.service etc/systemd/system/cpu-governor.service.d etc/systemd/system/gpu-freq.service.d
+     etc/samba/smb.conf
      etc/systemd/system/omni36os-boas-vindas.service etc/systemd/system/sysinit.target.wants/omni36os-boas-vindas.service
      etc/systemd/system/omni36os-launcher.service.wants
      etc/systemd/system/multi-user.target.wants/omni36os-atalho.service
