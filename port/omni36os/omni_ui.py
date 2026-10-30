@@ -890,7 +890,7 @@ class App:
             return [Choice("Jogos lidos de", "folder", "fonte", list(SOURCE_NAMES), SOURCE_NAMES),
                     tip(A("Detalhe dos cartões" if self.sd_count() > 1 else "Detalhe do cartão", "info-circle",
                           self.speed_test),
-                        "Marca, tamanho, espaço livre e ocupado e um teste de velocidade em cada cartão (até 1 minuto). Cartão "
+                        "Marca, tamanho, espaço livre e ocupado e um teste de velocidade de cada cartão (até 1 minuto). Cartão "
                         "lento deixa os ports lentos para abrir."),
                     tip(tog, "O console vira um pendrive para o PC: ligue o cabo na porta OTG e copie jogos direto "
                              "para o cartão. Reinicia ao ligar e ao desligar; o Wi-Fi para enquanto estiver ligado."),
@@ -1050,10 +1050,9 @@ class App:
                 time.sleep(1)
                 return {"nivel": "ok", "acoes": [], "achados": [
                     ("ok", "Cartão do sistema: 16 GB, SanDisk (SL16G). 18.2 MB/s escrita, 41.0 MB/s leitura."),
-                    ("ok", "Sistema: 4.7 GB livres, 4.6 GB ocupados (50% usado)."),
-                    ("ok", "Jogos (/roms): 2.1 GB livres, 4.2 GB ocupados (67% usado)."),
+                    ("ok", "Espaço do cartão do sistema: 6.8 GB livres, 9.2 GB ocupados."),
                     ("ok", "Cartão de jogos: 64 GB, sem marca (SD64G). 12.5 MB/s escrita, 38.7 MB/s leitura."),
-                    ("ok", "Jogos (/roms2): 31.2 GB livres, 31.0 GB ocupados (50% usado)."),
+                    ("ok", "Espaço do cartão de jogos: 31.2 GB livres, 32.8 GB ocupados."),
                     ("info", "Cartão de jogos sem marca identificada (código 0xfe), comum em cartões genéricos. "
                              "Se ele travar ou perder arquivos, vale trocar.")]}
             return omni_checks.detalhes()

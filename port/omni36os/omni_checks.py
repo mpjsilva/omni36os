@@ -10,6 +10,7 @@ Uso: omni_checks.py [verificação]   (sem argumento lista as verificações)
 import glob
 import json
 import os
+import shutil
 import sys
 
 import omni
@@ -85,7 +86,7 @@ def sd_facts():
         blk = dev.split("/")[3]
         manfid = int(omni.read_text(f"{dev}/manfid", "0"), 16)
         cards.append({
-            "codigo": f"0x{manfid:02x}", "nome": omni.read_text(f"{dev}/name"),
+            "codigo": f"0x{manfid:02x}", "nome": omni.read_text(f"{dev}/name"), "blk": blk,
             "cartao": "sistema" if "/" in mounts.get(blk, []) else "jogos",
             "fabricante": omni.SD_VENDORS.get(manfid, "desconhecido"),
             "tamanho_gb": round(int(omni.read_text(f"/sys/block/{blk}/size", "0")) * 512 / 1e9, 1),
@@ -93,10 +94,23 @@ def sd_facts():
     return {"cartoes": cards}
 
 
+def card_free_gb(blk):
+    """Espaço livre do cartão inteiro: a soma das partições montadas dele (cada uma contada uma vez)."""
+    seen, free = set(), 0
+    for mnt in omni.mmc_mounts().get(blk, []):
+        try:
+            dev = os.stat(mnt).st_dev
+            if dev not in seen:
+                seen.add(dev)
+                free += shutil.disk_usage(mnt).free
+        except OSError:
+            continue
+    return round(free / 1e9, 1) if seen else None
+
+
 def detalhes():
     """Detalhe do(s) cartão(ões) (Armazenamento): marca, tamanho e um teste de escrita e leitura em cada um."""
     out = []
-    disks = omni.disk_facts()
     for c in sd_facts()["cartoes"]:
         card = c["cartao"]
         nome = "do sistema" if card == "sistema" else "de jogos"
@@ -114,13 +128,12 @@ def detalhes():
             out.append(("problema", f"{head}. Lento: {f['w']} MB/s de escrita. Vale trocar por um melhor."))
         else:
             out.append(("ok", f"{head}. {f['w']} MB/s escrita, {f.get('r', 0)} MB/s leitura."))
-        parts = (("sistema", "Sistema"), ("roms", "Jogos (/roms)")) if card == "sistema" else (("jogos", "Jogos (/roms2)"),)
-        for key, label in parts:
-            d = disks.get(key)
-            if d:
-                full = d["uso_pct"] >= ESPACO_POUCO_PCT or d["livre_gb"] < ESPACO_POUCO_GB
-                out.append(("aviso" if full else "ok", f"{label}: {d['livre_gb']} GB livres, {d['usado_gb']} GB "
-                                                       f"ocupados ({d['uso_pct']}% usado)."))
+        livre = card_free_gb(c["blk"])
+        if livre is not None:
+            ocup = max(0.0, round(c["tamanho_gb"] - livre, 1))
+            pct = round(100 * ocup / c["tamanho_gb"]) if c["tamanho_gb"] else 0
+            full = pct >= ESPACO_POUCO_PCT or livre < ESPACO_POUCO_GB
+            out.append(("aviso" if full else "ok", f"Espaço do cartão {nome}: {livre} GB livres, {ocup} GB ocupados."))
         if c["fabricante"] == "desconhecido":
             out.append(("info", f"Cartão {nome} sem marca identificada (código {c['codigo']}), comum em "
                                 "cartões genéricos. Se ele travar ou perder arquivos, vale trocar."))
