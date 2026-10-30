@@ -927,7 +927,7 @@ def set_swap_ab(args):
     on = bool(args["on"])
     if on != get_swap_ab():
         if not os.path.exists(B_SWAP):
-            return "Este sistema não tem a troca de A e B do dArkOSen."
+            return "Este sistema não tem a troca de A e B."
         subprocess.run(["bash", B_SWAP], capture_output=True, timeout=30)
     return "A e B trocados" if get_swap_ab() else "A e B no padrão"
 

@@ -2,6 +2,10 @@
 
 Histórico completo. Dentro do console (Geral > Sobre > Novidades) aparece só a versão em uso.
 
+## 1.11.10 (30/10/2026)
+
+- Textos sem menção ao sistema de base: aviso do Desbloquear overclock, ajuda de Controles (agora com Inverter botões) e o erro da troca de A e B.
+
 ## 1.11.9 (30/10/2026)
 
 - Desbloquear overclock: com a trava por senha ligada, depois do aviso (10 s + 5 toques) o teclado pede a senha da trava; senha errada mantém o overclock bloqueado.

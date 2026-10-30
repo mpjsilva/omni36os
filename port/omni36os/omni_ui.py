@@ -2678,7 +2678,7 @@ class App:
                     self.toast = ("Senha errada: o overclock continua bloqueado", "problema", self.t + 3.5)
             self.keyboard("Senha para desbloquear o overclock", check, secret=True)
         self.warn("Desbloquear overclock", "Libera de 1368 a 1512 MHz no processador e 600 MHz na GPU, com a "
-                  "tensão do dArkOSen. Depois, escolha os limites em Desempenho.", go, 10, True,
+                  "tensão certa para cada frequência. Depois, escolha os limites em Desempenho.", go, 10, True,
                   key="Desbloquear overclock", risk="Esquenta mais e pode travar. Se o DTB precisar de ajuste, um "
                   "DTB errado deixa a tela preta ou o console sem ligar.",
                   undo=BOOT_UNDO + " Antes de mudar, o Omni36OS guarda uma cópia do DTB.")
