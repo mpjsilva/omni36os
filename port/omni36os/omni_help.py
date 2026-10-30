@@ -91,13 +91,13 @@ Memória extra (zram): desligada por padrão. 256, 512 ou 768 MB de memória com
 
 # Armazenamento
 Tudo sobre onde ficam os jogos: os cartões, o pendrive e a porta USB. As ações que reiniciam ou apagam ficam no fim da página.
-"Jogos lidos de": ROMS (cartão do sistema), ROMS2 (segundo cartão) ou ROMS e ROMS2. Ao sair da página depois de trocar (B ou START), o Omni36OS procura os jogos e os ports de novo, uma vez só, e atualiza a biblioteca e o Testar ports. Com as duas, o mesmo sistema dos dois cartões vira uma lista só. ROMS2 só entra se o segundo cartão estiver no console.
+"Origem dos jogos": ROMS (cartão 1), ROMS2 (cartão 2) ou ROMS e ROMS2. Ao sair da página depois de trocar (B ou START), o Omni36OS procura os jogos e os ports de novo, uma vez só, e atualiza a biblioteca e o Testar ports. Com as duas, o mesmo sistema dos dois cartões vira uma lista só. ROMS2 só entra se o segundo cartão estiver no console.
 "Detalhe do cartão" (com dois cartões, "Detalhe dos cartões"): mostra a marca, o tamanho, o espaço livre e o ocupado do cartão inteiro e testa a escrita e a leitura de cada cartão; leva até um minuto. O espaço livre aparece no painel. Cartões genéricos sem marca costumam ser lentos e falhar mais: o detalhe avisa quando o cartão não tem marca identificada (não é alerta).
 O Omni36OS avisa quando um cartão passa de 90% de uso ou tem menos de 1 GB livre.
 "Verificar e reparar os jogos" reinicia o aparelho e roda o reparo do Omni36OS (fsck.exfat) com o cartão desmontado. Depois o resultado aparece neste card, e o log fica em /boot/sd2_scan.log (segundo cartão) ou /boot/sd1p3_scan.log (só o cartão do sistema).
 
 Modo pendrive:
-Liga o modo pendrive: com o cabo de dados no PC, a partição /roms2 (segundo cartão) ou /roms (cartão do sistema) aparece como um pendrive para copiar ports.
+Liga o modo pendrive: com o cabo de dados no PC, a partição ROMS2 (cartão 2) ou ROMS (cartão 1, escolha em "Partição no PC") aparece como um pendrive para copiar ports.
 Ligar e desligar reinicia o aparelho. Enquanto estiver ligado, o Wi-Fi não funciona, porque usa a mesma porta.
 Ao conectar o PC, o Omni36OS fecha para soltar a partição. Ao tirar o cabo ou ejetar no PC, o console monta a partição de novo e o Omni36OS volta. Para sair sem o PC, aperte B ou Select + Start.
 "Restaurar boot" volta o arquivo de boot original se algo der errado.
@@ -110,7 +110,7 @@ Ao conectar o PC, o Omni36OS fecha para soltar a partição. Ao tirar o cabo ou 
 As outras ferramentas do sistema ficam nos cards: Testar o controle (Controles), Trocar a senha (Geral > Segurança), Wi-Fi e rede pelo cabo (Rede), pendrive (Armazenamento), Calibrar a bateria (Bateria), Liberar overclock (Desempenho). Tudo o que mexe no boot abre um aviso vermelho com contagem; Cancelar fica escolhido desde o início.
 
 # Testar ports (dentro de Ferramentas)
-Mostra os ports das pastas escolhidas em Armazenamento > Jogos lidos de.
+Mostra os ports das pastas escolhidas em Armazenamento > Origem dos jogos.
 Escolha um port e aperte A: o Omni36OS fecha, o port abre como pela biblioteca e, depois de 15 segundos, é encerrado sozinho. O Omni36OS volta com o resultado.
 Passou: o port ficou aberto os 15 segundos.
 Falhou: o port fechou antes. O relatório fica em omni36os/logs/<nome do port>/ (dentro de /opt/omni36os) com a saída do port, os logs da pasta dele, as mensagens do kernel e o estado do sistema.

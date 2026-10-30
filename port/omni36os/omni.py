@@ -684,7 +684,7 @@ def set_game_source(args):
 
 
 def port_groups(_args=None):
-    """Ports das pastas escolhidas em "Jogos lidos de", sem o próprio Omni36OS."""
+    """Ports das pastas escolhidas em "Origem dos jogos", sem o próprio Omni36OS."""
     out = []
     for root in game_roots():
         d = f"{root}/ports"

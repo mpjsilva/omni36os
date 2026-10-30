@@ -223,9 +223,9 @@ class Data:
                 "desempenho": ([], [("ok", "Temperatura normal: 52 °C."),
                                     ("ok", "Processador a 1008 MHz, modo Equilibrado."),
                                     ("info", "Limites: processador 1296 MHz, GPU 520 MHz. ZRAM 0 MB (0 MB em uso).")]),
-                "cartoes": ([], [("ok", "Cartão do sistema: 16 GB, SanDisk."), ("ok", "Cartão de jogos: 64 GB."),
+                "cartoes": ([], [("ok", "Cartão 1: 16 GB, SanDisk."), ("ok", "Cartão 2: 64 GB."),
                                  ("ok", "Espaço do sistema: 4.7 GB livres (50% usado)."),
-                                 ("ok", "Espaço de jogos: 31.2 GB livres (50% usado).")]),
+                                 ("ok", "Espaço do cartão 2: 31.2 GB livres (50% usado).")]),
                 "pc": (["ligar_pendrive"], [("ok", "A partição /roms2 (31.2 GB livres) vai aparecer no PC como pendrive."),
                                             ("info", "Ligar reinicia o aparelho; o Wi-Fi para até desligar.")]),
             }
@@ -452,7 +452,7 @@ TIPS = {
     "Serviços remotos: desligar": "Desliga a web e o Samba. O SSH continua.",
     "Desligar a rede USB": "Desliga a rede e devolve a porta OTG ao modo normal.",
     "Compatibilidade": "Confere se o kernel, a porta e os programas deste sistema suportam a rede USB.",
-    "Jogos lidos de": "Em qual cartão o Omni36OS procura os ports: ROMS, ROMS2 ou os dois.",
+    "Origem dos jogos": "Onde o Omni36OS procura os jogos e ports: ROMS, ROMS2 ou ROMS e ROMS2.",
     "Detalhes da tela": "Mostra o modelo da tela e qual opção escolher no SELECT MODEL ao atualizar.",
     "Verificar tudo": "Junta numa lista só os avisos de todos os cards, cada um com o card de origem.",
     "Sobre": "Manual, cuidados, novidades desta versão e créditos.",
@@ -765,7 +765,7 @@ class App:
         out = []
         for c in omni_checks.sd_facts()["cartoes"]:
             fab = f", {c['fabricante']}" if c["fabricante"] != "desconhecido" else ""   # sem marca: só no teste
-            out.append(("ok", f"Cartão de {c['cartao']}: {c['tamanho_gb']} GB{fab}."))
+            out.append(("ok", f"Cartão {1 if c['cartao'] == 'sistema' else 2}: {c['tamanho_gb']} GB{fab}."))
         omni_checks.check_disk(out)
         for part, r in omni.last_scan().items():
             ok = r["resultado"] == "clean"
@@ -887,7 +887,7 @@ class App:
                              "Ligar o modo pendrive?\nO aparelho reinicia; o Wi-Fi para até desligar."))
             tog.act = "desligar_pendrive" if on else "ligar_pendrive"
             mounted = getattr(self, "fake_usb", False) if FAKE else os.path.ismount("/mnt/usbdrive")
-            return [Choice("Jogos lidos de", "folder", "fonte", list(SOURCE_NAMES), SOURCE_NAMES),
+            return [Choice("Origem dos jogos", "folder", "fonte", list(SOURCE_NAMES), SOURCE_NAMES),
                     tip(A("Detalhe dos cartões" if self.sd_count() > 1 else "Detalhe do cartão", "info-circle",
                           self.speed_test),
                         "Marca, tamanho, espaço livre e ocupado e um teste de velocidade de cada cartão (até 1 minuto). Cartão "
@@ -896,9 +896,9 @@ class App:
                              "para o cartão. Reinicia ao ligar e ao desligar; o Wi-Fi para enquanto estiver ligado."),
                     tip(Choice("Partição no PC", "device-floppy", "part",
                                ["roms2", "roms"] if FAKE or os.path.ismount("/roms2") else ["roms"],
-                               {"roms2": "/roms2 (segundo cartão)", "roms": "/roms (cartão do sistema)"}),
-                        "Qual partição o PC enxerga no modo pendrive: /roms2 (segundo cartão, se houver) ou /roms "
-                        "(cartão do sistema). Sem segundo cartão, só /roms aparece."),
+                               {"roms2": "ROMS2", "roms": "ROMS"}),
+                        "Qual partição o PC enxerga no modo pendrive: ROMS2 (cartão 2, se houver) ou ROMS "
+                        "(cartão 1). Sem o cartão 2, só ROMS aparece."),
                     tip(A("Desmontar pendrive", "x", lambda: self.native("usb_umount", "Desmontando..."))
                         if mounted else
                         A("Montar pendrive", "plug", lambda: self.native("usb_mount", "Montando o pendrive...")),
@@ -1049,11 +1049,11 @@ class App:
             if FAKE:
                 time.sleep(1)
                 return {"nivel": "ok", "acoes": [], "achados": [
-                    ("ok", "Cartão do sistema: 16 GB, SanDisk (SL16G). 18.2 MB/s escrita, 41.0 MB/s leitura."),
-                    ("ok", "Espaço do cartão do sistema: 6.8 GB livres, 9.2 GB ocupados."),
-                    ("ok", "Cartão de jogos: 64 GB, sem marca (SD64G). 12.5 MB/s escrita, 38.7 MB/s leitura."),
-                    ("ok", "Espaço do cartão de jogos: 31.2 GB livres, 32.8 GB ocupados."),
-                    ("info", "Cartão de jogos sem marca identificada (código 0xfe), comum em cartões genéricos. "
+                    ("ok", "Cartão 1: 16 GB, SanDisk (SL16G). 18.2 MB/s escrita, 41.0 MB/s leitura."),
+                    ("ok", "Espaço do cartão 1: 6.8 GB livres, 9.2 GB ocupados."),
+                    ("ok", "Cartão 2: 64 GB, sem marca (SD64G). 12.5 MB/s escrita, 38.7 MB/s leitura."),
+                    ("ok", "Espaço do cartão 2: 31.2 GB livres, 32.8 GB ocupados."),
+                    ("info", "Cartão 2 sem marca identificada (código 0xfe), comum em cartões genéricos. "
                              "Se ele travar ou perder arquivos, vale trocar.")]}
             return omni_checks.detalhes()
 

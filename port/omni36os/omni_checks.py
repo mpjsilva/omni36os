@@ -113,7 +113,7 @@ def detalhes():
     out = []
     for c in sd_facts()["cartoes"]:
         card = c["cartao"]
-        nome = "do sistema" if card == "sistema" else "de jogos"
+        nome = "1" if card == "sistema" else "2"
         path = "/roms" if card == "sistema" else "/roms2"
         fab = c["fabricante"] if c["fabricante"] != "desconhecido" else "sem marca"
         head = f"Cartão {nome}: {c['tamanho_gb']} GB, {fab}" + (f" ({c['nome']})" if c["nome"] else "")
@@ -187,7 +187,7 @@ def check_services(out, acts):
 
 
 def check_disk(out):
-    nomes = {"sistema": "do sistema", "roms": "/roms", "jogos": "de jogos"}
+    nomes = {"sistema": "do sistema", "roms": "do ROMS", "jogos": "do cartão 2"}
     for name, d in omni.disk_facts().items():
         if d["uso_pct"] >= ESPACO_POUCO_PCT or d["livre_gb"] < ESPACO_POUCO_GB:
             dica = " Atualizações podem falhar." if name == "sistema" else ""
