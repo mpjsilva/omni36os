@@ -2663,8 +2663,20 @@ class App:
             omni.unlock_oc()
             return ("Overclock desbloqueado: escolha os limites acima." if res.startswith("O overclock já")
                     else res + " Reinicie para as frequências novas aparecerem.")
-        go = ((lambda: self.worker(unlock, self._sys_done, busy="Desbloqueando...")) if not FAKE else
-              (lambda: setattr(self, "toast", ("Teste: passou", "ok", self.t + 3))))
+        run = ((lambda: self.worker(unlock, self._sys_done, busy="Desbloqueando...")) if not FAKE else
+               (lambda: setattr(self, "toast", ("Teste: passou", "ok", self.t + 3))))
+
+        def go():                     # console com trava por senha: a senha libera o overclock
+            if not ((os.environ.get("OMNI_TRAVA") == "1") if FAKE else omni_sistema.lock_on()):
+                return run()
+
+            def check(pw):
+                ok = (pw == os.environ.get("OMNI_TRAVA_SENHA", "1234")) if FAKE else omni_sistema.lock_check(pw)
+                if ok:
+                    run()
+                else:
+                    self.toast = ("Senha errada: o overclock continua bloqueado", "problema", self.t + 3.5)
+            self.keyboard("Senha para desbloquear o overclock", check, secret=True)
         self.warn("Desbloquear overclock", "Libera de 1368 a 1512 MHz no processador e 600 MHz na GPU, com a "
                   "tensão do dArkOSen. Depois, escolha os limites em Desempenho.", go, 10, True,
                   key="Desbloquear overclock", risk="Esquenta mais e pode travar. Se o DTB precisar de ajuste, um "

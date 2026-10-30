@@ -4,6 +4,9 @@ Linhas que começam com "# " viram títulos no leitor."""
 
 # A versão em uso vem do arquivo VERSION. Aqui fica só ela; o histórico completo está no NOVIDADES.md.
 NOVIDADES = [
+    ("1.11.9", "30/10/2026", [
+        "Com a trava por senha ligada, desbloquear o overclock pede a senha do console.",
+    ]),
     ("1.11.8", "30/10/2026", [
         "Overclock com trava de verdade: as velocidades acima de 1296 MHz (processador) e 520 MHz (GPU) só aparecem depois de Desempenho > Desbloquear overclock. Bloquear overclock volta tudo ao padrão.",
     ]),

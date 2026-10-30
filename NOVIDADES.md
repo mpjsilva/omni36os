@@ -2,6 +2,10 @@
 
 Histórico completo. Dentro do console (Geral > Sobre > Novidades) aparece só a versão em uso.
 
+## 1.11.9 (30/10/2026)
+
+- Desbloquear overclock: com a trava por senha ligada, depois do aviso (10 s + 5 toques) o teclado pede a senha da trava; senha errada mantém o overclock bloqueado.
+
 ## 1.11.8 (30/10/2026)
 
 - Overclock: trava real (`/etc/omni36os/overclock`). Bloqueado, `cpu_freqs`/`gpu_freqs` só oferecem até 1296/520 MHz, `set_cpu_max`/`set_gpu_max` recusam acima e `apply_limits` corta qualquer configuração antiga. Desbloquear (aviso + 5 toques) cria a marca e, se o DTB não tiver as frequências, acrescenta; Bloquear tira a marca e volta os limites ao padrão.
