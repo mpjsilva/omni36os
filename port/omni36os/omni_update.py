@@ -167,7 +167,7 @@ def can_go_back():
 
 
 def go_back():
-    """Volta à versão anterior a pedido (Ajuda > Voltar à versão anterior)."""
+    """Volta à versão anterior a pedido (Geral > Voltar à versão anterior)."""
     if not can_go_back():
         return "Não há versão anterior guardada."
     with open(os.path.join(PREV, "VERSION")) as f:

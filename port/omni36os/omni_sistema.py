@@ -61,7 +61,7 @@ def samba_password(new):
     return "Senha do Samba redefinida (usuário ark)."
 
 
-# --- Wi-Fi (Sistema > Wi-Fi) ---
+# --- Wi-Fi (Rede) ---
 # Ligar e desligar mexem só no rádio (rfkill + nmcli): leve e reversível. O wifi_disable.sh do
 # dArkOSen não serve aqui: ele põe os módulos em blacklist, mascara o wpa_supplicant e reinicia o
 # controlador USB (dwc2), o que derruba o modo pendrive e a rede USB. O wifi_enable.sh só entra

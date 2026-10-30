@@ -2,7 +2,7 @@
 
 Roda como serviço (omni36os-atalho.service) e lê o controle direto do /dev/input,
 sem bibliotecas (struct input_event). O que existe, os botões padrão e os nomes ficam em
-omni_combos.py; o jogador liga, desliga e troca os botões em Sistema > Atalhos
+omni_combos.py; o jogador liga, desliga e troca os botões em Controles > Atalhos
 (~/.config/omni36os/atalhos.json). Padrão:
 
 - FN + X: mostra ou esconde o contador de FPS (com temperatura e bateria).

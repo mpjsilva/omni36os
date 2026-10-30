@@ -1,4 +1,4 @@
-"""Atalhos dentro dos jogos (Sistema > Atalhos): o que existe, os botões padrão e os nomes.
+"""Atalhos dentro dos jogos (Controles > Atalhos): o que existe, os botões padrão e os nomes.
 
 Fonte única para o serviço (omni_atalho.py), o Omni36OS (omni_ui.py), o omni.py e o manual.
 Os botões são códigos evdev do controle do R36S (rk3326-r36s-linux.dtb).

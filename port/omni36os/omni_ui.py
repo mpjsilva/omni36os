@@ -41,7 +41,7 @@ import omni_combos  # noqa: E402
 
 # --- paleta ---
 
-# Tema escuro e claro (Ajuda > Tema). INK é a cor dos véus e contornos: branco
+# Tema escuro e claro (Tela e som > Tema). INK é a cor dos véus e contornos: branco
 # sobre o fundo escuro, azul-marinho sobre o claro. ON_TEXT é o texto em cima da
 # cor de destaque (item escolhido), branco nos dois temas.
 from omni_theme import THEMES  # noqa: E402
@@ -85,30 +85,31 @@ LEVEL_ICON = {"ok": "check", "aviso": "alert-triangle", "problema": "x", "info":
 CARDS = [
     # id, título, ícone, cor 1, cor 2
     ("ports", "Ports", "device-gamepad-2", "c084fc", "7c3aed"),     # abre a biblioteca
+    ("tela", "Tela e som", "device-tv", "fbbf24", "f97316"),
+    ("rede", "Rede", "wifi", "38bdf8", "0ea5e9"),
+    ("controles", "Controles", "keyboard", "818cf8", "4f46e5"),
     ("bateria", "Bateria", "battery-charging", "a3e635", "16a34a"),
-    ("tela", "Sistema", "settings", "fbbf24", "f97316"),
     ("desempenho", "Desempenho", "gauge", "fb7185", "e11d48"),
-    ("pendrive", "USB", "usb", "818cf8", "4f46e5"),
-    ("cartoes", "Cartões SD", "device-sd-card", "2dd4bf", "0284c7"),
-    ("checkup", "Verificar", "stethoscope", "22d3ee", "3b82f6"),
+    ("cartoes", "Armazenamento", "device-sd-card", "2dd4bf", "0284c7"),
     ("ferramentas", "Ferramentas", "adjustments", "94a3b8", "475569"),
-    ("ajuda", "Ajuda", "help-circle", "60a5fa", "a78bfa"),
+    ("geral", "Geral", "settings", "60a5fa", "a78bfa"),
 ]
 COLS = 3
 # Páginas abertas de dentro de outro card: B volta para o card de origem e os
 # alertas delas aparecem no ponto do card de origem.
 TWO_COLS = {"tela"}   # cartões sem painel de diagnóstico: as ações vêm em duas colunas
 SUBPAGES = {            "calibracao": ("Calibrar a bateria", "battery-2", "a3e635", "16a34a", "bateria"),
-            "usbrede": ("Rede pelo cabo USB", "network", "38bdf8", "4f46e5", "pendrive"),
-            "seguranca": ("Segurança", "lock", "fbbf24", "f97316", "tela"),
-            "wifi": ("Wi-Fi", "wifi", "38bdf8", "0ea5e9", "tela"),
-            "backup": ("Backup", "device-floppy", "60a5fa", "a78bfa", "tela"),
-            "atalhos": ("Atalhos", "keyboard", "fbbf24", "f97316", "tela"),
+            "usbrede": ("Rede pelo cabo USB", "network", "38bdf8", "4f46e5", "rede"),
+            "seguranca": ("Segurança", "lock", "60a5fa", "a78bfa", "geral"),
+            "backup": ("Backup", "device-floppy", "60a5fa", "a78bfa", "geral"),
+            "checkup": ("Verificar tudo", "stethoscope", "22d3ee", "3b82f6", "geral"),
+            "sobre": ("Sobre", "help-circle", "60a5fa", "a78bfa", "geral"),
+            "atalhos": ("Atalhos", "keyboard", "818cf8", "4f46e5", "controles"),
             "testar": ("Testar ports", "player-play", "34d399", "059669", "ferramentas")}
 PARENT = {cid: v[4] for cid, v in SUBPAGES.items()}
 SOURCE_NAMES = {"roms": "ROMS", "roms2": "ROMS2", "ambos": "ROMS e ROMS2"}
 ZRAM_SIZES = [0, 256, 512, 768]   # MB do zram (Desempenho); 0 = desligado, o padrão
-LIVE = {"usbrede": 3.0, "calibracao": 10.0, "wifi": 5.0}   # subpáginas com estado que muda sozinho: relê a cada N s
+LIVE = {"usbrede": 3.0, "calibracao": 10.0, "rede": 5.0}   # subpáginas com estado que muda sozinho: relê a cada N s
 
 
 LIB_CARD = ("jogos", "Jogos", "device-gamepad-2", "c084fc", "7c3aed")   # cor da biblioteca (tela inicial)
@@ -146,7 +147,7 @@ def omni_version():
 
 
 def about_findings():
-    """Painel da Ajuda: qual Omni36OS e qual Omni36OS estão rodando."""
+    """Painel de Geral e Sobre: qual Omni36OS e qual Omni36OS estão rodando."""
     ver = omni_version()
     inst = time.strftime("%d/%m/%Y %H:%M", time.localtime(os.path.getmtime(os.path.join(HERE, "omni_ui.py"))))
     out = [("info", f"Omni36OS versão {ver}, instalado em {inst}.")]
@@ -218,7 +219,7 @@ class Data:
                 "checkup": ([], [("aviso", "Cartões SD: " + sd[1]),
                                                   ("info", "Cada card mostra o detalhe do seu assunto.")]),
                 "bateria": ([], [("ok", "Bateria em 87%, descarregando."), ("ok", "Brilho em 40%."),
-                                 ("ok", "Processador em modo ondemand no menu.")]),
+                                 ("ok", "No menu, o processador fica no mínimo para poupar bateria.")]),
                 "atualizar": ([], [("ok", "Volume em 60%."), som]),
                 "desempenho": ([], [("ok", "Temperatura normal: 52 °C."),
                                     ("ok", "Processador a 1008 MHz, modo Equilibrado."),
@@ -289,7 +290,7 @@ class Data:
             return omni.get_led()
         if what == "tema":
             return THEME
-        if what.startswith("at_"):          # Sistema > Atalhos
+        if what.startswith("at_"):          # Controles > Atalhos
             return omni.get_atalhos()[what[3:]]
         if what == "power":
             return omni.get_power_button()
@@ -422,7 +423,7 @@ def tip(item, text):
     return item
 
 
-# Mini explicações por rótulo (o começo basta); o card USB põe as dele direto nos itens.
+# Mini explicações por rótulo (o começo basta); Armazenamento põe as dele direto nos itens.
 TIPS = {
     "Wi-Fi": "Liga e desliga o Wi-Fi, conecta a uma rede, esquece as salvas e mostra o IP do console.",
     "Atualizar status": "Roda a verificação deste card de novo e atualiza o painel.",
@@ -440,8 +441,6 @@ TIPS = {
     "Trocar a senha": "Troca a senha do usuário ark, usada no SSH e no sftp.",
     "Senha do Samba": "Troca a senha das pastas compartilhadas na rede (Samba).",
     "Trava por senha": "Pede a senha ao ligar o console, antes de abrir o menu.",
-    "Processador no menu": "Como o processador trabalha enquanto você está no menu. Economia gasta menos "
-                           "bateria; os jogos usam o ajuste de cada port.",
     "Limite do processador": "Frequência máxima do processador. Acima de 1296 MHz é overclock: esquenta mais.",
     "Limite da GPU": "Frequência máxima da GPU. Acima de 520 MHz é overclock: esquenta mais.",
     "Memória extra (zram)": "Usa parte da RAM comprimida como memória extra. Ajuda ports pesados que fecham por "
@@ -455,6 +454,9 @@ TIPS = {
     "Desligar a rede USB": "Desliga a rede e devolve a porta OTG ao modo normal.",
     "Compatibilidade": "Confere se o kernel, a porta e os programas deste sistema suportam a rede USB.",
     "Jogos lidos de": "Em qual cartão o Omni36OS procura os ports: ROMS, ROMS2 ou os dois.",
+    "Detalhes da tela": "Mostra o modelo da tela e qual opção escolher no SELECT MODEL ao atualizar.",
+    "Verificar tudo": "Junta numa lista só os avisos de todos os cards, cada um com o card de origem.",
+    "Sobre": "Manual, cuidados, novidades desta versão e créditos.",
     "Detalhes": "Tamanho, espaço livre, sistema de arquivos e saúde dos cartões.",
     "Testar velocidade": "Mede a leitura e a escrita de cada cartão. Cartão lento deixa os ports lentos "
                          "para abrir.",
@@ -477,6 +479,15 @@ def add_tips(items):
         if not getattr(it, "tip", None):
             it.tip = next((t for k, t in TIPS.items() if it.label.startswith(k)), None)
     return items
+
+
+def joined(*rs):
+    """Junta verificações num painel só (cards que reúnem assuntos: Armazenamento, Controles)."""
+    found = [f for r in rs for f in r["achados"]]
+    acts = [a for r in rs for a in r.get("acoes", [])]
+    lv = [lvl for lvl, _ in found]
+    return {"nivel": "problema" if "problema" in lv else "aviso" if "aviso" in lv else "ok",
+            "achados": sorted(found, key=lambda f: {"problema": 0, "aviso": 1}.get(f[0], 2)), "acoes": acts}
 
 
 def tagged(action, name):
@@ -581,8 +592,13 @@ class App:
     def card_check(self, cid):
         if cid == "desempenho" and not FAKE:
             return self._lento_rapido()
-        if cid == "cartoes" and not FAKE:
-            return self._cartoes()
+        if cid == "cartoes" and not FAKE:   # Armazenamento = cartões + porta USB
+            return joined(self._cartoes(), D.check("pc"))
+        if cid == "controles":
+            out, acts = [], []
+            if not FAKE:
+                omni_checks.check_services(out, acts)
+            return joined({"achados": out or [("ok", "Botões e atalhos funcionando.")], "acoes": acts})
         if cid == "testar":
             return self._testar()
         if cid == "ports":
@@ -593,12 +609,12 @@ class App:
             return self._backup()
         if cid == "ferramentas":
             return self._ferramentas()
-        if cid == "wifi" and FAKE:
+        if cid == "rede" and FAKE:
             on = getattr(self, "fake_wifi", True)
             return {"nivel": "ok", "acoes": [], "achados": [("ok", "Conectado a Casa, sinal 72%."),
                                                             ("ok", "IP do console: 192.168.0.42")] if on else
                     [("info", "Wi-Fi desligado.")]}
-        if cid == "wifi":
+        if cid == "rede":
             return omni_checks.finish(omni_sistema.wifi_status(), [], {})
         if cid in ("usbrede", "calibracao"):
             if FAKE:
@@ -617,17 +633,19 @@ class App:
                 ("ok", "Trava ligada: o console pede a senha ao ligar. A senha fica em EASYROMS/senha/senha.txt."
                  if locked else "Trava desligada: o console abre direto nos jogos."),
                 ("ok", "Usuário do sistema e do Samba: ark. Trocar a senha muda as duas.")]}
-        if cid == "tela" and not FAKE:    # Sistema = tela + som: as duas verificações juntas
+        if cid == "tela" and not FAKE:    # Tela e som: as duas verificações juntas
             a, b = D.check("atualizar"), D.check("sem_som")
             return omni_checks.finish(a["achados"] + b["achados"], a["acoes"] + b["acoes"],
                                       {**a.get("fatos", {}), **b.get("fatos", {})})
-        name = {"tela": "atualizar", "pendrive": "pc"}.get(cid, cid)
+        if FAKE and cid == "cartoes":
+            return joined(D.check("cartoes"), D.check("pc"))
+        name = {"tela": "atualizar"}.get(cid, cid)
         return D.check(name)
 
     def check_all(self):
         out = {}
         todo = [c for c in CARDS + [card_info(c) for c in SUBPAGES]
-                if c[0] != "ajuda" and (RESUME != "testar" or c[0] == "testar")]
+                if c[0] not in ("geral", "sobre") and (RESUME != "testar" or c[0] == "testar")]
         self.warm.insert(0, "home")
         self.load_total = len(todo) + len(self.warm)
         for k, (cid, title, *_) in enumerate(todo):
@@ -650,7 +668,7 @@ class App:
         self.results[cid] = r
         home = PARENT.get(cid, cid)
         worst, n = "ok", 0
-        for c in [home] + [k for k, p in PARENT.items() if p == home]:
+        for c in [home] + [k for k, p in PARENT.items() if p == home and k != "checkup"]:
             rc = self.results.get(c)
             if not rc:
                 continue
@@ -678,7 +696,7 @@ class App:
 
     def reload_findings(self, quiet=False):
         cid = self.page
-        if cid == "ajuda":
+        if cid in ("geral", "sobre"):
             self.findings = {"nivel": "ok", "achados": about_findings(), "acoes": []}
             return
         if not quiet:                 # quiet: mantém o diagnóstico na tela até o novo chegar
@@ -800,30 +818,43 @@ class App:
         A = Action
         recheck = A("Atualizar status", "refresh", self.reload_findings)
         if cid == "checkup":
+            return [recheck]
+        if cid == "controles":
             return [A("Testar o controle", "device-gamepad-2", self.open_pad),
-                    A("Detalhes da tela", "device-tv", lambda: self.run_info("Tela e modelo", "detect_hardware_and_screen")),
-                    A("Consertar atalhos", "adjustments", lambda: self.native("fix_hotkeys", "Reiniciando os atalhos..."),
+                    subpage(A("Atalhos", "keyboard", lambda: self.open_page("atalhos")), "atalhos"),
+                    *([] if FAKE else [Choice("Botão de power", "power", "power", list(omni.POWER_NAMES),
+                                              omni.POWER_NAMES)]),
+                    A("Consertar atalhos", "rotate", lambda: self.native("fix_hotkeys", "Reiniciando os atalhos..."),
                       confirm="Reiniciar o serviço de atalhos (brilho e volume pelos botões)?"),
                     recheck]
         if cid == "bateria":
             out = [subpage(A("Calibrar a bateria", "battery-2", lambda: self.open_page("calibracao")), "calibracao")]
             return out + [recheck]
         if cid == "tela":
-            out = [Slider("Volume", "volume", "volume"),
-                   Slider("Brilho", "sun", "brilho", lo=10),
-                   Slider("Contraste", "adjustments", "contraste"),
-                   Choice("Tema", "sun", "tema", list(THEMES), {"escuro": "Escuro", "claro": "Claro"}),
-                   Choice("Cor do LED", "bulb", "led", ["verde", "vermelho"], {"verde": "Verde", "vermelho": "Vermelho"})]
-            return out + [subpage(A("Segurança", "lock", lambda: self.open_page("seguranca")), "seguranca"),
-                          subpage(A("Wi-Fi", "wifi", lambda: self.open_page("wifi")), "wifi"),
-                          A(f"Nome do jogador: {self.player or '(sem nome)'}", "users",
-                            lambda: self.ask_name(first=False)),
-                          tagged(A("Restaurar áudio", "rotate", lambda: self.do_action("restaurar_audio"),
-                                   confirm="Restaurar o áudio do sistema?\nSaída de som padrão e volume em 40%."),
-                                 "restaurar_audio"),
-                          subpage(A("Atalhos", "keyboard", lambda: self.open_page("atalhos")), "atalhos"),
-                          subpage(A("Backup", "device-floppy", lambda: self.open_page("backup")), "backup"),
-                          A("Redefinir o sistema", "rotate", self.ask_reset)]
+            return [Slider("Brilho", "sun", "brilho", lo=10),
+                    Slider("Volume", "volume", "volume"),
+                    Slider("Contraste", "adjustments", "contraste"),
+                    Choice("Tema", "sun", "tema", list(THEMES), {"escuro": "Escuro", "claro": "Claro"}),
+                    Choice("Cor do LED", "bulb", "led", ["verde", "vermelho"], {"verde": "Verde", "vermelho": "Vermelho"}),
+                    A("Detalhes da tela", "info-circle", lambda: self.run_info("Tela e modelo", "detect_hardware_and_screen")),
+                    tagged(A("Restaurar áudio", "rotate", lambda: self.do_action("restaurar_audio"),
+                             confirm="Restaurar o áudio do sistema?\nSaída de som padrão e volume em 40%."),
+                           "restaurar_audio")]
+        if cid == "geral":
+            return [A(f"Nome do jogador: {self.player or '(sem nome)'}", "users", lambda: self.ask_name(first=False)),
+                    subpage(A("Segurança", "lock", lambda: self.open_page("seguranca")), "seguranca"),
+                    subpage(A("Backup", "device-floppy", lambda: self.open_page("backup")), "backup"),
+                    tip(A("Procurar atualização", "refresh", self.update_check),
+                        "Procura uma versão nova do Omni36OS no GitHub (precisa de Wi-Fi). Antes de instalar, ela é "
+                        "conferida inteira; se não abrir depois, a versão de agora volta sozinha."),
+                    *([tip(A("Voltar à versão anterior", "rotate", self.update_back,
+                             confirm="Voltar à versão anterior do Omni36OS?\nA de agora fica guardada e dá para voltar "
+                                     "a ela do mesmo jeito."),
+                           "Troca pela versão guardada da última atualização.")]
+                      if not FAKE and omni_update.can_go_back() else []),
+                    subpage(A("Verificar tudo", "stethoscope", lambda: self.open_page("checkup")), "checkup"),
+                    subpage(A("Sobre", "help-circle", lambda: self.open_page("sobre")), "sobre"),
+                    A("Redefinir o sistema", "rotate", self.ask_reset)]
         if cid == "atalhos":
             combos = D.get("at_combos")
             out = [tip(Choice(f"{name} · {omni_combos.text(combos[k])}", icon, "at_" + k, [True, False], ONOFF),
@@ -853,48 +884,44 @@ class App:
                                {m: f"{m} MB" if m else "Desligada" for m in ZRAM_SIZES}),
                         "Memória comprimida para ports que pedem mais RAM. Desligada é o normal."),
                     A("Liberar overclock (1512 MHz, GPU 600)", "gauge", self.ask_overclock)]
-        if cid == "pendrive":
+        if cid == "cartoes":
             on = D.get("pendrive")
-            tog = A("Desligar pendrive" if on else "Ligar pendrive", "power",
+            tog = A("Desligar o modo pendrive" if on else "Ligar o modo pendrive (PC)", "power",
                     lambda: self.do_action("desligar_pendrive" if on else "ligar_pendrive"),
                     confirm=("Desligar o modo pendrive?\nO aparelho reinicia e o Wi-Fi volta." if on else
                              "Ligar o modo pendrive?\nO aparelho reinicia; o Wi-Fi para até desligar."))
             tog.act = "desligar_pendrive" if on else "ligar_pendrive"
             mounted = getattr(self, "fake_usb", False) if FAKE else os.path.ismount("/mnt/usbdrive")
-            return [tip(tog, "O console vira um pendrive para o PC: ligue o cabo na porta OTG e copie jogos direto "
+            return [Choice("Jogos lidos de", "folder", "fonte", list(SOURCE_NAMES), SOURCE_NAMES),
+                    A("Detalhes dos cartões", "info-circle", lambda: self.run_info("Cartões SD", "check_microsd_info")),
+                    A("Testar velocidade", "brand-speedtest", self.speed_test),
+                    tip(tog, "O console vira um pendrive para o PC: ligue o cabo na porta OTG e copie jogos direto "
                              "para o cartão. Reinicia ao ligar e ao desligar; o Wi-Fi para enquanto estiver ligado."),
-                    tip(subpage(A("Rede pelo cabo USB", "network", lambda: self.open_page("usbrede")), "usbrede"),
-                        "O cabo USB vira uma rede entre o console e o PC: SSH, arquivos pela web e Samba, ou "
-                        "internet do PC no console. Não reinicia."),
+                    tip(Choice("Partição no PC", "device-floppy", "part",
+                               ["roms2", "roms"] if FAKE or os.path.ismount("/roms2") else ["roms"],
+                               {"roms2": "/roms2 (segundo cartão)", "roms": "/roms (cartão do sistema)"}),
+                        "Qual partição o PC enxerga no modo pendrive: /roms2 (segundo cartão, se houver) ou /roms "
+                        "(cartão do sistema). Sem segundo cartão, só /roms aparece."),
                     tip(A("Desmontar pendrive", "x", lambda: self.native("usb_umount", "Desmontando..."))
                         if mounted else
                         A("Montar pendrive", "plug", lambda: self.native("usb_mount", "Montando o pendrive...")),
                         "Termina de gravar e solta o pendrive montado. Use antes de tirar do console." if mounted else
                         "Lê um pendrive ligado no console (OTG) em /mnt/usbdrive. Aceita FAT, exFAT e NTFS. "
                         "É o contrário do modo pendrive."),
-                    tip(Choice("Partição no PC", "device-floppy", "part",
-                               ["roms2", "roms"] if FAKE or os.path.ismount("/roms2") else ["roms"],
-                               {"roms2": "/roms2 (segundo cartão)", "roms": "/roms (cartão do sistema)"}),
-                        "Qual partição o PC enxerga no modo pendrive: /roms2 (segundo cartão, se houver) ou /roms "
-                        "(cartão do sistema). Sem segundo cartão, só /roms aparece."),
-                    tip(A("Status", "info-circle", lambda: self.run_info("Pendrive USB", "usb_status")),
+                    tip(A("Estado da porta USB", "info-circle", lambda: self.run_info("Pendrive USB", "usb_status")),
                         "Mostra o estado da porta OTG: modo pendrive, partição exposta e o que está montado."),
                     tip(tagged(A("Limpar lixo do Mac", "x", lambda: self.do_action("limpar_mac", "Procurando o lixo do Mac... (até 1 minuto)"),
                                  confirm="Apagar os arquivos ._ e .DS_Store que o Mac cria?\nSeus jogos não são tocados."),
                                "limpar_mac"),
                         "Apaga os arquivos ._ e .DS_Store que o Mac deixa ao copiar. Eles aparecem como jogos "
                         "falsos na lista. Seus jogos não são tocados."),
+                    A("Verificar e reparar os jogos", "device-sd-card", lambda: self.run_tool_toast("schedule_scan"),
+                      confirm="Verificar e reparar a partição dos jogos?\nO aparelho reinicia, verifica o cartão e "
+                              "volta sozinho. Leva alguns minutos.", danger=True),
                     tip(A("Restaurar boot", "arrow-back-up", lambda: self.run_tool_toast("usb_restore"),
                           confirm="Voltar o arquivo de boot original?\nO aparelho reinicia.", danger=True),
                         "Se o modo pendrive deixou a porta presa, volta o arquivo de boot (DTB) original salvo "
                         "antes da primeira vez e reinicia.")]
-        if cid == "cartoes":
-            return [Choice("Jogos lidos de", "folder", "fonte", list(SOURCE_NAMES), SOURCE_NAMES),
-                    A("Detalhes", "info-circle", lambda: self.run_info("Cartões SD", "check_microsd_info")),
-                    A("Testar velocidade", "brand-speedtest", self.speed_test),
-                    A("Verificar e reparar os jogos", "device-sd-card", lambda: self.run_tool_toast("schedule_scan"),
-                      confirm="Verificar e reparar a partição dos jogos?\nO aparelho reinicia, verifica o cartão e "
-                              "volta sozinho. Leva alguns minutos.", danger=True)]
         if cid == "ferramentas":
             out = [A("Arquivos", "folder", self.open_files),
                    subpage(A("Testar ports", "player-play", lambda: self.open_page("testar")), "testar")]
@@ -903,7 +930,7 @@ class App:
                         f"{t.get('desc', '')} Abre em tela cheia e o Omni36OS volta ao fechar.".strip())
                     for t in self.tool_list()]
             return out
-        if cid == "wifi":
+        if cid == "rede":
             on = getattr(self, "fake_wifi", True) if FAKE else omni_sistema.wifi_on()
             return [tip(A("Desligar o Wi-Fi" if on else "Ligar o Wi-Fi", "wifi-off" if on else "wifi",
                           lambda: self.wifi_toggle(not on)),
@@ -916,6 +943,9 @@ class App:
                     tip(A("Desconectar", "x", lambda: self.wifi_run(omni_sistema.wifi_disconnect if not FAKE else
                                                                     (lambda: "Desconectado."), "Desconectando...")),
                         "Sai da rede atual sem desligar o Wi-Fi."),
+                    tip(subpage(A("Rede pelo cabo USB", "network", lambda: self.open_page("usbrede")), "usbrede"),
+                        "O cabo USB vira uma rede entre o console e o PC: SSH, arquivos pela web e Samba, ou "
+                        "internet do PC no console. Não reinicia."),
                     recheck]
         if cid == "usbrede":
             S = omni_sistema if not FAKE else None
@@ -955,22 +985,12 @@ class App:
                     tip(A("Importar", "arrow-back-up", lambda: self.backup_browse("omni36os", where)),
                         "Abre as pastas para escolher um backup. Antes de importar, o que vale agora é salvo como "
                         "\"antes-de-importar\".")]
-        if cid == "ajuda":
-            return [*([] if FAKE else [Choice("Botão de power", "power", "power", list(omni.POWER_NAMES),
-                                              omni.POWER_NAMES)]),
-                    A("Manual", "book", lambda: self.read("Manual", "book", omni_help.manual(D.get("at_combos")))),
+        if cid == "sobre":
+            return [A("Manual", "book", lambda: self.read("Manual", "book", omni_help.manual(D.get("at_combos")))),
                     A("Cuidados", "alert-triangle", lambda: self.read("Cuidados", "alert-triangle", omni_help.CUIDADOS)),
                     A("Novidades", "tag", lambda: self.read(f"Novidades · Omni36OS {omni_version()}", "tag",
                                                           omni_help.novidades_text())),
-                    A("Créditos", "users", lambda: self.read("Créditos", "users", omni_help.CREDITOS)),
-                    tip(A("Procurar atualização", "refresh", self.update_check),
-                        "Procura uma versão nova do Omni36OS no GitHub (precisa de Wi-Fi). Antes de instalar, ela é "
-                        "conferida inteira; se não abrir depois, a versão de agora volta sozinha."),
-                    *([tip(A("Voltar à versão anterior", "rotate", self.update_back,
-                             confirm="Voltar à versão anterior do Omni36OS?\nA de agora fica guardada e dá para voltar "
-                                     "a ela do mesmo jeito."),
-                           "Troca pela versão guardada da última atualização.")]
-                      if not FAKE and omni_update.can_go_back() else [])]
+                    A("Créditos", "users", lambda: self.read("Créditos", "users", omni_help.CREDITOS))]
         return [recheck]
 
     # --- atualização ---
@@ -1157,8 +1177,8 @@ class App:
     def _ferramentas(self):
         ts = self.tool_list()
         self.tool_count = len(ts) + 1
-        out = [("info", "Testar o controle fica em Verificar; senha em Sistema; rede USB e pendrive no card "
-                        "USB; calibração em Bateria; overclock em Desempenho.")]
+        out = [("info", "Testar o controle fica em Controles; senha em Geral; Wi-Fi e rede pelo cabo em Rede; "
+                        "pendrive em Armazenamento; calibração em Bateria; overclock em Desempenho.")]
         return {"nivel": "ok", "achados": out, "acoes": []} if FAKE else omni_checks.finish(out, [], {})
 
     def ask_tool(self, t):
@@ -1349,7 +1369,7 @@ class App:
                 self.player = ""
                 apply_theme("escuro")
                 self.g.flush()
-                self.open_page("tela")
+                self.open_page("geral")
                 self.toast = (str(res), "ok", self.t + 3)
                 self.ask_name(first=True)
             self.worker((lambda: "Sistema zerado.") if FAKE else omni_sistema.reset_custom, done, busy="Zerando...")
@@ -1358,7 +1378,7 @@ class App:
                   "GPU (520 MHz), atalhos (FN + X, FN + B, FN + Y, todos ligados) e botão de power ao padrão.", go, secs=5,
                   risk="O nome e a senha da trava somem; o Omni36OS pergunta o nome de novo. Ports, jogos, testes e as "
                        "senhas do sistema e do Samba não mudam.",
-                  undo="Não tem volta automática: ajuste de novo em Sistema. Se exportou um backup antes, Backup > "
+                  undo="Não tem volta automática: ajuste de novo em Tela e som e em Controles. Se exportou um backup antes, Backup > "
                        "Importar devolve nome, tema, atalhos, processador e GPU.")
 
     def lock_screen(self, then):
@@ -1379,7 +1399,7 @@ class App:
             name = " ".join(name.split())[:20]
             if not name:
                 if first:
-                    self.toast = ("Sem nome por enquanto: dá para pôr depois em Ajuda", "ok", self.t + 4)
+                    self.toast = ("Sem nome por enquanto: dá para pôr depois em Geral", "ok", self.t + 4)
                 return
             self.player = name if FAKE else omni_sistema.set_player_name(name)
             self.toast = (f"Prazer, {self.player}!", "ok", self.t + 3.5)
@@ -1395,9 +1415,9 @@ class App:
     def wifi_run(self, fn, busy):
         def done(res):
             self._sys_done(res)
-            if self.page == "wifi":
+            if self.page == "rede":
                 keep = self.item_sel
-                self.items = self.build_items("wifi")
+                self.items = self.build_items("rede")
                 self.item_sel = min(keep, len(self.items) - 1)
                 self.reload_findings(quiet=True)
         self.worker(fn, done, busy=busy)
@@ -2748,13 +2768,15 @@ class App:
         s = self.status
         return {
             "checkup": self._home_summary(),
+            "rede": "Wi-Fi e rede pelo cabo",
+            "controles": "Teste, atalhos e power",
+            "geral": f"Nome, backup · versão {omni_version()}",
+            "sobre": "Manual, cuidados e créditos",
             "bateria": f"{s['bat']}%" + (" · Carregando" if s["carregando"] else ""),
-            "tela": "Som, tela e segurança",
+            "tela": "Brilho, volume e tema",
             "desempenho": f"Ports até {s.get('cpu_max', '?')} MHz · {s['temp']}°C",
-            "pendrive": "Pendrive e rede no cabo",
-            "cartoes": "Espaço, marca e velocidade",
+            "cartoes": "Cartões, pendrive e espaço",
             "ferramentas": "Arquivos, testes e PortMaster",
-            "ajuda": f"Manual · versão {omni_version()}",
             "ports": f"{sum(len(s['games']) for s in self.games())} Jogos",
             "testar": f"{self.port_count} Ports instalados" if getattr(self, "port_count", 0) else "Abre e fecha em 15 s",
         }[cid]
@@ -2884,8 +2906,8 @@ class App:
         if f:
             lvl = f["nivel"]
             msg = {"ok": "Tudo certo por aqui", "aviso": "Alguns avisos", "problema": "Precisa de atenção"}[lvl]
-            if cid == "ajuda":
-                lvl, msg = "info", "Manual, cuidados e créditos"
+            if cid in ("geral", "sobre"):
+                lvl, msg = "info", f"Omni36OS {omni_version()}"
             alerts = self.page_alerts(cid) if cid in TWO_COLS else []
             if alerts:                    # sem painel: a linha diz qual é o alerta (e de onde vem)
                 lvl = "problema" if any(lv == "problema" for lv, _ in alerts) else "aviso"
@@ -2983,7 +3005,7 @@ class App:
                 ih = max(44 if two else 50, 16 + 19 * len(lines) + extra)
             layout.append((y, ih, lines))
             y += ih + (5 if two else gap)
-        # muitas ações (Ajuda): a coluna rola para o item escolhido caber acima do rodapé
+        # muitas ações (Geral, Armazenamento): a coluna rola para o item escolhido caber acima do rodapé
         top, bottom = cy + 18, H - 52
         sy, sh = layout[self.item_sel][:2] if layout else (cy + 22, 50)
         want = max(0, sy + sh - bottom) if sy - (cy + 22) > 0 else 0
@@ -3295,7 +3317,7 @@ class App:
         saved = (self.page, getattr(self, "items", None), getattr(self, "item_sel", 0),
                  getattr(self, "findings", None), getattr(self, "item_y", 0.0))
         self.page = cid
-        self.items = self.build_items(cid) if cid != "pendrive" else []
+        self.items = self.build_items(cid) if cid != "cartoes" else []
         self.item_sel, self.findings, self.item_y = 0, self.home_check, 0.0
         self.g.begin_layer(self.g.layer("warm"))
         self.draw_page(0.016, 1)

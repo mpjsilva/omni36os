@@ -1,6 +1,14 @@
 # Novidades do Omni36OS
 
-Histórico completo. Dentro do console (Ajuda > Novidades) aparece só a versão em uso.
+Histórico completo. Dentro do console (Geral > Sobre > Novidades) aparece só a versão em uso.
+
+## 1.9.0 (29/10/2026)
+
+- Menu reorganizado, no mesmo desenho: cada coisa no card do seu assunto. Novos cards Tela e som, Rede, Controles, Armazenamento e Geral; saem Sistema, USB, Cartões SD, Verificar e Ajuda.
+- Rede junta o Wi-Fi e a rede pelo cabo USB. Controles junta o teste do controle, os atalhos e o botão de power. Armazenamento junta cartões e pendrive.
+- Geral, como nos Ajustes do iPhone: nome, segurança, backup, atualização, Verificar tudo, Sobre (manual, cuidados, novidades e créditos) e, por último, Redefinir.
+- Em todas as páginas, o que reinicia ou apaga fica por último.
+- No menu, processador, GPU e memória ficam sempre no mínimo; os limites valem nos ports.
 
 ## 1.8.1 (29/10/2026)
 

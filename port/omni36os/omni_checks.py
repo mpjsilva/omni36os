@@ -94,7 +94,7 @@ def sd_facts():
 
 
 def velocidade():
-    """Testar velocidade (card Cartões SD): escreve e lê um arquivo em cada cartão."""
+    """Testar velocidade (Armazenamento): escreve e lê um arquivo em cada cartão."""
     out = []
     for card, path in (("sistema", "/roms"), ("jogos", "/roms2")):
         if not os.path.ismount(path):
@@ -197,7 +197,7 @@ def checkup():
     """Resumo: só o que precisa de atenção, de todos os cards (cada card mostra o seu em detalhe)."""
     parts = [("Bateria", bateria())]
     a, b = sem_som(), atualizar()
-    parts.append(("Sistema", finish(a["achados"] + b["achados"], a["acoes"], {})))
+    parts.append(("Tela e som", finish(a["achados"] + b["achados"], a["acoes"], {})))
     f = cpu_facts()
     out, acts = [], []
     check_temp(f, out)
@@ -209,7 +209,7 @@ def checkup():
         if c["fabricante"] == "desconhecido":
             out.append(("aviso", f"Cartão de {c['cartao']} sem marca identificada (código {c['codigo']}), "
                                  "comum em cartões genéricos."))
-    parts.append(("Cartões SD", finish(out, [], {})))
+    parts.append(("Armazenamento", finish(out, [], {})))
     out, acts = [], []
     check_services(out, acts)
     parts.append(("Serviços", finish(out, acts, {})))
@@ -258,7 +258,7 @@ def pc():
     f = omni.usb_facts()
     warn = []
     if omni.usb_net_active():
-        warn.append(("aviso", "A rede pelo cabo USB está ligada: ela usa a mesma porta. Desligue-a (card USB) antes do pendrive."))
+        warn.append(("aviso", "A rede pelo cabo USB está ligada: ela usa a mesma porta. Desligue-a (Rede > Rede pelo cabo USB) antes do pendrive."))
     part = f["particao_para_o_pc"]
     livre = f["livre_gb"].get(part)
     espaco = f" ({livre} GB livres)" if livre is not None else ""

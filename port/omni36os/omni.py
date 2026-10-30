@@ -822,7 +822,7 @@ FINISH = "/usr/local/bin/finish.sh"          # a 1.4.0 trocava este por engano
 FINISH_ORIG = FINISH + ".omni36os-orig"
 POWER_MARK = "# Omni36OS: botão de power"
 POWER_WRAP = f"""#!/bin/bash
-{POWER_MARK}. Original em {PAUSE_ORIG}; Ajuda > Botão de power desfaz.
+{POWER_MARK}. Original em {PAUSE_ORIG}; Controles > Botão de power desfaz.
 H={OMNI_DIR}/power_button.py
 if [ -f "$H" ] && timeout 8 python3 -B "$H"; then exit 0; fi
 exec bash {PAUSE_ORIG}

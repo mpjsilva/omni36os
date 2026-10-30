@@ -29,15 +29,17 @@ boot (logo.bmp = frame 0 de "Carregando")
 
 | Card | O que tem |
 |---|---|
-| **Verificar** | **Resumo**: só avisos e problemas de todos os cards, cada um com o card de origem ("Tudo certo" se não houver). Testar o controle (sair segurando SELECT+START), Detalhes da tela, Consertar atalhos (reinicia o `ogage`; não depende mais do `.bak`, que não existe nesta imagem) |
-| **Bateria** | Carga, brilho e modo do processador, com dica de economia. Subpágina **Calibrar a bateria** (`/usr/local/etc/battery-cal`) |
-| **Sistema** | Duas colunas. Volume, Brilho e Contraste (barras no analógico esquerdo), Tema, Cor do LED; Segurança (subpágina: trocar a senha, senha do Samba, trava por senha), **Wi-Fi** (subpágina: ligar/desligar, procurar redes e conectar com senha, redes salvas, desconectar; painel com rede, sinal e IP, via nmcli e os scripts wifi_enable/disable do dArkOSen), Nome do jogador, Restaurar áudio, **Atalhos** (subpágina), **Backup** (subpágina: Exportar escolhendo onde salvar, Importar), **Redefinir o sistema** (último) |
-| **Desempenho** | No menu, CPU/GPU/memória sempre no mínimo (`relax_clocks`: powersave). Limites de CPU/GPU (valem nos ports), **Memória extra (zram)** 0/256/512/768 MB (desligada por padrão), subpágina **Overclock e DTB** |
-| **USB** | Modo pendrive, subpágina **Rede pelo cabo USB**, montar/desmontar pendrive, limpar lixo do Mac, restaurar boot |
-| **Cartões SD** | Marca, espaço, testar velocidade, verificar e reparar (era subpágina de Desempenho; entrou no lugar do card Jogos) |
-| **Testar ports** | Roda o port por 15 s; se falhar, mostra a **causa provável** e oferece **"Corrigir e testar de novo"** (`omni_ports_fix.py`) |
-| **Ferramentas** | Navegador de arquivos, PortMaster, 351Files |
-| **Ajuda** | Botão de power, Manual, Cuidados, Novidades, Créditos (com o GitHub dos projetos usados como base) |
+| **Ports** | Abre a biblioteca (lista única dos ports + ficha) |
+| **Tela e som** | Duas colunas. Brilho, Volume e Contraste (barras no analógico esquerdo), Tema, Cor do LED, Detalhes da tela, Restaurar áudio (só aparece se algum jogo mexeu no som). Saída fone/alto-falante automática |
+| **Rede** | Wi-Fi (ligar/desligar, procurar redes e conectar com senha, redes salvas, desconectar; painel com rede, sinal e IP, via nmcli) e subpágina **Rede pelo cabo USB** |
+| **Controles** | Testar o controle (sair segurando SELECT+START), subpágina **Atalhos**, Botão de power, Consertar atalhos (reinicia o `ogage`) |
+| **Bateria** | Carga, brilho e modo do processador. Subpágina **Calibrar a bateria** (`/usr/local/etc/battery-cal`) |
+| **Desempenho** | No menu, CPU/GPU/memória sempre no mínimo (`relax_clocks`: powersave). Limites de CPU/GPU (valem nos ports), **Memória extra (zram)** 0/256/512/768 MB, Liberar overclock |
+| **Armazenamento** | Jogos lidos de, detalhes e velocidade dos cartões, modo pendrive (+ partição no PC), montar/desmontar pendrive, estado da porta USB, limpar lixo do Mac; por último as ações que reiniciam: verificar e reparar, restaurar boot |
+| **Ferramentas** | Arquivos, subpágina **Testar ports** (15 s; causa provável e "Corrigir e testar de novo", `omni_ports_fix.py`), PortMaster, 351Files |
+| **Geral** | Nome do jogador, subpáginas **Segurança** e **Backup**, Procurar atualização / Voltar à versão anterior, **Verificar tudo** (resumo dos avisos de todos os cards), **Sobre** (Manual, Cuidados, Novidades, Créditos), Redefinir o sistema (último) |
+
+Regra das páginas: o mais usado primeiro, escolhas antes das ações, o que reinicia ou apaga sempre por último.
 
 **Tela inicial**: os cards; Ports é o primeiro (lista única dos ports + ficha). B volta aos cards. START e SELECT não têm atalho; Energia abre pelo botão de power.
 
@@ -62,7 +64,7 @@ boot (logo.bmp = frame 0 de "Carregando")
 | `port/omni36os/gfx.py`, `omni_theme.py`, `assets/` | Desenho SDL2, cores, fontes Poppins e ícones Tabler 96×96 |
 | `port/omni36os/omni.py` | Núcleo: leitura e ajuste do sistema, power, logs |
 | `port/omni36os/omni_sistema.py` | Senhas (sistema/Samba), jogador, trava, rede USB, calibração da bateria, patch do DTB, operações de arquivo |
-| `port/omni36os/omni_checks.py` | Verificações de cada card, resumo do Verificar e ações sugeridas |
+| `port/omni36os/omni_checks.py` | Verificações de cada card, resumo do Verificar tudo e ações sugeridas |
 | `port/omni36os/omni_ports_fix.py` | Diagnóstico de falhas do Testar ports (`RULES`) e correções com desfazer |
 | `port/omni36os/omni_tools.py` | Nativas (atalhos, montar/desmontar pendrive) e apps de tela cheia (PortMaster, 351Files) |
 | `port/omni36os/run_tool.sh`, `omni_dialog.py` | Rodam os apps de tela cheia com as janelas do Omni36OS |
@@ -113,7 +115,7 @@ OMNI_FAKE=1 OMNI_WINDOWED=1 python3 omni_ui.py
 - `OMNI_TRAVA=1`
 - `OMNI_TRAVA_SENHA` (padrão `1234`)
 - `OMNI_RESUME=testar` + `OMNI_FAKE_TESTE=falhou|ok`: mostra o resultado de um teste de port
-- Cada card tem dados de teste próprios (o Verificar mostra 1 alerta de exemplo, do cartão SD)
+- Cada card tem dados de teste próprios (Armazenamento mostra 1 alerta de exemplo, do cartão SD)
 
 **Teclas do simulador** (Num Lock ligado): setas = direcional, 2 = A, 1 = B, Enter = START, Shift direito = SELECT, 5/4 = X/Y, 6/3 = L1/R1, 0 = botão de power, 7/9 = analógico esquerdo para os lados, 8 = FN (só ao gravar atalho). `OMNI_JOGO=1` simula o menu Energia por cima de um jogo. Mouse: clique esquerdo = A, direito = B, roda = cima/baixo. + / - do teclado numérico = botões de volume.
 
