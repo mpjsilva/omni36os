@@ -1,7 +1,7 @@
 """Tela de boas-vindas do boot com o nome do jogador.
 
 A base (boas-vindas-base.raw, gerada no PC pelo telas/gerar_telas.py) já tem o cartão de sessão
-com "Carregando..."; aqui entram a inicial e o nome, com a SDL2_ttf (sem PIL no console). O
+vazio; aqui entram a inicial e o nome (centrado na altura do cartão), com a SDL2_ttf (sem PIL no console). O
 resultado vai para ~/.config/omni36os/boas-vindas.raw, que o omni36os-tela prefere à tela padrão.
 Pixels crus BGRA 640x480, iguais aos do framebuffer.
 """
@@ -26,7 +26,7 @@ def _font(size):
     return gfx.TTF_OpenFont(os.path.join(gfx.HERE, "assets", "fonts", "Poppins-SemiBold.ttf").encode(), size)
 
 
-def _put(buf, font, text, x, y, cor, center=False):
+def _put(buf, font, text, x, y, cor, center=False, vcenter=False):
     """Mistura o texto (branco + alfa, ARGB8888) na cor `cor` sobre o buffer BGRA."""
     sp = gfx.TTF_RenderUTF8_Blended(font, text.encode(), gfx.Color(255, 255, 255, 255))
     if not sp:
@@ -35,6 +35,8 @@ def _put(buf, font, text, x, y, cor, center=False):
     px = C.string_at(s.pixels, s.pitch * s.h)
     if center:
         x, y = x - s.w // 2, y - s.h // 2
+    elif vcenter:
+        y = y - s.h // 2
     for j in range(s.h):
         for i in range(s.w):
             a = px[j * s.pitch + i * 4 + 3]
@@ -58,7 +60,7 @@ def boas_vindas(nome, dest):
         buf = bytearray(f.read())
     x0, y0 = CARTAO
     _put(buf, _font(16), nome[0].upper(), x0 + 26, y0 + 25, ESCURO, center=True)
-    _put(buf, _font(16), nome, x0 + 56, y0 + 6, TEXT)
+    _put(buf, _font(16), nome, x0 + 56, y0 + 25, TEXT, vcenter=True)
     with open(dest, "wb") as f:
         f.write(buf)
     return dest
