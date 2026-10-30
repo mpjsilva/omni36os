@@ -2093,7 +2093,10 @@ class App:
             self.toast = ("Nenhum port instalado", "aviso", self.t + 3)
 
     def start_test(self, path):
-        res = "ok" if FAKE else D.run("test_port", {"path": path})
+        if FAKE:
+            self.toast = (f"Testaria {os.path.basename(os.path.dirname(path)) or path} por 15 s", "ok", self.t + 3)
+            return
+        res = D.run("test_port", {"path": path})
         if res == "ok":
             self.running = False      # o launch-direct.sh roda o teste e reabre o Omni36OS
         else:
