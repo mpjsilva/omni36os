@@ -2,6 +2,12 @@
 
 Histórico completo. Dentro do console (Geral > Sobre > Novidades) aparece só a versão em uso.
 
+## 1.15.5 (30/10/2026)
+
+- Rede pelo cabo USB e modo pendrive se revezam sozinhos: ligar um desliga o outro, sem aviso para fazer à mão (sair do pendrive reinicia uma vez e a rede USB liga sozinha na volta).
+- Procurar redes liga o Wi-Fi se ele estiver desligado. Sem adaptador de Wi-Fi, o card Rede só cita isso, sem alerta.
+- Pílula de estado: o ícone do Wi-Fi mostra a força do sinal, fica apagado sem rede e riscado com o rádio desligado, e se atualiza em todas as telas.
+
 ## 1.15.4 (30/10/2026)
 
 - O Omni36OS agora tem licença aberta: GNU GPL v3.0.

@@ -156,7 +156,16 @@ def wifi_saved():
 
 
 def wifi_scan():
-    """[{rede, sinal, senha, atual, salva}] sem repetidas, a mais forte primeiro."""
+    """[{rede, sinal, senha, atual, salva}] sem repetidas, a mais forte primeiro.
+    Wi-Fi desligado ou adaptador fora do NetworkManager: liga antes de procurar (procurar é querer usar)."""
+    dev = wifi_iface()
+    if not wifi_on():
+        wifi_set(True)
+        dev = wifi_iface()
+        time.sleep(3)                     # o rádio recém-ligado ainda não ouviu as redes
+    if dev and "unmanaged" in sh("nmcli", "-t", "-f", "DEVICE,STATE", "device")[1].split(dev + ":", 1)[-1].split("\n")[0]:
+        sh("nmcli", "device", "set", dev, "managed", "yes")
+        time.sleep(2)
     code, txt = sh("nmcli", "-t", "-f", "IN-USE,SSID,SIGNAL,SECURITY", "device", "wifi", "list", "--rescan", "yes",
                    timeout=30)
     saved, best = set(wifi_saved()), {}
@@ -200,8 +209,8 @@ def wifi_forget(rede):
 def wifi_status():
     """Achados para o painel da página Wi-Fi (atualiza sozinho)."""
     if not wifi_iface():
-        return [("aviso", "Nenhum adaptador de Wi-Fi encontrado. O R36S usa um adaptador USB: confira se ele está "
-                          "ligado e se o modo pendrive e a rede USB estão desligados.")]
+        return [("info", "Nenhum adaptador de Wi-Fi encontrado. O R36S usa um adaptador USB na porta OTG; "
+                         "o modo pendrive e a rede USB usam a mesma porta.")]
     if not wifi_on():
         return [("info", "Wi-Fi desligado.")]
     rede, sinal = wifi_current()
@@ -374,7 +383,7 @@ def usbnet_status():
                 out.append(("info", f"Web: http://{ip}  ·  Samba: smb://{ip}  (\\\\{ip} no Windows)"))
     out.append(("info", "Serviços remotos (web e Samba): " + ("ligados." if remote_on() else "desligados.")))
     if pendrive_on():
-        out.append(("aviso", "O modo pendrive está ligado: ele usa a mesma porta. Desligue-o antes."))
+        out.append(("info", "O modo pendrive está ligado. Ligar a rede USB sai dele sozinho (o console reinicia uma vez)."))
     return out
 
 
@@ -419,9 +428,37 @@ def _dhcp_alive():
     return pid.isdigit() and os.path.exists(f"/proc/{pid}")
 
 
+USBNET_PENDING = "/var/lib/omni36os/usbnet-pendente"   # modo da rede USB a ligar depois do reinício
+
+
+def _leave_pendrive(mode):
+    """A rede USB e o pendrive usam a mesma porta, e sair do pendrive reinicia (troca o DTB): guarda o
+    modo pedido, sai do pendrive e o launcher liga a rede USB sozinho quando voltar."""
+    os.makedirs(os.path.dirname(USBNET_PENDING), exist_ok=True)
+    with open(USBNET_PENDING, "w") as f:
+        f.write(mode + "\n")
+    os.sync()
+    omni.usb_off()
+    return "Saindo do modo pendrive: o console reinicia e liga a rede USB sozinho."
+
+
+def usbnet_pending():
+    """Depois do reinício que saiu do pendrive: liga a rede USB pedida. None se não havia pedido."""
+    mode = omni.read_text(USBNET_PENDING, "").strip()
+    if not mode:
+        return None
+    try:
+        os.remove(USBNET_PENDING)
+    except OSError:
+        pass
+    if pendrive_on():
+        return None
+    return usbnet_internet() if mode == "internet" else usbnet_universal()
+
+
 def usbnet_universal():
     if pendrive_on():
-        return "Desligue o modo pendrive antes (ele usa a mesma porta)."
+        return _leave_pendrive("universal")
     if not has("dnsmasq"):
         return "Falta o dnsmasq no sistema: o modo universal não funciona."
     _kill_dhcp()
@@ -476,7 +513,7 @@ def _ask_ip():
 
 def usbnet_internet():
     if pendrive_on():
-        return "Desligue o modo pendrive antes (ele usa a mesma porta)."
+        return _leave_pendrive("internet")
     _kill_dhcp()
     err = _load_gadget()
     if err:

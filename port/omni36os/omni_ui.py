@@ -205,17 +205,39 @@ def swapped_ab():
 
 # --- dados (reais ou de mentira) ---
 
+def wifi_state():
+    """Wi-Fi da pílula, só com leituras do /sys e do /proc (rápidas, a cada 5 s): o adaptador (qualquer
+    interface sem fio, não só wlan0), se está conectado e a força do sinal (0 a 100)."""
+    iface = next((n for n in sorted(os.listdir("/sys/class/net"))
+                  if os.path.isdir(f"/sys/class/net/{n}/wireless") or n.startswith("wlan")), None)
+    if not iface:
+        return {"wifi": False, "conectado": False, "sinal": 0}
+    for rf in glob.glob(f"/sys/class/net/{iface}/phy80211/rfkill*"):   # rádio desligado (Ligar o Wi-Fi)
+        if "1" in (omni.read_text(f"{rf}/soft", "0"), omni.read_text(f"{rf}/hard", "0")):
+            return {"wifi": False, "conectado": False, "sinal": 0}
+    up = omni.read_text(f"/sys/class/net/{iface}/operstate") == "up"
+    sinal = 0
+    for ln in omni.read_text("/proc/net/wireless", "").splitlines():
+        if ln.strip().startswith(iface + ":"):
+            try:
+                sinal = min(100, int(float(ln.split()[2].rstrip(".")) * 100 / 70))   # qualidade do link, de 0 a 70
+            except (IndexError, ValueError):
+                pass
+    return {"wifi": True, "conectado": up, "sinal": sinal if up else 0}
+
+
+
 class Data:
     def status(self):
         if FAKE:
-            return {"bat": 87, "carregando": False, "temp": 52, "wifi": True, "conectado": True, "gov": "ondemand", "cpu_max": 1296}
+            return {"bat": 87, "carregando": False, "temp": 52, "wifi": True, "conectado": True, "sinal": 72,
+                    "gov": "ondemand", "cpu_max": 1296}
         t = omni.read_text("/sys/class/thermal/thermal_zone0/temp", "0")
         return {
             "bat": int(omni.read_text("/sys/class/power_supply/battery/capacity", "0")),
             "carregando": omni.read_text("/sys/class/power_supply/battery/status") in ("Charging", "Full"),
             "temp": int(t) // 1000 if t.isdigit() else 0,
-            "wifi": os.path.exists("/sys/class/net/wlan0"),
-            "conectado": omni.read_text("/sys/class/net/wlan0/operstate") == "up",
+            **wifi_state(),
             "gov": omni.get_preferred_governor(),
             "cpu_max": omni.get_cpu_max(),
         }
@@ -1719,8 +1741,11 @@ class App:
     def wifi_scan(self):
         def done(nets):
             if isinstance(nets, Exception) or not nets:
-                self.toast = ("Nenhuma rede encontrada. O Wi-Fi está ligado?", "aviso", self.t + 3.5)
+                self.toast = ("Nenhuma rede encontrada. O adaptador de Wi-Fi está no USB?", "aviso", self.t + 3.5)
                 return
+            if self.page == "rede":           # o Wi-Fi pode ter sido ligado agora: a página mostra o estado novo
+                self.items = self.build_items("rede")
+                self.recheck("rede")
             rows = [{"name": n["rede"], "icon": "lock" if n["senha"] else "wifi", "net": n,
                      "right": ("Conectada" if n["atual"] else "Salva" if n["salva"] else f"{n['sinal']}%", MUTED)}
                     for n in nets]
@@ -3862,12 +3887,6 @@ class App:
 
     def draw_header(self):
         g = self.g
-        if self.t - self.status_at > 5:
-            old = self.status
-            self.status, self.status_at = D.status(), self.t
-            if (old.get("wifi"), old.get("conectado")) != (self.status.get("wifi"), self.status.get("conectado")):
-                self.recheck("rede")      # o Wi-Fi conectou (ou caiu) depois da verificação: sem alerta fantasma
-        s = self.status
         # marca
         g.image("logo-64", 22, 18, 30, smooth=True)
         g.text("Bold", 20, "Omni36OS", 62, 18, TEXT)
@@ -3876,8 +3895,11 @@ class App:
     def draw_status(self):
         """Pílula de estado (Wi-Fi, volume, bateria, temperatura e hora), no canto de cima."""
         g = self.g
-        if self.t - self.status_at > 5 and getattr(self, "music", None):
+        if self.t - self.status_at > 5:   # relida a cada 5 s em qualquer tela que mostre a pílula
+            old = self.status
             self.status, self.status_at = D.status(), self.t
+            if (old.get("wifi"), old.get("conectado")) != (self.status.get("wifi"), self.status.get("conectado")):
+                self.recheck("rede")      # o Wi-Fi conectou (ou caiu) depois da verificação: sem alerta fantasma
         s = self.status
         hora = time.strftime("%H:%M")
         bat = f"{s['bat']}%"
@@ -3893,7 +3915,14 @@ class App:
         x = W - 22 - w
         g.rrect(x, 16, w, 34, 17, GLASS_HI)
         cx = x + 14
-        g.icon("wifi" if s["wifi"] else "wifi-off", cx, 24, 18, TEXT if s["wifi"] else FAINT)
+        if not s["wifi"]:                 # sem adaptador (ou rádio desligado): riscado
+            wico, wc = "wifi-off", FAINT
+        elif not s["conectado"]:          # adaptador ligado, sem rede: o ícone apagado
+            wico, wc = "wifi", FAINT
+        else:                             # conectado: as ondas mostram a força do sinal
+            sig = s.get("sinal", 100)
+            wico, wc = ("wifi-1" if sig < 35 else "wifi-2" if sig < 65 else "wifi"), TEXT
+        g.icon(wico, cx, 24, 18, wc)
         cx += 26
         if vtxt:                                  # volume do som
             vc = TEXT if vol else FAINT
@@ -4509,6 +4538,11 @@ class App:
             print(f"menu na tela {time.clock_gettime(time.CLOCK_BOOTTIME):.1f} s após ligar", file=sys.stderr, flush=True)
             if not FAKE:                  # o menu abriu: uma atualização recente está aprovada
                 omni_update.confirm_ok()
+                if os.path.exists(omni_sistema.USBNET_PENDING):   # saiu do pendrive para ligar a rede USB
+                    self.worker(omni_sistema.usbnet_pending,
+                                lambda res: res and not isinstance(res, Exception) and setattr(
+                                    self, "toast", (str(res), "aviso" if str(res).startswith("Erro") else "ok", self.t + 5)),
+                                busy="Ligando a rede USB...")
                 back = omni_update.rolled_back_message()
                 if back:
                     self.modal = {"title": "Atualização desfeita", "icon": "alert-triangle", "sel": 0,

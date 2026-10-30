@@ -1082,6 +1082,10 @@ def usb_set_partition(args):
 
 
 def usb_on(_args=None):
+    """Liga o modo pendrive. A rede USB usa a mesma porta: se estiver ligada, sai antes, sozinha."""
+    if usb_net_active():
+        import omni_sistema
+        omni_sistema.usbnet_stop()
     return usb_run("on")
 
 

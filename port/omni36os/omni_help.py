@@ -4,6 +4,11 @@ Linhas que começam com "# " viram títulos no leitor."""
 
 # A versão em uso vem do arquivo VERSION. Aqui fica só ela; o histórico completo está no NOVIDADES.md.
 NOVIDADES = [
+    ("1.15.5", "30/10/2026", [
+        "Rede pelo cabo USB e modo pendrive se revezam sozinhos: ligar um desliga o outro, sem aviso para fazer à mão (sair do pendrive reinicia uma vez e a rede USB liga sozinha na volta).",
+        "Procurar redes liga o Wi-Fi se ele estiver desligado. Sem adaptador de Wi-Fi, o card Rede só cita isso, sem alerta.",
+        "Pílula de estado: o ícone do Wi-Fi mostra a força do sinal, fica apagado sem rede e riscado com o rádio desligado, e se atualiza em todas as telas.",
+    ]),
     ("1.15.4", "30/10/2026", [
         "O Omni36OS agora tem licença aberta: GNU GPL v3.0.",
     ]),
@@ -141,12 +146,12 @@ Cor do LED: verde ou vermelho, também no boot. Com a bateria em 10% ou menos, o
 
 # Rede
 Data, hora e fuso se acertam sozinhos: na primeira vez que o console pega internet depois de ligar, o Omni36OS descobre o fuso pela conexão, acerta a hora, grava no relógio do console e desliga o serviço de hora até o próximo boot.
-"Ligar o Wi-Fi" liga e desliga o adaptador, "Procurar redes" lista as redes por perto (com cadeado pede a senha no teclado; START confirma), "Redes salvas" conecta de novo ou esquece uma, "Desconectar" sai da rede atual. O painel mostra a rede, o sinal e o IP do console, e se atualiza sozinho.
+"Ligar o Wi-Fi" liga e desliga o adaptador, "Procurar redes" liga o Wi-Fi se ele estiver desligado e lista as redes por perto (com cadeado pede a senha no teclado; START confirma), "Redes salvas" conecta de novo ou esquece uma, "Desconectar" sai da rede atual. O painel mostra a rede, o sinal e o IP do console, e se atualiza sozinho. Na pílula de estado, o ícone do Wi-Fi aparece riscado sem adaptador ou com o rádio desligado, apagado quando está ligado sem rede e, conectado, com as ondas da força do sinal.
 "Rede pelo cabo USB": o console vira uma placa de rede no cabo.
 - Modo universal: o console dá o IP ao PC. No PC: ssh omni@10.44.44.1.
 - Internet pelo PC: o PC compartilha a internet pelo cabo e o console recebe o IP dele.
 - Serviços remotos: Ligados ou Desligados (esquerda/direita). Ligados, sobem o Samba e o navegador web de arquivos (usuário e senha: omni); o SSH fica sempre.
-A página mostra o IP e os comandos para o PC, e se atualiza sozinha. A rede USB e o modo pendrive usam a mesma porta: desligue um antes de ligar o outro.
+A página mostra o IP e os comandos para o PC, e se atualiza sozinha. A rede USB e o modo pendrive usam a mesma porta: ligar um desliga o outro sozinho (sair do pendrive reinicia o console uma vez, e a rede USB liga sozinha na volta).
 
 # Controles
 "Testar o controle" mostra o R36S com cada botão aceso ao apertar, os gatilhos L2/R2 e a posição dos analógicos. Para sair, segure SELECT + START por 1 segundo (B também é testado).
@@ -203,7 +208,7 @@ O Omni36OS avisa quando um cartão passa de 90% de uso ou tem menos de 1 GB livr
 
 Modo pendrive:
 Liga o modo pendrive: com o cabo de dados no PC, a partição ROMS2 (cartão 2) ou ROMS (cartão 1, escolha em "Partição no PC") aparece como um pendrive para copiar ports.
-Ligar e desligar reinicia o aparelho. Enquanto estiver ligado, o Wi-Fi não funciona, porque usa a mesma porta.
+Ligar e desligar reinicia o aparelho. Enquanto estiver ligado, o Wi-Fi não funciona, porque usa a mesma porta. Se a rede USB estiver ligada, ela desliga sozinha.
 Ao conectar o PC, o Omni36OS fecha para soltar a partição. Ao tirar o cabo ou ejetar no PC, o console monta a partição de novo e o Omni36OS volta. Para sair sem o PC, aperte B ou Select + Start.
 "Restaurar boot" volta o arquivo de boot original se algo der errado.
 "Limpar lixo do Mac" apaga os arquivos ._ e .DS_Store que o macOS cria ao copiar. Eles aparecem como ports fantasmas na biblioteca. A busca leva até um minuto.
@@ -256,7 +261,6 @@ Sempre ejete o pendrive no PC antes de tirar o cabo. Tirar no meio de uma cópia
 Não desligue o console enquanto ele estiver ligado no PC.
 Com segundo cartão, prefira compartilhar /roms2. Sem ele, o PC recebe /roms (a partição de jogos do cartão do sistema): copie só para as pastas de jogos e ports.
 Se o console não voltar ao normal, use "Restaurar boot" em Cartões (último item).
-Não ligue a rede USB e o modo pendrive ao mesmo tempo.
 
 # Verificar e reparar o cartão
 O aparelho reinicia e passa alguns minutos verificando. Não desligue nem tire o cartão nessa hora.

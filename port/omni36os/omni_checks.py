@@ -282,7 +282,7 @@ def pc():
     f = omni.usb_facts()
     warn = []
     if omni.usb_net_active():
-        warn.append(("aviso", "A rede pelo cabo USB está ligada: ela usa a mesma porta. Desligue-a (Rede > Rede pelo cabo USB) antes do pendrive."))
+        warn.append(("info", "A rede pelo cabo USB está ligada. Ligar o modo pendrive desliga a rede USB sozinho."))
     part = f["particao_para_o_pc"]
     livre = f["livre_gb"].get(part)
     espaco = f" ({livre} GB livres)" if livre is not None else ""
