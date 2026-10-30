@@ -1,0 +1,16 @@
+[Unit]
+Description=Omni36OS: tela certa no primeiro boot (testa o DTB da tela com um toque)
+# Antes da expansão da imagem e de qualquer coisa que use a tela
+After=local-fs.target
+Before=firstboot.service omni36os-launcher.service emulationstation.service
+ConditionPathExists=|/boot/firstboot.sh
+ConditionPathExists=|/boot/omni36os-tela/testar
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /opt/omni36os/omni_painel.py
+TimeoutStartSec=0
+StandardOutput=journal
+
+[Install]
+WantedBy=multi-user.target

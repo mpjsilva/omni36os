@@ -2,6 +2,12 @@
 
 Histórico completo. Dentro do console (Geral > Sobre > Novidades) aparece só a versão em uso.
 
+## 1.10.0 (30/10/2026)
+
+- Tela certa no primeiro boot (`omni_painel.py`, serviço `omni36os-painel`): antes da expansão da imagem, o Omni36OS testa as telas do catálogo do dArkOSen, uma por boot. O hardware (RAM, memória interna) escolhe a ordem (original ou clone, as mais comuns primeiro); a tela que acender pergunta "Está vendo esta tela?" e qualquer botão confirma. Sem toque em 20 s, instala a próxima e reinicia; acabou a lista, volta os originais. Refazer: arquivo `omni36os-tela/testar` na BOOT.
+- Armazenamento: Detalhe do cartão (marca, espaço do cartão inteiro e velocidade numa opção), Cartão 1 / Cartão 2, Origem dos jogos, Partição no PC só ROMS/ROMS2; estado do pendrive na dica de Montar/Desmontar.
+- Cartão sem marca deixa de ser alerta (aparece só no Detalhe). Créditos sem a seção Origem e com o QR do repositório.
+
 ## 1.9.0 (29/10/2026)
 
 - Menu reorganizado, no mesmo desenho: cada coisa no card do seu assunto. Novos cards Tela e som, Rede, Controles, Armazenamento e Geral; saem Sistema, USB, Cartões SD, Verificar e Ajuda.

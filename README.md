@@ -64,6 +64,7 @@ Regra das páginas: o mais usado primeiro, escolhas antes das ações, o que rei
 | `port/omni36os/gfx.py`, `omni_theme.py`, `assets/` | Desenho SDL2, cores, fontes Poppins e ícones Tabler 96×96 |
 | `port/omni36os/omni.py` | Núcleo: leitura e ajuste do sistema, power, logs |
 | `port/omni36os/omni_sistema.py` | Senhas (sistema/Samba), jogador, trava, rede USB, calibração da bateria, patch do DTB, operações de arquivo |
+| `port/omni36os/omni_painel.py` | Tela certa no primeiro boot: testa os DTBs do catálogo (uma tela por boot) até o usuário apertar um botão; serviço `omni36os-painel.service` (só com `/boot/firstboot.sh` ou `/boot/omni36os-tela/testar`) |
 | `port/omni36os/omni_checks.py` | Verificações de cada card, resumo do Verificar tudo e ações sugeridas |
 | `port/omni36os/omni_ports_fix.py` | Diagnóstico de falhas do Testar ports (`RULES`) e correções com desfazer |
 | `port/omni36os/omni_tools.py` | Nativas (atalhos, montar/desmontar pendrive) e apps de tela cheia (PortMaster, 351Files) |

@@ -373,5 +373,64 @@ class Interface(unittest.TestCase):
         self.assertNotIn("Traceback", r.stderr, r.stderr[-2000:])
 
 
+
+class TelaCerta(unittest.TestCase):
+    """omni_painel: lista de telas, troca de DTB e volta dos originais, numa /boot de mentira."""
+    CAT = os.path.expanduser("~/Apps/Omni36OS/cartao/BOOT/dtb")
+
+    def setUp(self):
+        if not os.path.isdir(self.CAT) or not shutil.which("fdtget"):
+            self.skipTest("sem catálogo de DTBs ou fdtget")
+        import omni_painel as op
+        self.op, self.tmp = op, tempfile.mkdtemp()
+        boot = self.tmp
+        for v, name in (("r36s", "R36S-V21 2024-12-18 2529"), ("r36s", "R36S-V21 2024-12-18 2544"),
+                        ("r36s", "R36S-V12 2023-08-18 Panel 0"), ("clone", "G80C-MB V1.1-20250319 Panel 9"),
+                        ("r36s", "HL-R45H-V20 2025-11-18")):
+            shutil.copytree(f"{self.CAT}/{v}/{name}", f"{boot}/dtb/{v}/{name}")
+        shutil.copy(f"{self.CAT}/r36s/R36S-V21 2024-12-18 2529/rk3326-r36s-linux.dtb", boot)
+        with open(f"{boot}/boot.ini", "w") as f:
+            f.write("original\n")
+        self.saved = {k: getattr(op, k) for k in ("BOOT", "CATALOG", "DIR", "STATE", "ORIG", "DONE", "RETRY", "LOG")}
+        op.BOOT, op.CATALOG, op.DIR = boot, f"{boot}/dtb", f"{boot}/omni36os-tela"
+        op.STATE, op.ORIG, op.DONE = f"{op.DIR}/estado.json", f"{op.DIR}/original", f"{op.DIR}/pronto"
+        op.RETRY, op.LOG = f"{op.DIR}/testar", f"{op.DIR}/log.txt"
+        info = op.panel_info(f"{boot}/rk3326-r36s-linux.dtb")
+        self.live = info[0]
+        self.saved_live = op.panel_hash_live
+        op.panel_hash_live = lambda: self.live
+
+    def tearDown(self):
+        for k, v in self.saved.items():
+            setattr(self.op, k, v)
+        self.op.panel_hash_live = self.saved_live
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def test_lista(self):
+        lst = self.op.candidates("r36s")
+        self.assertTrue(lst[0]["atual"])                       # a tela de agora vem primeiro (sem reiniciar)
+        self.assertEqual(lst[0]["iguais"], 2)                  # 2529 e 2544 são a mesma tela: testa uma vez
+        self.assertTrue(os.path.basename(lst[0]["pasta"]).startswith("R36S-"))
+        self.assertFalse(any("R45H" in c["pasta"] for c in lst))   # 720x720: não é tela de R36S
+        self.assertIn("clone", lst[-1]["pasta"])               # a outra família por último
+        self.assertIn("clone", self.op.candidates("clone")[1]["pasta"])
+
+    def test_troca_e_volta(self):
+        op = self.op
+        orig = open(f"{op.BOOT}/rk3326-r36s-linux.dtb", "rb").read()
+        op.save_original()
+        op.install(f"{op.CATALOG}/clone/G80C-MB V1.1-20250319 Panel 9")
+        self.assertNotEqual(open(f"{op.BOOT}/rk3326-r36s-linux.dtb", "rb").read(), orig)
+        self.assertNotEqual(open(f"{op.BOOT}/boot.ini").read(), "original\n")
+        op.restore_original()
+        self.assertEqual(open(f"{op.BOOT}/rk3326-r36s-linux.dtb", "rb").read(), orig)
+        self.assertEqual(open(f"{op.BOOT}/boot.ini").read(), "original\n")
+
+    def test_so_no_primeiro_boot(self):
+        self.assertFalse(self.op.needed())                     # cartão já usado: não faz nada
+        open(f"{self.op.BOOT}/firstboot.sh", "w").close()
+        self.assertTrue(self.op.needed())
+
+
 if __name__ == "__main__":
     unittest.main()

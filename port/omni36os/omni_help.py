@@ -4,12 +4,12 @@ Linhas que começam com "# " viram títulos no leitor."""
 
 # A versão em uso vem do arquivo VERSION. Aqui fica só ela; o histórico completo está no NOVIDADES.md.
 NOVIDADES = [
-    ("1.9.0", "29/10/2026", [
-        "Menu reorganizado, no mesmo desenho: cada coisa no card do seu assunto. Novos cards Tela e som, "
-        "Rede, Controles, Armazenamento e Geral.",
-        "Geral, como nos Ajustes do iPhone: nome, segurança, backup, atualização, Verificar tudo e Sobre. "
-        "O que reinicia ou apaga fica sempre por último.",
-        "No menu, processador, GPU e memória ficam sempre no mínimo; os limites valem nos ports.",
+    ("1.10.0", "30/10/2026", [
+        "Tela certa no primeiro boot: o Omni36OS testa sozinho as telas possíveis e pergunta \"Está vendo esta "
+        "tela?\". Um toque em qualquer botão confirma; sem toque, ele tenta a próxima. Sem PC e sem escolher DTB.",
+        "Armazenamento: Detalhe do cartão com marca, espaço livre e ocupado e teste de velocidade numa opção só. "
+        "Cartões chamados de Cartão 1 e Cartão 2; o estado do pendrive aparece ao escolher Montar.",
+        "Créditos com o QR do repositório. Cartão sem marca deixa de ser alerta.",
     ]),
 ]
 
@@ -160,6 +160,10 @@ O reparo apaga entradas corrompidas: se o cartão já estava com erros, algum ar
 # Restaurar e atualizar
 "Restaurar de fábrica" do RetroArch apaga os seus ajustes (uma cópia fica guardada).
 Antes de atualizar o Omni36OS, copie a partição BOOT do cartão para o PC e veja em Tela e som > "Detalhes da tela" qual modelo escolher.
+
+# Primeiro boot
+Na primeira vez que liga, o Omni36OS acerta a tela sozinho: se aparecer "Está vendo esta tela?", aperte qualquer botão. Se a tela ficar apagada, não desligue: ele testa a próxima tela e reinicia sozinho (cada tentativa leva menos de um minuto). Se nenhuma for confirmada, volta tudo como estava.
+Para refazer depois, crie pelo PC o arquivo omni36os-tela/testar na partição BOOT do cartão.
 
 # Overclock
 Overclock é usar o chip acima do que a fábrica garante. Pode causar travamentos e, com o tempo, desgaste maior.
