@@ -937,7 +937,7 @@ class App:
         if cid == "controles":
             return [A("Testar o controle", "device-gamepad-2", self.open_pad),
                     tip(Choice("Inverter botões", "arrows-exchange", "inverter", ["desligado", "ligado"], SWAP_NAMES),
-                        "Ligado: A troca com B e X troca com Y, no Omni36OS, no PortMaster e nos ports."),
+                        "Ligado troca A com B e X com Y."),
                     subpage(A("Atalhos", "keyboard", lambda: self.open_page("atalhos")), "atalhos"),
                     A("Consertar atalhos", "tool", lambda: self.native("fix_hotkeys", "Reiniciando os atalhos..."),
                       confirm="Reiniciar o serviço de atalhos (brilho e volume pelos botões)?"),

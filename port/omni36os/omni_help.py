@@ -4,6 +4,9 @@ Linhas que começam com "# " viram títulos no leitor."""
 
 # A versão em uso vem do arquivo VERSION. Aqui fica só ela; o histórico completo está no NOVIDADES.md.
 NOVIDADES = [
+    ("1.11.11", "30/10/2026", [
+        "Texto de Inverter botões mais curto.",
+    ]),
     ("1.11.10", "30/10/2026", [
         "Textos do desbloqueio do overclock e da ajuda dos botões revisados.",
     ]),
@@ -93,7 +96,7 @@ A página mostra o IP e os comandos para o PC, e se atualiza sozinha. A rede USB
 
 # Controles
 "Testar o controle" mostra o R36S com cada botão aceso ao apertar, os gatilhos L2/R2 e a posição dos analógicos. Para sair, segure SELECT + START por 1 segundo (B também é testado).
-"Inverter botões": Ligado troca A com B e X com Y, no Omni36OS, no PortMaster e nos ports. Se o PortMaster se atualizar, a troca é refeita no próximo boot.
+"Inverter botões": Ligado troca A com B e X com Y.
 "Atalhos": combinações com o botão FN que valem dentro dos jogos (veja Atalhos abaixo).
 Botão de power: um toque abre Energia (Cancelar, Suspender, Reiniciar e Desligar); outro toque com o menu aberto desliga com segurança. FN + power desliga na hora, fechando o jogo e gravando tudo antes. Segurar o power por uns 8 s sempre desliga à força: isso é do chip de energia, não do Omni36OS. O botão de reset reinicia por hardware e não pode ser mudado.
 "Consertar atalhos" reinicia o serviço que cuida do brilho e do volume pelos botões.

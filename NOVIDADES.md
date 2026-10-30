@@ -2,6 +2,10 @@
 
 Histórico completo. Dentro do console (Geral > Sobre > Novidades) aparece só a versão em uso.
 
+## 1.11.11 (30/10/2026)
+
+- Inverter botões: dica e ajuda dizem só "Ligado troca A com B e X com Y."
+
 ## 1.11.10 (30/10/2026)
 
 - Textos sem menção ao sistema de base: aviso do Desbloquear overclock, ajuda de Controles (agora com Inverter botões) e o erro da troca de A e B.
