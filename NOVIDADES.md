@@ -2,6 +2,10 @@
 
 Histórico completo. Dentro do console (Geral > Sobre > Novidades) aparece só a versão em uso.
 
+## 1.11.4 (30/10/2026)
+
+- Fichas dos ports: Wikipédia como terceira camada (antes do DuckDuckGo). Busca na inglesa e só aceita a página com o nome do jogo (ou da série); a descrição vem da mesma página em português pelo link de idioma, com ano e imagem quando livres. Fichas incompletas são buscadas de novo uma vez.
+
 ## 1.11.3 (30/10/2026)
 
 - Fichas dos ports (`omni_meta.py`): DuckDuckGo como terceira camada, só quando PortMaster e Steam não trazem capa ou descrição. Capa pela busca de imagens (jpg/png, preferindo larga); descrição pela resposta instantânea, quando existe. Fichas incompletas antigas são buscadas de novo uma vez.

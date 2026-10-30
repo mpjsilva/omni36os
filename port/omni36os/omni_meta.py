@@ -3,7 +3,9 @@
 1. PortMaster: catálogo oficial dos ports (ports.json do PortMaster-New). Acha o port pelo
    .sh instalado e traz título, descrição, gêneros, quem portou, o que precisa e a imagem.
 2. Steam: a loja (a mesma base que o SteamDB mostra), sem chave. Descrição em pt-BR quando há.
-3. DuckDuckGo (último recurso): só quando as de cima não trouxeram capa ou descrição. A capa vem da
+3. Wikipédia: busca na inglesa e só aceita a página com o nome do jogo; a descrição vem da versão
+   em português da mesma página quando ela existe. Traz também o ano e uma imagem.
+4. DuckDuckGo (último recurso): só quando as de cima não trouxeram capa ou descrição. A capa vem da
    busca de imagens; a descrição, da resposta instantânea (quando o DuckDuckGo tem uma).
 
 Antes de tudo vale a pasta "info" do port (<pasta do port>/info/): info.json com os campos
@@ -86,7 +88,7 @@ def cached(name):
     except (OSError, ValueError):
         return None
     # ficha incompleta de antes do DuckDuckGo: busca de novo uma vez para ele completar
-    if not ("capa" in info and info.get("descricao")) and "ddg" not in info:
+    if not ("capa" in info and info.get("descricao")) and "wiki" not in info:
         return None
     return info
 
@@ -238,7 +240,52 @@ def steam(term):
             "img": d.get("header_image") or "", "steamdb": f"https://steamdb.info/app/{aid}/"}
 
 
-# --- 3. DuckDuckGo (último recurso) ---
+# --- 3. Wikipédia ---
+
+WIKI_UA = {"User-Agent": "Omni36OS/1.11 (https://github.com/mpjsilva/omni36os)"}   # a Wikimedia pede contato
+
+
+def _wiki_ok(title, term):
+    """A página é deste jogo? "Claw (video game)" serve para Claw; "Blobby Volley" para Blobby
+    Volley 2 (a série); listas e outros jogos parecidos não."""
+    t, k = _key(re.sub(r"\s*\((?:[^)]*\b)?(?:video )?game\)$", "", title, flags=re.I)), _key(term)
+    return t == k or (k.startswith(t) and k[len(t):].isdigit())
+
+
+def _wiki_get(lang, query):
+    return json.loads(_get(f"https://{lang}.wikipedia.org/w/api.php?" + urllib.parse.urlencode(
+        {**query, "format": "json"}), headers=WIKI_UA))
+
+
+def _wiki_summary(lang, title):
+    return json.loads(_get(f"https://{lang}.wikipedia.org/api/rest_v1/page/summary/"
+                           + urllib.parse.quote(title.replace(" ", "_")), headers=WIKI_UA))
+
+
+def wikipedia(term):
+    hits = _wiki_get("en", {"action": "query", "list": "search", "srsearch": f"{term} video game",
+                            "srlimit": 5})["query"]["search"]
+    title = next((h["title"] for h in hits if _wiki_ok(h["title"], term)), None)
+    if not title:
+        return None
+    en = _wiki_summary("en", title)
+    out = {"nome": term, "descricao": en.get("extract", "")}
+    year = re.search(r"\b(19[7-9]\d|20[0-4]\d)\b", en.get("description", "") + " " + out["descricao"][:120])
+    if year:
+        out["lancamento"] = year.group(1)
+    img = (en.get("originalimage") or en.get("thumbnail") or {}).get("source", "")
+    if re.search(r"\.(jpe?g|png)$", img, re.I):
+        out["img"] = img
+    pages = _wiki_get("en", {"action": "query", "prop": "langlinks", "lllang": "pt", "titles": title})["query"]["pages"]
+    pt = next((ll["*"] for p in pages.values() for ll in p.get("langlinks", [])), None)
+    if pt:                            # a mesma página em português: a descrição vem dela
+        ext = _wiki_summary("pt", pt).get("extract", "")
+        if ext:
+            out["descricao"] = ext
+    return out
+
+
+# --- 4. DuckDuckGo (último recurso) ---
 
 DDG = "https://duckduckgo.com"
 DDG_UA = {"User-Agent": "Mozilla/5.0 (X11; Linux aarch64) Omni36OS"}   # sem cara de navegador ele recusa
@@ -282,6 +329,12 @@ def fetch(name, path=""):
     term = (pm or {}).get("titulo") or _norm(name)
     info, descs, imgs = {}, [], []
     layers = [("PortMaster", pm), ("Steam", steam(term))]
+    if not any((d or {}).get("img") for _, d in layers) or not any(_pt((d or {}).get("descricao")) for _, d in layers):
+        try:                          # sem capa ou sem descrição em português: a Wikipédia completa
+            layers.append(("Wikipédia", wikipedia(term)))
+            info["wiki"] = True
+        except (OSError, ValueError, KeyError):
+            pass
     if not any((d or {}).get("img") for _, d in layers) or not any((d or {}).get("descricao") for _, d in layers):
         try:                          # faltou capa ou descrição: o DuckDuckGo completa
             layers.append(("DuckDuckGo", ddg(term, not any((d or {}).get("img") for _, d in layers),
@@ -307,7 +360,7 @@ def fetch(name, path=""):
         info["descricao"] = next((t for t in descs if _pt(t)), descs[0])
     os.makedirs(CACHE, exist_ok=True)
     js, jpg = paths(name)
-    prio = {"Steam": 0, "PortMaster": 1, "DuckDuckGo": 2}
+    prio = {"Steam": 0, "PortMaster": 1, "Wikipédia": 2, "DuckDuckGo": 3}
     for _, url in sorted(imgs, key=lambda i: prio[i[0]]):   # capa: Steam (larga), PortMaster, DuckDuckGo
         try:
             with open(jpg, "wb") as f:
