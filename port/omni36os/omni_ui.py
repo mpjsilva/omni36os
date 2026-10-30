@@ -902,11 +902,7 @@ class App:
                     tip(A("Desmontar pendrive", "x", lambda: self.native("usb_umount", "Desmontando..."))
                         if mounted else
                         A("Montar pendrive", "plug", lambda: self.native("usb_mount", "Montando o pendrive...")),
-                        "Termina de gravar e solta o pendrive montado. Use antes de tirar do console." if mounted else
-                        "Lê um pendrive ligado no console (OTG) em /mnt/usbdrive. Aceita FAT, exFAT e NTFS. "
-                        "É o contrário do modo pendrive."),
-                    tip(A("Estado do pendrive", "info-circle", self.pendrive_info),
-                        "Diz se o pendrive ligado na porta OTG foi reconhecido, qual é e se já está montado."),
+                        self.pendrive_tip(mounted)),
                     tip(tagged(A("Limpar lixo do Mac", "x", lambda: self.do_action("limpar_mac", "Procurando o lixo do Mac... (até 1 minuto)"),
                                  confirm="Apagar os arquivos ._ e .DS_Store que o Mac cria?\nSeus jogos não são tocados."),
                                "limpar_mac"),
@@ -1202,26 +1198,24 @@ class App:
         omni.write_text(omni.HANDOFF, f"tool:ferramentas:{t['path']}")
         self.running = False          # o launch-direct.sh roda o programa e reabre o Omni36OS
 
-    def pendrive_info(self):
-        def fake():
-            time.sleep(0.6)
-            return ("Reconhecido: SanDisk Cruzer Blade, 29.8 GB, VFAT.\nMontado em /mnt/usbdrive: 21.4 GB livres. "
-                    "Desmonte antes de tirar." if getattr(self, "fake_usb", False) else
-                    "Nenhum pendrive reconhecido.\nConfira se ele está na porta OTG (com adaptador, se precisar) e "
-                    "tente de novo. Pendrives que pedem muita energia podem não ligar no R36S.")
-
-        def done(res):
-            txt = f"Erro: {res}" if isinstance(res, Exception) else str(res)
-            ok = txt.startswith("Reconhecido")
-            self.modal = {"title": "Estado do pendrive", "icon": "check" if ok else "alert-triangle",
-                          "buttons": ["OK"], "sel": 0, "text": txt}
-        self.worker(fake if FAKE else (lambda: omni_tools.run_native("pendrive_status")), done, busy="Procurando...")
+    def pendrive_tip(self, mounted):
+        """Dica de Montar/Desmontar = o estado do pendrive (reconhecido ou não). Relida a cada abertura."""
+        if FAKE:
+            return ("Pendrive reconhecido: SanDisk Cruzer Blade, 29.8 GB, VFAT. Montado em /mnt/usbdrive, 21.4 GB "
+                    "livres. Desmonte antes de tirar." if mounted else
+                    "Nenhum pendrive reconhecido. Confira se ele está na porta OTG (com adaptador, se precisar); "
+                    "pendrives que pedem muita energia podem não ligar no R36S.")
+        try:
+            return omni_tools.pendrive_status()
+        except Exception:
+            return "Lê um pendrive ligado na porta OTG em /mnt/usbdrive. Aceita FAT, exFAT e NTFS."
 
     def native(self, name, busy="Fazendo..."):
         """Ferramenta reescrita em Python (omni_tools.NATIVE): roda aqui e mostra o resultado."""
         if FAKE and name in ("usb_mount", "usb_umount"):
             self.fake_usb = name == "usb_mount"
-        fn = (lambda: "teste") if FAKE else (lambda: omni_tools.run_native(name))
+        fake = {"usb_mount": "Pendrive (vfat) montado em /mnt/usbdrive", "usb_umount": "Pendrive desmontado: pode tirar"}
+        fn = (lambda: fake.get(name, "teste")) if FAKE else (lambda: omni_tools.run_native(name))
         self.worker(fn, self._sys_done, busy=busy)
 
     def _sys_done(self, res):

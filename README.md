@@ -35,7 +35,7 @@ boot (logo.bmp = frame 0 de "Carregando")
 | **Controles** | Testar o controle (sair segurando SELECT+START), subpágina **Atalhos**, Botão de power, Consertar atalhos (reinicia o `ogage`) |
 | **Bateria** | Carga, brilho e modo do processador. Subpágina **Calibrar a bateria** (`/usr/local/etc/battery-cal`) |
 | **Desempenho** | No menu, CPU/GPU/memória sempre no mínimo (`relax_clocks`: powersave). Limites de CPU/GPU (valem nos ports), **Memória extra (zram)** 0/256/512/768 MB, Liberar overclock |
-| **Armazenamento** | Origem dos jogos (ROMS, ROMS2 ou ROMS e ROMS2), Cartão 1 / Cartão 2 no painel, detalhe do(s) cartão(ões) com teste de velocidade, modo pendrive (+ partição no PC), montar/desmontar pendrive, estado do pendrive (reconhecido ou não), limpar lixo do Mac; por último as ações que reiniciam: verificar e reparar, restaurar boot |
+| **Armazenamento** | Origem dos jogos (ROMS, ROMS2 ou ROMS e ROMS2), Cartão 1 / Cartão 2 no painel, detalhe do(s) cartão(ões) com teste de velocidade, modo pendrive (+ partição no PC), montar/desmontar pendrive (a dica diz se o pendrive foi reconhecido), limpar lixo do Mac; por último as ações que reiniciam: verificar e reparar, restaurar boot |
 | **Ferramentas** | Arquivos, subpágina **Testar ports** (15 s; causa provável e "Corrigir e testar de novo", `omni_ports_fix.py`), PortMaster, 351Files |
 | **Geral** | Nome do jogador, subpáginas **Segurança** e **Backup**, Procurar atualização / Voltar à versão anterior, **Verificar tudo** (resumo dos avisos de todos os cards), **Sobre** (Manual, Cuidados, Novidades, Créditos), Redefinir o sistema (último) |
 

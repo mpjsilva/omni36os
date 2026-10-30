@@ -43,28 +43,29 @@ def usb_umount(_a=None):
 
 
 def pendrive_status(_a=None):
-    """Estado do pendrive (Armazenamento): reconhecido ou não, e se está montado para usar."""
-    if omni.usb_facts()["modo_pendrive_ligado"]:
-        return ("Não reconhecido: o modo pendrive está ligado.\nNesse modo a porta OTG fica com o PC e não lê "
-                "pendrives. Desligue o modo pendrive para usar um.")
+    """Estado do pendrive, na dica de Montar/Desmontar (Armazenamento): reconhecido ou não, e qual é."""
+    try:
+        if omni.usb_facts()["modo_pendrive_ligado"]:
+            return "Não reconhecido: com o modo pendrive ligado, a porta OTG fica com o PC e não lê pendrives."
+    except OSError:
+        pass
     out = subprocess.run(["lsblk", "-dnro", "NAME,TRAN,SIZE,VENDOR,MODEL"], capture_output=True, text=True).stdout
     disks = [l.split(None, 4) for l in out.splitlines() if l.split()[1:2] == ["usb"]]
     if not disks:
-        return ("Nenhum pendrive reconhecido.\nConfira se ele está na porta OTG (com adaptador, se precisar) e "
-                "tente de novo. Pendrives que pedem muita energia podem não ligar no R36S.")
+        return ("Nenhum pendrive reconhecido. Confira se ele está na porta OTG (com adaptador, se precisar); "
+                "pendrives que pedem muita energia podem não ligar no R36S.")
     name, _tran, size, *rest = disks[0] + [""] * 2
     label = " ".join(x.replace("\\x20", " ").strip() for x in rest if x).strip() or "Pendrive"
-    mounted = os.path.ismount("/mnt/usbdrive")
-    fs = subprocess.run(["lsblk", "-no", "FSTYPE", f"/dev/{name}1"], capture_output=True, text=True).stdout.strip()
     size = size.replace(",", ".").replace("G", " GB").replace("M", " MB")
-    txt = f"Reconhecido: {label}, {size}" + (f", {fs.upper()}" if fs else "") + "."
-    if mounted:
-        u = shutil.disk_usage("/mnt/usbdrive")
-        return txt + f"\nMontado em /mnt/usbdrive: {u.free / 1e9:.1f} GB livres. Desmonte antes de tirar."
-    return txt + "\nAinda não está montado: use \"Montar pendrive\" para ver os arquivos."
+    fs = subprocess.run(["lsblk", "-no", "FSTYPE", f"/dev/{name}1"], capture_output=True, text=True).stdout.strip()
+    txt = f"Pendrive reconhecido: {label}, {size}" + (f", {fs.upper()}" if fs else "") + "."
+    if os.path.ismount("/mnt/usbdrive"):
+        return txt + f" Montado em /mnt/usbdrive, {shutil.disk_usage('/mnt/usbdrive').free / 1e9:.1f} GB livres. " \
+                     "Desmonte antes de tirar."
+    return txt + " Aperte A para montar em /mnt/usbdrive (FAT, exFAT ou NTFS)."
 
 
-NATIVE = {"fix_hotkeys": fix_hotkeys, "pendrive_status": pendrive_status, "usb_mount": usb_mount, "usb_umount": usb_umount}
+NATIVE = {"fix_hotkeys": fix_hotkeys, "usb_mount": usb_mount, "usb_umount": usb_umount}
 
 # Programas de tela cheia que continuam fora do launcher (o resto virou subpágina:
 # ver omni_sistema.py). Abrem pelo handoff tool: do launch-direct.sh.
