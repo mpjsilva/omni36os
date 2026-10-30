@@ -1955,7 +1955,7 @@ class App:
         here = omni_musica.roots() if not FAKE else [(os.environ.get("OMNI_MUSICAS", "/tmp/omni36os-musicas"), "Cartão 1")]
         self.music = {"mode": "lista", "stack": [] if len(here) != 1 else [here[0]], "roots": here, "rows": [],
                       "sel": 0, "top": 0.0, "spec": [0.0] * omni_musica.BANDS, "peaks": [0.0] * omni_musica.BANDS,
-                      "vis": cfg["vis"], "vis_t": -9.0, "last": self.t, "off": False, "phase": 0.0,
+                      "vis": cfg["vis"], "last": self.t, "off": False, "phase": 0.0,
                       "player": getattr(self, "music_player", None)}
         if not self.music["player"]:
             self.music["player"] = self.music_player = omni_musica.Player(gfx.sdl)
@@ -2034,7 +2034,7 @@ class App:
             elif cmd == "y":
                 order = list(VIS_NAMES)
                 m["vis"] = order[(order.index(m["vis"]) + 1) % len(order)]
-                m["vis_t"] = self.t
+                self.toast = (VIS_NAMES[m["vis"]], "ok", self.t + 2)
                 music_save(vis=m["vis"])
             elif cmd in ("back", "x"):
                 m["mode"] = "lista"
@@ -2079,6 +2079,7 @@ class App:
             self.draw_playing(dt, a1, a2)
         else:
             self.draw_music_list(dt, a1, a2)
+        self.draw_status()
 
     def draw_music_list(self, dt, a1, a2):
         g, m, pl = self.g, self.music, self.music["player"]
@@ -2086,7 +2087,7 @@ class App:
         g.icon("music", 30, 30, 24, ON_TEXT)
         where = " / ".join(n for _, n in m["stack"]) or "Escolha o cartão"
         g.text("Bold", 22, "Músicas", 74, 22, TEXT)
-        g.text("Regular", 12, where[-60:], 75, 49, MUTED)
+        g.text("Regular", 12, where[-34:], 75, 49, MUTED)
         cur = pl.current()
         bot = 370 if cur else 426
         rows, rh, ly = m["rows"], 36, 80
@@ -2170,7 +2171,7 @@ class App:
         spec = self.music_spectrum()
         bass = sum(spec[:3]) / 3
         m["phase"] += dt * (0.6 + 2.5 * bass)
-        top, vh = 30, 262                    # área da visualização
+        top, vh = 62, 232                    # área da visualização (embaixo da pílula de estado)
         vis = m["vis"]
         if vis == "barras":
             n, x0, w = len(spec) * 2, 40, W - 80
@@ -2229,12 +2230,6 @@ class App:
             if not (art and g.picture(art, 40, top + 4, W - 80, vh - 8)):
                 g.rrect(W / 2 - 80, top + vh / 2 - 80, 160, 160, 32, a1, a2)
                 g.icon("music", W / 2 - 36, top + vh / 2 - 36, 72, ON_TEXT)
-        if self.t - m["vis_t"] < 1.6:          # nome da visualização ao trocar
-            k = min(1.0, (1.6 - (self.t - m["vis_t"])) / 0.4)
-            label = VIS_NAMES[m["vis"]]
-            tw = g.measure("SemiBold", 13, label)[0] + 28
-            g.rrect(W / 2 - tw / 2, 40, tw, 30, 15, alpha(GLASS, 200 * k))
-            g.text("SemiBold", 13, label, W / 2, 55, alpha(TEXT, 255 * k), "c", "m")
         # música, artista e tempo
         g.text("Bold", 20, cur[1][:40], W / 2, 314, TEXT, "c")
         sub = cur[2] or os.path.basename(os.path.dirname(cur[0]))
@@ -3447,7 +3442,14 @@ class App:
         # marca
         g.image("logo-64", 22, 18, 30, smooth=True)
         g.text("Bold", 20, "Omni36OS", 62, 18, TEXT)
-        # pílula de estado
+        self.draw_status()
+
+    def draw_status(self):
+        """Pílula de estado (Wi-Fi, volume, bateria, temperatura e hora), no canto de cima."""
+        g = self.g
+        if self.t - self.status_at > 5 and getattr(self, "music", None):
+            self.status, self.status_at = D.status(), self.t
+        s = self.status
         hora = time.strftime("%H:%M")
         bat = f"{s['bat']}%"
         temp = f"{s['temp']}°"
@@ -4171,7 +4173,10 @@ class App:
                     else:
                         self.handle(cmd)
                 self.frame(dt)
-                if self.want_shot:
+                if self.want_shot and getattr(self, "music", None) and self.music["off"]:
+                    self.music_screen(True)       # tela apagada no tocador: acende e grava no próximo quadro
+                    self.music["last"] = self.t
+                elif self.want_shot:
                     self.want_shot = False
                     self.save_shot()
                 self.g.present()

@@ -2,6 +2,10 @@
 
 Histórico completo. Dentro do console (Geral > Sobre > Novidades) aparece só a versão em uso.
 
+## 1.12.4 (30/10/2026)
+
+- Músicas: a pílula de estado (Wi-Fi, volume, bateria, temperatura e hora) aparece no tocador, o nome da visualização usa o aviso do sistema, e a captura (FN) acende a tela apagada antes de gravar.
+
 ## 1.12.3 (30/10/2026)
 
 - Músicas: se o launcher reiniciar com a tela apagada, a luz da tela volta sozinha.
