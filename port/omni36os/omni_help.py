@@ -4,6 +4,9 @@ Linhas que começam com "# " viram títulos no leitor."""
 
 # A versão em uso vem do arquivo VERSION. Aqui fica só ela; o histórico completo está no NOVIDADES.md.
 NOVIDADES = [
+    ("1.15.3", "30/10/2026", [
+        "Créditos completos em Geral > Sobre: sistemas base, PortMaster, gptokeyb, ogage, 351Files, File Browser, BatteryPlus, SDL2, FFmpeg, fontes, ícones, fontes de dados e a comunidade do R36S, com os links.",
+    ]),
     ("1.15.2", "30/10/2026", [
         "Desligar e reiniciar: a tela de despedida aparece direto, sem piscar o menu ou a boas-vindas antes.",
     ]),
@@ -289,19 +292,33 @@ Desligue pelo menu Energia (botão de power), nunca segurando o power: pelo menu
 Para fechar um port travado, use SELECT + START (segure 1 s) antes de pensar em desligar à força."""
 
 CREDITOS = """# Omni36OS
-Sistema só de ports para o R36S, feito por mpjsilva.
+Sistema só de ports para o R36S, feito por mpjsilva, com a ajuda do Claude (Anthropic) no desenvolvimento. github.com/mpjsilva/omni36os
 
-# Projetos usados como base
-ArkOS, de christianhaitian: o sistema original do R36S e de vários portáteis RK3326. github.com/christianhaitian/arkos
+# Sistemas usados como base
+ArkOS, de christianhaitian: o sistema original do R36S e de vários portáteis RK3326, com o kernel, o ogage e os scripts de sistema. github.com/christianhaitian/arkos
 dArkOS, de christianhaitian: o ArkOS sobre Debian. github.com/christianhaitian/dArkOS
-dArkOSen, de djparent: a imagem usada como base do Omni36OS, e a ferramenta de calibração da bateria e o patch do DTB que o Omni36OS reescreveu. github.com/djparentx
-PortMaster: a loja de ports. github.com/PortsMaster/PortMaster-GUI
+dArkOSen, de djparentx: a imagem usada como base do Omni36OS, com o catálogo de telas dos modelos R36, a ferramenta de calibração da bateria (que o Omni36OS reescreveu), o patch do DTB e o desligamento seguro. github.com/djparentx/dArkOSen-R36S
 
-# Bibliotecas
+# Ports e ferramentas
+PortMaster e sua comunidade: a loja de ports, os ports e os dados dos jogos. github.com/PortsMaster/PortMaster-GUI
+gptokeyb: o controle como teclado e mouse nos ports. github.com/PortsMaster/gptokeyb
+ogage: as teclas de atalho do sistema. github.com/christianhaitian/ogage
+351Files: gerenciador de arquivos de tela cheia. github.com/351ELEC/351Files
+File Browser: o navegador de arquivos pela rede. github.com/filebrowser/filebrowser
+BatteryPlus, de Mikhailzrick. github.com/Mikhailzrick/knubat.components
+
+# Bibliotecas e programas livres
+SDL2, SDL2_ttf, SDL2_image e SDL2_mixer, licença zlib: tela, controles, fontes, imagens e músicas. libsdl.org
+FFmpeg, licença LGPL/GPL: os vídeos. ffmpeg.org
+Debian, Linux, NetworkManager, Samba, systemd e todo o software livre por baixo.
 Fonte Poppins, licença OFL: github.com/itfoundry/Poppins
 Ícones Tabler, licença MIT: github.com/tabler/tabler-icons
-SDL2 e SDL2_mixer, licença zlib: tela, controles e músicas. libsdl.org
-FFmpeg, licença LGPL/GPL: os vídeos. ffmpeg.org"""
+
+# Dados da biblioteca
+Steam (capas e descrições), Wikipédia (descrições em português; texto sob CC BY-SA 4.0) e DuckDuckGo (imagens quando as outras fontes não têm).
+
+# Comunidade
+A comunidade do R36S, que documenta modelos, telas, clones e consertos e torna este projeto possível. Obrigado!"""
 
 
 def novidades_text():
