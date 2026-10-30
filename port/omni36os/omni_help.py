@@ -41,7 +41,7 @@ A ficha vem da pasta info do port (info.json, imagem e .txt), e depois do PortMa
 "Tema": escuro ou claro, vale na hora e fica salvo.
 Brilho: a luz da tela.
 Contraste: barra de 0 a 100% (50% é o normal, gamma 1.0); acima de 50% a imagem fica mais contrastada, abaixo mais clara. Vale na hora e fica salvo para o boot; as teclas de atalho de gamma do sistema continuam a partir do valor escolhido.
-Volume: o som do console. "Restaurar áudio" conserta o som quando ele some ou sai pelo lugar errado: põe de volta o arquivo de som do sistema (.asoundrc), aponta a saída para o lugar certo e deixa o volume em 40%.
+Volume: o som do console. O último volume fica salvo: ao ligar, o console volta com ele (antes voltava sempre em 40%). "Restaurar áudio" conserta o som quando ele some ou sai pelo lugar errado: põe de volta o arquivo de som do sistema (.asoundrc), aponta a saída para o lugar certo e deixa o volume em 40%.
 A saída de som é automática: com o fone encaixado, o som sai só no fone; sem ele, só no alto-falante. A troca acontece na hora e vale também no boot e depois de um jogo que mexa no som.
 Cor do LED: verde ou vermelho, também no boot. Com a bateria em 10% ou menos, o LED pisca.
 "Detalhes da tela" mostra o modelo da sua tela, diz qual opção escolher no SELECT MODEL ao atualizar o Omni36OS e avisa se o aparelho é um clone.
