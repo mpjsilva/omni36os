@@ -14,12 +14,15 @@ import time
 LETTERS = ["1234567890", "qwertyuiop", "asdfghjkl-", "zxcvbnm_.@"]
 SYMBOLS = ["1234567890", "!?@#$%&*()", "+-=/\\:;'\"_", ",.<>[]{}~|"]
 BOTTOM = ["shift", "espaço", "apagar", "OK"]
+BOTTOM_TEXT = ["shift", "espaço", "Enter", "apagar", "OK"]    # texto de várias linhas (bloco de notas)
+WEIGHT = {"shift": 1, "espaço": 3, "Enter": 1.5, "apagar": 1, "OK": 2}
 DOUBLE = 0.45                    # segundos entre dois toques na tecla de maiúsculas para travar
 
 
 class Teclado:
-    def __init__(self, value="", secret=False, limit=64):
-        self.value, self.secret, self.limit = value, secret, limit
+    def __init__(self, value="", secret=False, limit=64, multiline=False):
+        self.value, self.secret, self.limit, self.multiline = value, secret, limit, multiline
+        self.pos = len(value)        # onde o próximo caractere entra (no fim, a não ser que mude de linha)
         self.r, self.c = 1, 0
         self.symbols = False
         self.shift = "off"       # "off", "once" (só a próxima letra) ou "lock"
@@ -32,8 +35,8 @@ class Teclado:
         """Maiúscula automática no começo do campo e de cada frase (nunca em senha, nem travada)."""
         if self.shift == "lock":
             return
-        v = self.value
-        start = not v.strip() or v.rstrip(" ") != v and v.rstrip(" ")[-1:] in ".!?"
+        v = self.value[:self.pos].rstrip(" ")
+        start = not v.strip() or v.endswith("\n") or v != self.value[:self.pos] and v[-1:] in ".!?"
         self.shift = "once" if start and not self.secret else "off"
 
     def pages(self):
@@ -43,7 +46,14 @@ class Teclado:
         """As linhas como aparecem agora (a última é a de baixo: maiúsculas, espaço, apagar, OK)."""
         up = self.shift != "off" and not self.symbols
         out = [list(row.upper() if up and r else row) for r, row in enumerate(self.pages())]
-        return out + [BOTTOM]
+        return out + [BOTTOM_TEXT if self.multiline else BOTTOM]
+
+    def widths(self, row, last, total, gap):
+        """Larguras das teclas de uma linha (a última tem teclas largas)."""
+        if not last:
+            return [(total - gap * (len(row) - 1)) / len(row)] * len(row)
+        unit = (total - gap * (len(row) - 1)) / sum(WEIGHT[k] for k in row)
+        return [unit * WEIGHT[k] for k in row]
 
     def shift_label(self):
         if self.symbols:
@@ -58,13 +68,20 @@ class Teclado:
     def type(self, ch):
         if len(self.value) >= self.limit:
             return
-        self.value += ch
+        self.value = self.value[:self.pos] + ch + self.value[self.pos:]
+        self.pos += len(ch)
         if self.shift == "once":
             self.shift = "off"
         self.auto()
 
     def backspace(self):
-        self.value = self.value[:-1]
+        if self.pos:
+            self.value = self.value[:self.pos - 1] + self.value[self.pos:]
+            self.pos -= 1
+        self.auto()
+
+    def set_pos(self, pos):
+        self.pos = max(0, min(len(self.value), pos))
         self.auto()
 
     def press_shift(self):
@@ -121,6 +138,8 @@ class Teclado:
                 self.press_shift()
             elif key == "espaço":
                 self.type(" ")
+            elif key == "Enter":
+                self.type("\n")
             elif key == "apagar":
                 self.backspace()
             elif key == "OK":

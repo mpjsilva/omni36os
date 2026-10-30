@@ -1477,11 +1477,20 @@ class App:
         maiúsculas, Start confirma, Select cancela. locked: tela da trava (não dá para cancelar; o power
         abre Energia). texto: linhas longas (bloco de notas)."""
         self.kbd = {"title": title, "fn": on_done, "hint": hint, "locked": locked,
-                    "tk": omni_teclado.Teclado(value, secret, 500 if texto else 64)}
+                    "tk": omni_teclado.Teclado(value, secret, self.NOTE_LIMIT if texto else 64, multiline=texto)}
+
+    KBD_FIELD_W = W - 32 - 72             # largura do texto no campo de várias linhas
 
     def kbd_input(self, cmd):
         k = self.kbd
-        res = k["tk"].input(cmd)
+        tk = k["tk"]
+        if tk.multiline and cmd in ("l1", "r1"):      # cursor para o fim da linha de cima ou de baixo
+            spans = self.text_spans(tk.value, self.KBD_FIELD_W, "Medium", 15)
+            cur = next((i for i, (a, b) in enumerate(spans) if a <= tk.pos <= b), len(spans) - 1)
+            nxt = max(0, min(len(spans) - 1, cur + (1 if cmd == "r1" else -1)))
+            tk.set_pos(spans[nxt][1])
+            return
+        res = tk.input(cmd)
         if res == "cancel" and not k.get("locked"):   # travado: nada (Energia é pelo botão de power)
             self.kbd = None
         elif res == "ok":
@@ -1496,32 +1505,34 @@ class App:
             self.draw_bg(dt)
         else:
             g.rrect(0, 0, W, H, 0, (5, 7, 20, 190), feather=0)
-        mx, my, mw, mh = 40, 40, W - 80, H - 80
+        multi = tk.multiline
+        mx, my, mw, mh = (16, 12, W - 32, H - 24) if multi else (40, 40, W - 80, H - 80)
         g.rrect(mx, my, mw, mh, 22, MODAL_A, MODAL_B)
         g.stroke(mx, my, mw, mh, 22, ink(25))
-        g.rrect(mx + 20, my + 16, 36, 36, 12, a1, a2)
-        g.icon("lock" if k.get("locked") else "keyboard", mx + 28, my + 24, 20, ON_TEXT)
-        g.text("Bold", 17, k["title"], mx + 68, my + 23, TEXT)
-        # campo
-        shown = "•" * len(tk.value) if tk.secret else tk.value
-        g.rrect(mx + 20, my + 64, mw - 40, 40, 12, ink(16))
-        g.stroke(mx + 20, my + 64, mw - 40, 40, 12, alpha(a1, 160))
-        while shown and g.measure("SemiBold", 17, shown)[0] > mw - 80:
-            shown = shown[1:]
-        tw = g.text("SemiBold", 17, shown, mx + 34, my + 84.5, TEXT, "l", "m") if shown else 0
-        if int(self.t * 2) % 2 == 0:
-            g.rrect(mx + 36 + tw, my + 74, 2, 21, 1, a1)
-        if k["hint"] and not tk.value:
-            g.text("Regular", 13, k["hint"], mx + 44, my + 84.5, FAINT, "l", "m")
+        g.rrect(mx + 20, my + 14, 32, 32, 10, a1, a2) if multi else g.rrect(mx + 20, my + 16, 36, 36, 12, a1, a2)
+        g.icon("notes" if multi else "lock" if k.get("locked") else "keyboard", mx + 26 if multi else mx + 28,
+               my + 20 if multi else my + 24, 20, ON_TEXT)
+        g.text("Bold", 17, k["title"], mx + 64 if multi else mx + 68, my + 19 if multi else my + 23, TEXT)
+        if multi:
+            ky = self.draw_kbd_page(tk, mx, my, mw, a1)
+        else:
+            ky = None
+        if not multi:                     # campo de uma linha
+            shown = "•" * len(tk.value) if tk.secret else tk.value
+            g.rrect(mx + 20, my + 64, mw - 40, 40, 12, ink(16))
+            g.stroke(mx + 20, my + 64, mw - 40, 40, 12, alpha(a1, 160))
+            while shown and g.measure("SemiBold", 17, shown)[0] > mw - 80:
+                shown = shown[1:]
+            tw = g.text("SemiBold", 17, shown, mx + 34, my + 84.5, TEXT, "l", "m") if shown else 0
+            if int(self.t * 2) % 2 == 0:
+                g.rrect(mx + 36 + tw, my + 74, 2, 21, 1, a1)
+            if k["hint"] and not tk.value:
+                g.text("Regular", 13, k["hint"], mx + 44, my + 84.5, FAINT, "l", "m")
         # teclas
-        ky, kh, gap = my + 120, 36, 7
+        ky, kh, gap = (ky, 31, 6) if multi else (my + 120, 36, 7)
         rows = tk.rows()
         for r, row in enumerate(rows):
-            if r < len(rows) - 1:
-                ws = [(mw - 40 - gap * (len(row) - 1)) / len(row)] * len(row)
-            else:
-                unit = (mw - 40 - gap * (len(row) - 1)) / 7
-                ws = [unit, unit * 3, unit, unit * 2]
+            ws = tk.widths(row, r == len(rows) - 1, mw - 40, gap)
             x = mx + 20
             for c, key in enumerate(row):
                 on = r == tk.r and c == tk.c
@@ -1537,11 +1548,40 @@ class App:
                     g.rrect(x + ws[c] / 2 - 10, ky + kh - 7, 20, 3, 1.5, ON_TEXT if on else a1)
                 x += ws[c] + gap
             ky += kh + gap
-        self.draw_footer_at(my + mh - 30, [("A", "Digitar", TEXT), ("B", "Apagar", TEXT),
-                                           ("X", "Letras" if tk.symbols else "Símbolos", TEXT),
-                                           ("Y", "Caps", TEXT), ("START", "OK", TEXT),
-                                           *([] if k.get("locked") else [("SELECT", "Cancelar", TEXT)])],
-                            center=W / 2)
+        if multi:
+            hints = [("B", "Apagar", TEXT), ("X", "Letras" if tk.symbols else "Símbolos", TEXT), ("Y", "Caps", TEXT),
+                     ("L1/R1", "Linha", TEXT), ("START", "Salvar", TEXT), ("SELECT", "Sair", TEXT)]
+        else:
+            hints = [("A", "Digitar", TEXT), ("B", "Apagar", TEXT), ("X", "Letras" if tk.symbols else "Símbolos", TEXT),
+                     ("Y", "Caps", TEXT), ("START", "OK", TEXT),
+                     *([] if k.get("locked") else [("SELECT", "Cancelar", TEXT)])]
+        self.draw_footer_at(my + mh - 28, hints, center=W / 2)
+
+    def draw_kbd_page(self, tk, mx, my, mw, a1):
+        """Campo de várias linhas (bloco de notas): o texto quebra na largura e sobe como numa máquina
+        de escrever, sempre com a linha do cursor à vista. Devolve onde as teclas começam."""
+        g = self.g
+        fy, lines, lh = my + 54, 5, 22
+        g.rrect(mx + 20, fy, mw - 40, lines * lh + 16, 12, ink(16))
+        g.stroke(mx + 20, fy, mw - 40, lines * lh + 16, 12, alpha(a1, 160))
+        text = tk.value
+        spans = self.text_spans(text, self.KBD_FIELD_W, "Medium", 15)
+        cur = next((i for i, (a, b) in enumerate(spans) if a <= tk.pos <= b), len(spans) - 1)
+        top = max(0, min(cur - (lines - 1), len(spans) - lines))   # o cursor fica na última linha à vista
+        if cur < top:
+            top = cur
+        for k in range(top, min(len(spans), top + lines)):
+            a, b = spans[k]
+            y = fy + 8 + (k - top) * lh
+            g.text("Medium", 15, text[a:b], mx + 34, y, TEXT)
+            if k == cur and int(self.t * 2) % 2 == 0:
+                cx = mx + 35 + g.measure("Medium", 15, text[a:tk.pos])[0]
+                g.rrect(cx, y + 1, 2, 19, 1, a1)
+        if len(spans) > lines:
+            g.text("Regular", 11, f"linha {cur + 1} de {len(spans)}", mx + mw - 30, fy + lines * lh + 22, FAINT, "r")
+        if not text:
+            g.text("Regular", 13, "Escreva a nota. Enter começa uma linha nova.", mx + 44, fy + 8 + 10, FAINT, "l", "m")
+        return fy + lines * lh + 40
 
     def _hint_glyph_w(self, letter):
         if letter in ("A", "B", "X", "Y"):
@@ -2242,7 +2282,7 @@ class App:
             path = os.path.join(self.notes_dir(), name + ".txt")
             if not os.path.exists(path):
                 self.note_write(path, "")
-            self.open_note(path)
+            self.open_note(path, edit=True)
         self.keyboard("Nome da nota", create, hint="Ex.: senhas do wifi, dicas")
 
     def note_delete(self, r):
@@ -2270,7 +2310,10 @@ class App:
             except OSError:
                 pass
 
-    def open_note(self, path):
+    NOTE_LIMIT = 20000                    # caracteres que o editor aceita
+
+    def open_note(self, path, edit=False):
+        """A nota inteira para ler (cima/baixo rolam, L1/R1 pulam a página); A edita a nota toda."""
         try:
             if os.path.getsize(path) > 256 * 1024:
                 self.toast = ("Texto grande demais para o bloco de notas", "aviso", self.t + 3.5)
@@ -2280,48 +2323,76 @@ class App:
         except OSError as e:
             self.toast = (f"Não consegui abrir: {e.strerror}", "problema", self.t + 3.5)
             return
-        self.note = {"path": path, "lines": text.split("\n"), "sel": 0, "top": 0.0,
+        self.note = {"path": path, "text": text, "top": 0, "scroll": 0.0,
                      "notes": path.startswith(self.notes_dir() + "/")}
+        if edit:
+            self.note_edit()
 
     def note_save(self):
         n = self.note
         try:
-            self.note_write(n["path"], "\n".join(n["lines"]))
+            self.note_write(n["path"], n["text"])
         except OSError as e:
             self.toast = (f"Não consegui salvar: {e.strerror}", "problema", self.t + 3.5)
 
-    def note_edit(self, i):
+    def note_edit(self):
+        """A nota toda no teclado, como numa máquina de escrever: o texto sobe quando a linha enche.
+        L1/R1 levam o cursor para a linha de cima ou de baixo; START salva, SELECT desiste."""
         n = self.note
+        if len(n["text"]) > self.NOTE_LIMIT:
+            self.toast = ("Nota grande demais para editar aqui: edite pelo PC", "aviso", self.t + 3.5)
+            return
 
         def done(val):
-            n["lines"][i] = val
+            n["text"] = val
             self.note_save()
-        self.keyboard(f"Linha {i + 1}", done, value=n["lines"][i], texto=True)
+            self.toast = ("Nota salva", "ok", self.t + 2)
+        name = os.path.splitext(os.path.basename(n["path"]))[0] if n["notes"] else os.path.basename(n["path"])
+        self.keyboard(name, done, value=n["text"], texto=True)
+
+    def text_spans(self, text, width, weight="Regular", size=14):
+        """Quebra o texto em linhas que cabem em `width`: [(início, fim)] em índices do texto.
+        O fim não inclui o espaço onde a linha quebrou nem o \\n."""
+        key = ("spans", text, width, weight, size)
+        hit = self.g.wcache.get(key)
+        if hit is not None:
+            return hit
+        if len(self.g.wcache) > 500:
+            self.g.wcache.clear()
+        g, out, i = self.g, [], 0
+        fits = lambda a, b: g.measure(weight, size, text[a:b])[0] <= width
+        for para in text.split("\n"):
+            a, end = i, i + len(para)
+            if a == end:
+                out.append((a, a))
+            while a < end:
+                if fits(a, end):
+                    out.append((a, end))
+                    break
+                lo, hi = a + 1, end           # maior pedaço que cabe
+                while lo < hi:
+                    mid = (lo + hi + 1) // 2
+                    lo, hi = (mid, hi) if fits(a, mid) else (lo, mid - 1)
+                cut = text.rfind(" ", a, lo + 1)
+                b = cut if cut > a else lo    # quebra no espaço; palavra maior que a linha, no meio
+                out.append((a, b))
+                a = b + 1 if cut > a else b
+            i = end + 1
+        self.g.wcache[key] = out
+        return out
 
     def note_input(self, cmd):
         n = self.note
-        lines = n["lines"]
-        step = {"up": -1, "down": 1, "l1": -10, "r1": 10, "left": -10, "right": 10}.get(cmd)
-        if step:
-            n["sel"] = max(0, min(len(lines) - 1, n["sel"] + step))
-        elif cmd == "ok":
-            self.note_edit(n["sel"])
-        elif cmd == "x":
-            lines.insert(n["sel"] + 1, "")
-            n["sel"] += 1
-            self.note_save()
-            self.note_edit(n["sel"])
-        elif cmd == "y":
-            if len(lines) > 1:
-                del lines[n["sel"]]
-                n["sel"] = min(n["sel"], len(lines) - 1)
-            else:
-                lines[0] = ""
-            self.note_save()
+        if cmd == "ok":
+            self.note_edit()
         elif cmd == "back":
             self.note = None
             if n["notes"] and self.picker and self.picker.get("title") == "Notas":
                 self.open_notes()         # a nota sobe para o topo da lista
+        else:
+            step = {"up": -1, "down": 1, "l1": -10, "r1": 10, "left": -10, "right": 10}.get(cmd)
+            if step:
+                n["top"] = max(0, min(n.get("max", 0), n["top"] + step))
 
     def draw_note(self, dt):
         g, n = self.g, self.note
@@ -2334,30 +2405,29 @@ class App:
         g.text("Bold", 22, name[:24], 74, 22, TEXT)
         g.text("Regular", 12, os.path.dirname(n["path"])[-34:], 75, 49, MUTED)
         self.draw_status()
-        lines, rh, ly, bot = n["lines"], 28, 80, 426
-        g.rrect(16, ly - 6, W - 32, bot - ly + 6, 18, alpha(GLASS, 14))
+        rh, ly, bot = 24, 86, 420
+        g.rrect(16, 74, W - 32, 352, 18, alpha(GLASS, 14))
+        text = n["text"]
+        spans = self.text_spans(text, W - 90)
         vis = int((bot - ly) // rh)
-        want = max(0, min(n["sel"] - vis // 2, len(lines) - vis))
-        n["top"] = approach(n["top"], want * rh, dt, 18)
-        g.clip(16, ly, W - 32, bot - ly)
-        first = max(0, int(n["top"] // rh) - 1)
-        for i in range(first, min(len(lines), first + vis + 3)):
-            y, on = ly + i * rh - n["top"], i == n["sel"]
-            if on:
-                g.rrect(24, y, W - 48, rh - 2, 10, a1, a2)
-            g.text("Regular", 11, str(i + 1), 52, y + rh / 2 - 1, ON_TEXT if on else FAINT, "r", "m")
-            txt = lines[i]
-            limit = W - 110
-            if g.measure("Regular", 14, txt)[0] > limit:
-                while txt and g.measure("Regular", 14, txt + "…")[0] > limit:
-                    txt = txt[:-1]
-                txt += "…"
-            g.text("Medium" if on else "Regular", 14, txt, 64, y + rh / 2 - 1, ON_TEXT if on else TEXT, "l", "m")
+        n["max"] = max(0, len(spans) - vis)
+        n["top"] = min(n["top"], n["max"])
+        n["scroll"] = approach(n["scroll"], n["top"] * rh, dt, 18)
+        g.clip(16, ly - 4, W - 32, bot - ly + 8)
+        first = max(0, int(n["scroll"] // rh) - 1)
+        for k in range(first, min(len(spans), first + vis + 3)):
+            a, b = spans[k]
+            g.text("Regular", 14, text[a:b], 40, ly + k * rh - n["scroll"], TEXT)
         g.clip()
-        if lines == [""]:
-            g.text("Regular", 13, "Nota vazia: A escreve a primeira linha.", W / 2, 240, MUTED, "c")
-        self.draw_footer_at(H - 29, [("A", "Editar"), ("X", "Nova linha"), ("Y", "Apagar linha"), ("B", "Fechar")],
-                            center=W / 2)
+        if n["max"]:                          # barra de rolagem
+            th = bot - ly
+            bh = max(30, th * vis / len(spans))
+            g.rrect(W - 28, ly, 4, th, 2, ink(18))
+            g.rrect(W - 28, ly + (th - bh) * n["scroll"] / (n["max"] * rh), 4, bh, 2, alpha(a1, 220))
+        if not text.strip():
+            g.text("Regular", 13, "Nota vazia: A para escrever.", W / 2, 240, MUTED, "c")
+        hints = [("A", "Editar")] + ([("UD", "Rolar"), ("L1/R1", "Página")] if n["max"] else []) + [("B", "Fechar")]
+        self.draw_footer_at(H - 29, hints, center=W / 2)
 
     MUSIC_OPTIONS = (("Visualização", "wave-sine", "vis", list(VIS_NAMES), VIS_NAMES,
                       "A animação que dança com a música. Tocando, Y troca."),

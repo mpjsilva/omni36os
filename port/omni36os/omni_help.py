@@ -4,6 +4,9 @@ Linhas que começam com "# " viram títulos no leitor."""
 
 # A versão em uso vem do arquivo VERSION. Aqui fica só ela; o histórico completo está no NOVIDADES.md.
 NOVIDADES = [
+    ("1.15.0", "30/10/2026", [
+        "Notas: abrir mostra a nota inteira para ler, com rolagem. A edita a nota toda, como numa máquina de escrever: o texto sobe quando a linha enche, o teclado ganha Enter e L1/R1 levam o cursor entre as linhas. START salva.",
+    ]),
     ("1.14.2", "30/10/2026", [
         "Vídeos e Notas: as listas ficam em tela cheia, como as Músicas, com a pílula de estado (Wi-Fi, volume, bateria, temperatura e hora). O vídeo tocando continua em tela cheia, sem nada por cima. Apagar uma nota pede confirmação, com Cancelar já escolhido.",
     ]),
@@ -168,7 +171,7 @@ Na tela Tocando: A pausa, esquerda/direita trocam de música, L1/R1 voltam e ava
 Opções (START, dentro do app): "Visualização": Capa do álbum (a imagem da pasta, como cover.jpg, ou a capa embutida no mp3), Barras, Ondas, Anel ou Aurora, dançando com o som. "Apagar a tela": com a música tocando e sem apertar nada, a luz da tela apaga em 30 s, 1, 2 ou 5 minutos (ou Manter ligada); qualquer botão acende.
 As pastas ficam num índice (nome, título e artista das tags): só a pasta que mudou é lida de novo, e a lista guarda só os caminhos.
 "Vídeos" toca os vídeos das pastas videos dos cartões (EASYROMS/videos, criada sozinha, e ROMS2/videos), com os codecs abertos do ffmpeg: mp4, mkv, webm, avi e outros (H.264, H.265, VP8, VP9, AV1, MPEG-4). A pausa, esquerda/direita voltam e avançam 10 s, L1/R1 1 minuto, B volta. Vídeos até 720p rodam bem; acima disso, depende do codec. A música para enquanto o vídeo toca.
-"Notas" é um bloco de notas simples: textos na pasta notas do cartão 1 (EASYROMS/notas). Na lista, a primeira linha cria uma nota e X apaga (com confirmação). Dentro da nota, cada linha é editada no teclado (X mostra os símbolos): A edita a linha, X cria uma linha abaixo, Y apaga a linha, B fecha. Tudo é salvo na hora.
+"Notas" é um bloco de notas simples: textos na pasta notas do cartão 1 (EASYROMS/notas). Na lista, a primeira linha cria uma nota e X apaga (com confirmação). Abrir uma nota mostra o texto inteiro: cima/baixo rolam e L1/R1 pulam a página. A edita a nota toda, como numa máquina de escrever: o texto quebra sozinho e sobe quando a linha enche, Enter começa uma linha nova, L1/R1 levam o cursor para a linha de cima ou de baixo, START salva e SELECT sai sem salvar.
 No Arquivos, abrir uma música, um vídeo ou um texto (txt, md, log, ini, cfg, conf) abre o app certo; B volta para a pasta.
 
 # Desempenho

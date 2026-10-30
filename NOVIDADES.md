@@ -2,6 +2,10 @@
 
 Histórico completo. Dentro do console (Geral > Sobre > Novidades) aparece só a versão em uso.
 
+## 1.15.0 (30/10/2026)
+
+- Notas: abrir mostra a nota inteira para ler, com rolagem. A edita a nota toda, como numa máquina de escrever: o texto sobe quando a linha enche, o teclado ganha Enter e L1/R1 levam o cursor entre as linhas. START salva.
+
 ## 1.14.2 (30/10/2026)
 
 - Vídeos e Notas: as listas ficam em tela cheia, como as Músicas, com a pílula de estado (Wi-Fi, volume, bateria, temperatura e hora). O vídeo tocando continua em tela cheia, sem nada por cima. Apagar uma nota pede confirmação, com Cancelar já escolhido.
