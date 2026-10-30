@@ -2,6 +2,10 @@
 
 Histórico completo. Dentro do console (Geral > Sobre > Novidades) aparece só a versão em uso.
 
+## 1.11.3 (30/10/2026)
+
+- Fichas dos ports (`omni_meta.py`): DuckDuckGo como terceira camada, só quando PortMaster e Steam não trazem capa ou descrição. Capa pela busca de imagens (jpg/png, preferindo larga); descrição pela resposta instantânea, quando existe. Fichas incompletas antigas são buscadas de novo uma vez.
+
 ## 1.11.2 (30/10/2026)
 
 - Biblioteca só de ports (`omni_games.py`): lê apenas `/roms/ports` e `/roms2/ports` (conforme Origem dos jogos), só os `.sh` da raiz. Os outros sistemas do es_systems não são mais varridos; o cache antigo (versão 2) é descartado e refeito.

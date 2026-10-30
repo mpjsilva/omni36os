@@ -3,6 +3,8 @@
 1. PortMaster: catálogo oficial dos ports (ports.json do PortMaster-New). Acha o port pelo
    .sh instalado e traz título, descrição, gêneros, quem portou, o que precisa e a imagem.
 2. Steam: a loja (a mesma base que o SteamDB mostra), sem chave. Descrição em pt-BR quando há.
+3. DuckDuckGo (último recurso): só quando as de cima não trouxeram capa ou descrição. A capa vem da
+   busca de imagens; a descrição, da resposta instantânea (quando o DuckDuckGo tem uma).
 
 Antes de tudo vale a pasta "info" do port (<pasta do port>/info/): info.json com os campos
 da ficha (nome, descricao, estudio, lancamento, generos, porter, pronto, capa); sem JSON, a
@@ -80,9 +82,13 @@ def cached(name):
     js, _ = paths(name)
     try:
         with open(js) as f:
-            return json.load(f)
+            info = json.load(f)
     except (OSError, ValueError):
         return None
+    # ficha incompleta de antes do DuckDuckGo: busca de novo uma vez para ele completar
+    if not ("capa" in info and info.get("descricao")) and "ddg" not in info:
+        return None
+    return info
 
 
 # --- 0. pasta "info" do port ---
@@ -232,6 +238,39 @@ def steam(term):
             "img": d.get("header_image") or "", "steamdb": f"https://steamdb.info/app/{aid}/"}
 
 
+# --- 3. DuckDuckGo (último recurso) ---
+
+DDG = "https://duckduckgo.com"
+DDG_UA = {"User-Agent": "Mozilla/5.0 (X11; Linux aarch64) Omni36OS"}   # sem cara de navegador ele recusa
+
+
+def ddg(term, need_img=True, need_desc=True):
+    out = {}
+    if need_desc:
+        q = urllib.parse.urlencode({"q": f"{term} video game", "format": "json", "no_html": 1, "kl": "br-pt"})
+        a = json.loads(_get(f"https://api.duckduckgo.com/?{q}", headers=DDG_UA))
+        if a.get("AbstractText"):
+            out["descricao"] = _clean(a["AbstractText"])
+        if a.get("Image"):
+            out["img"] = urllib.parse.urljoin(DDG, a["Image"])
+    if need_img and not out.get("img"):
+        q = f"{term} game cover"
+        page = _get(f"{DDG}/?" + urllib.parse.urlencode({"q": q, "iax": "images", "ia": "images"}),
+                    headers=DDG_UA).decode(errors="ignore")
+        m = re.search(r"vqd=[\"']?([\d-]+)", page)          # o token que a busca de imagens exige
+        if m:
+            r = json.loads(_get(f"{DDG}/i.js?" + urllib.parse.urlencode(
+                {"l": "br-pt", "o": "json", "q": q, "vqd": m.group(1), "f": ",,,,,", "p": "1"}),
+                headers={**DDG_UA, "Referer": f"{DDG}/"}))
+            ok = [i for i in r.get("results", [])[:10]
+                  if re.search(r"\.(jpe?g|png)(\?|$)", i.get("image", ""), re.I)]   # o SDL não abre webp/svg
+            wide = [i for i in ok if i.get("width", 0) >= i.get("height", 1) * 1.2]   # a capa da ficha é larga
+            pick = (wide or ok or [None])[0]
+            if pick:
+                out["img"] = pick["image"]
+    return out or None
+
+
 def _pt(text):
     """Descrição parece português? (a Steam devolve inglês quando não há tradução)"""
     words = set(re.findall(r"[a-zà-ú]+", (text or "").lower()))
@@ -242,7 +281,15 @@ def fetch(name, path=""):
     pm = portmaster(name, path)
     term = (pm or {}).get("titulo") or _norm(name)
     info, descs, imgs = {}, [], []
-    for src, d in (("PortMaster", pm), ("Steam", steam(term))):
+    layers = [("PortMaster", pm), ("Steam", steam(term))]
+    if not any((d or {}).get("img") for _, d in layers) or not any((d or {}).get("descricao") for _, d in layers):
+        try:                          # faltou capa ou descrição: o DuckDuckGo completa
+            layers.append(("DuckDuckGo", ddg(term, not any((d or {}).get("img") for _, d in layers),
+                                             not any((d or {}).get("descricao") for _, d in layers))))
+            info["ddg"] = True        # já tentou: não busca de novo a cada abertura
+        except (OSError, ValueError, KeyError):
+            pass
+    for src, d in layers:
         if not d:
             continue
         info.setdefault("fontes", []).append(src)
@@ -255,15 +302,16 @@ def fetch(name, path=""):
         if d.get("descricao"):
             descs.append(d["descricao"])
         if d.get("img"):
-            imgs.append(d["img"])
+            imgs.append((src, d["img"]))
     if descs:   # em português se alguma camada tiver; senão a do PortMaster (fala do port)
         info["descricao"] = next((t for t in descs if _pt(t)), descs[0])
     os.makedirs(CACHE, exist_ok=True)
     js, jpg = paths(name)
-    for url in reversed(imgs):        # capa: Steam (larga), depois PortMaster
+    prio = {"Steam": 0, "PortMaster": 1, "DuckDuckGo": 2}
+    for _, url in sorted(imgs, key=lambda i: prio[i[0]]):   # capa: Steam (larga), PortMaster, DuckDuckGo
         try:
             with open(jpg, "wb") as f:
-                f.write(_get(url))
+                f.write(_get(url, headers=DDG_UA))   # sites de imagem recusam quem não parece navegador
             info["capa"] = jpg
             break
         except OSError:
