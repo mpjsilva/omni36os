@@ -351,11 +351,13 @@ class Data:
         return omni.run_tool({"tool": tool, "args": args or {}})
 
 
+TURBO = "/run/omni36os-turbo"           # boot em andamento com tudo no máximo (omni36os-turbo)
 D = Data()
 if not FAKE:
     try:
         omni.migrate_cpu_settings()   # modo do processador de versões antigas
-        if os.environ.get("OMNI_HUB") != "jogo":   # por cima de um jogo pausado não: ele voltaria lento
+        # no boot o omni36os-turbo deixou tudo no máximo: o mínimo só vem com o menu pronto (App.turbo_off)
+        if os.environ.get("OMNI_HUB") != "jogo" and not os.path.exists(TURBO):   # jogo pausado: voltaria lento
             omni.relax_clocks()       # menu = mínimo (o port deixou tudo no máximo)
     except OSError:
         pass
@@ -3518,6 +3520,8 @@ class App:
         if self.loading:
             self.draw_loading(dt)
             return
+        if not self.warm and not FAKE and os.path.exists(TURBO):
+            self.turbo_off()
         self.draw_header()
         p = self.page_anim
         if p < 0.01 or p > 0.99:
@@ -3545,6 +3549,15 @@ class App:
             g.draw_layer(home, -24 * p, 255 * (1 - p))
             g.draw_layer(page, 24 * (1 - p), 255 * p)
         self.draw_overlays(dt)
+
+    def turbo_off(self):
+        """Fim do boot: menu na tela e páginas montadas. Tudo volta ao mínimo para o menu."""
+        try:
+            os.remove(TURBO)
+            omni.relax_clocks()
+        except OSError:
+            pass
+        print(f"boot concluído {time.clock_gettime(time.CLOCK_BOOTTIME):.1f} s após ligar: mínimo", file=sys.stderr, flush=True)
 
     def draw_welcome(self):
         """A boas-vindas do boot (telas/gerar_telas.py + omni_tela.py) redesenhada pixel a pixel: o
@@ -3587,6 +3600,7 @@ class App:
             self.loading = False
             self.warm = getattr(self, "warm_later", None) or self.warm
             print(f"menu na tela em {time.monotonic() - self.t_start:.1f} s", file=sys.stderr, flush=True)
+            print(f"menu na tela {time.clock_gettime(time.CLOCK_BOOTTIME):.1f} s após ligar", file=sys.stderr, flush=True)
             if not FAKE:                  # o menu abriu: uma atualização recente está aprovada
                 omni_update.confirm_ok()
                 back = omni_update.rolled_back_message()

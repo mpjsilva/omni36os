@@ -260,8 +260,8 @@ ports.record_port_played(sys.argv[2])' "$OMNI_DIR" "$port_path" 2>/dev/null || t
         exit:*)
             action="${next#exit:}"
             case "$action" in
-                poweroff) sudo poweroff ;;
-                reboot)   sudo reboot ;;
+                poweroff) sudo /usr/local/bin/omni36os-turbo; sudo poweroff ;;   # tudo no máximo: sai mais rápido
+                reboot)   sudo /usr/local/bin/omni36os-turbo; sudo reboot ;;
             esac
             break ;;
         *)

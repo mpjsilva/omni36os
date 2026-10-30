@@ -117,7 +117,7 @@ def safe(what):
     """Como o finish.sh original: fecha o Omni36OS, desmonta o /boot e grava tudo."""
     os.sync()
     subprocess.run(["systemd-run", "--no-block", "--collect", "--unit", f"omni36os-power-{int(time.time())}",
-                    "bash", "-c", "systemctl stop omni36os-launcher; "
+                    "bash", "-c", "/usr/local/bin/omni36os-turbo; systemctl stop omni36os-launcher; "
                                   f"/usr/local/bin/omni36os-tela {'reiniciando' if what == 'reboot' else 'desligando'}; "
                                   "mountpoint -q /boot && umount /boot; "
                                   f"sync; sleep 1; systemctl {what}"])
