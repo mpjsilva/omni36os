@@ -599,6 +599,13 @@ class App:
     def __init__(self):
         if not FAKE:
             os.environ.setdefault("SDL_GAMECONTROLLERCONFIG_FILE", "/opt/inttools/gamecontrollerdb.txt")
+            # se o launcher caiu ou reiniciou com a tela apagada pelo player, a luz volta aqui
+            for p in glob.glob("/sys/class/backlight/*/bl_power"):
+                try:
+                    with open(p, "w") as f:
+                        f.write("0")
+                except OSError:
+                    pass
         self.g = gfx.Gfx()
         # o SDL apaga a tela ao assumir o vídeo: redesenha a boas-vindas do boot já no primeiro
         # quadro, antes de montar o resto, para a passagem do boot ao launcher não piscar preto

@@ -4,6 +4,9 @@ Linhas que começam com "# " viram títulos no leitor."""
 
 # A versão em uso vem do arquivo VERSION. Aqui fica só ela; o histórico completo está no NOVIDADES.md.
 NOVIDADES = [
+    ("1.12.3", "30/10/2026", [
+        "Músicas: se o launcher reiniciar com a tela apagada, a luz da tela volta sozinha.",
+    ]),
     ("1.12.2", "30/10/2026", [
         "Músicas: visualização Capa do álbum, com a imagem da pasta ou a capa embutida no mp3. A capa também aparece na barra do que está tocando.",
     ]),

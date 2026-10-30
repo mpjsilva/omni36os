@@ -2,6 +2,10 @@
 
 Histórico completo. Dentro do console (Geral > Sobre > Novidades) aparece só a versão em uso.
 
+## 1.12.3 (30/10/2026)
+
+- Músicas: se o launcher reiniciar com a tela apagada, a luz da tela volta sozinha.
+
 ## 1.12.2 (30/10/2026)
 
 - Músicas: capa do álbum (`omni_musica.cover`). Vale a imagem da pasta (cover, folder, front, album, capa ou a primeira jpg/png); sem ela, a capa embutida no mp3 (APIC/PIC das tags ID3 2.2 a 2.4), gravada uma vez por imagem em `~/.config/omni36os/capas`. Procurada fora da tela. A visualização "Nenhuma" virou "Capa do álbum" (o padrão); a barra da lista mostra a miniatura.
