@@ -84,6 +84,13 @@ for f in "${SIS[@]}"; do
   cp -a "$CARD/$f" "$R/$(dirname "$f")/"
 done
 rm -f "$R/etc/systemd/system/multi-user.target.wants/emulationstation.service"
+# botão de power com o menu de energia já ligado (como o set_power_button faz no console)
+P="$R/usr/local/bin/pause.sh"
+grep -q "Omni36OS: botão de power" "$P" || cp -a "$P" "$P.omni36os-orig"
+python3 -B -c "import sys; sys.path.insert(0, '$REPO/port/omni36os'); import omni; print(omni.POWER_WRAP, end='')" \
+  | sed "s|^H=.*|H=/opt/omni36os/power_button.py|" > "$P"
+chmod 755 "$P"
+grep -q "^H=/opt/omni36os/power_button.py" "$P" || { echo "Desvio do power não foi gravado."; exit 1; }
 cp "$TELAS/tela-certa.raw" "$TELAS/tela-certa.png" "$R/opt/omni36os-telas/"
 mkdir -p "$H/.config/omni36os" && chown 1000:1000 "$H/.config/omni36os" "$H/usb-disco.sh"
 touch "$R/var/log/omni36os.log"
