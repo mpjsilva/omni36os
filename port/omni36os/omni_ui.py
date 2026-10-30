@@ -2855,6 +2855,16 @@ class App:
                        alpha(ON_TEXT if on else MUTED, (230 if on else 255) * fade))
         self.draw_footer([("A", "Abrir", TEXT), ("POWER", "Energia", MUTED)])
 
+    def page_alerts(self, cid):
+        """[(nível, texto)] dos avisos e problemas da página e das subpáginas dela (com o nome da
+        subpágina na frente): é o que faz o ponto do card na tela inicial."""
+        out = []
+        for c in [cid] + [k for k, p in PARENT.items() if p == cid]:
+            r = self.results.get(c) or {}
+            pre = "" if c == cid else SUBPAGES[c][0] + ": "
+            out += [(lv, pre + t) for lv, t in r.get("achados", []) if lv in ("aviso", "problema")]
+        return sorted(out, key=lambda x: x[0] != "problema")
+
     def draw_page(self, dt, fade):
         g = self.g
         cid, title, ic, c1, c2 = card_info(self.page)
@@ -2870,8 +2880,15 @@ class App:
             msg = {"ok": "Tudo certo por aqui", "aviso": "Alguns avisos", "problema": "Precisa de atenção"}[lvl]
             if cid == "ajuda":
                 lvl, msg = "info", "Manual, cuidados e créditos"
+            alerts = self.page_alerts(cid) if cid in TWO_COLS else []
+            if alerts:                    # sem painel: a linha diz qual é o alerta (e de onde vem)
+                lvl = "problema" if any(lv == "problema" for lv, _ in alerts) else "aviso"
+                msg = alerts[0][1] + (f"  (+{len(alerts) - 1})" if len(alerts) > 1 else "")
+                room = W - 40 - (92 + off)
+                while g.measure("Medium", 12, msg)[0] > room and len(msg) > 4:
+                    msg = msg[:-2].rstrip() + "…"
             g.circle(83 + off, 102, 4, alpha(LEVEL[lvl], a))
-            g.text("Medium", 12, msg, 92 + off, 93, alpha(MUTED, a))
+            g.text("Medium", 12, msg, 92 + off, 93, alpha(LEVEL[lvl] if alerts else MUTED, a))
         else:
             g.text("Medium", 12, "Verificando...", 78 + off, 93, alpha(MUTED, a))
 
