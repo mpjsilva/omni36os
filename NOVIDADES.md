@@ -2,6 +2,10 @@
 
 Histórico completo. Dentro do console (Geral > Sobre > Novidades) aparece só a versão em uso.
 
+## 1.15.8 (30/10/2026)
+
+- Textos curtos (novidades, ajuda) não mostram mais os botões de rolar quando não há nada para rolar.
+
 ## 1.15.7 (30/10/2026)
 
 - Procurar atualização mostra as novidades da versão nova antes de instalar (botão Novidades), lidas do GitHub.

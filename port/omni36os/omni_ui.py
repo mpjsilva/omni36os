@@ -4472,7 +4472,7 @@ class App:
             by = ty + (th - bh) * (r["scroll"] / max(1, sum(heights[:r["max"]])))
             g.rrect(mx + mw - 14, ty, 4, th, 2, ink(18))
             g.rrect(mx + mw - 14, by, 4, bh, 2, alpha(a1, 220))
-        self.draw_footer_at(my + mh - 30, [("UD", "Rolar"), ("LR", "Pular")] +
+        self.draw_footer_at(my + mh - 30, ([("UD", "Rolar"), ("LR", "Pular")] if r["max"] else []) +   # texto curto: nada a rolar
                             ([("A", "Abrir o repositório")] if r.get("link") else []), mx + 24)
         self.draw_footer_at(my + mh - 30, [("B", "Voltar")], mx + mw - 110)
 
