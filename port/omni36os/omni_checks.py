@@ -93,27 +93,30 @@ def sd_facts():
     return {"cartoes": cards}
 
 
-def velocidade():
-    """Testar velocidade (Armazenamento): escreve e lê um arquivo em cada cartão."""
+def detalhes():
+    """Detalhe do(s) cartão(ões) (Armazenamento): marca, tamanho e um teste de escrita e leitura em cada um."""
     out = []
-    generic = {c["cartao"]: c["codigo"] for c in sd_facts()["cartoes"] if c["fabricante"] == "desconhecido"}
-    for card, path in (("sistema", "/roms"), ("jogos", "/roms2")):
-        if not os.path.ismount(path):
-            continue
+    for c in sd_facts()["cartoes"]:
+        card = c["cartao"]
+        nome = "do sistema" if card == "sistema" else "de jogos"
+        path = "/roms" if card == "sistema" else "/roms2"
+        fab = c["fabricante"] if c["fabricante"] != "desconhecido" else "sem marca"
+        head = f"Cartão {nome}: {c['tamanho_gb']} GB, {fab}" + (f" ({c['nome']})" if c["nome"] else "")
         f = {}
-        for line in omni.test_microsd_speed({"path": path}).splitlines():
-            if "Escrita" in line or "Leitura" in line:
-                f["w" if "Escrita" in line else "r"] = float(line.split(":")[1].split()[0])
+        if os.path.ismount(path):
+            for line in omni.test_microsd_speed({"path": path}).splitlines():
+                if "Escrita" in line or "Leitura" in line:
+                    f["w" if "Escrita" in line else "r"] = float(line.split(":")[1].split()[0])
         if "w" not in f:
-            continue
-        if f["w"] < 10:
-            out.append(("problema", f"Cartão de {card} lento: {f['w']} MB/s de escrita. Vale trocar por um melhor."))
+            out.append(("ok", head + ". Sem partição montada para testar a velocidade."))
+        elif f["w"] < 10:
+            out.append(("problema", f"{head}. Lento: {f['w']} MB/s de escrita. Vale trocar por um melhor."))
         else:
-            out.append(("ok", f"Cartão de {card}: {f['w']} MB/s escrita, {f.get('r', 0)} MB/s leitura."))
-        if card in generic:
-            out.append(("info", f"Cartão de {card} sem marca identificada (código {generic[card]}), comum em "
+            out.append(("ok", f"{head}. {f['w']} MB/s escrita, {f.get('r', 0)} MB/s leitura."))
+        if c["fabricante"] == "desconhecido":
+            out.append(("info", f"Cartão {nome} sem marca identificada (código {c['codigo']}), comum em "
                                 "cartões genéricos. Se ele travar ou perder arquivos, vale trocar."))
-    return finish(out or [("aviso", "Nenhum cartão montado para testar.")], [], {})
+    return finish(out or [("aviso", "Nenhum cartão encontrado.")], [], {})
 
 
 def screen_facts():
@@ -208,7 +211,7 @@ def checkup():
     check_overclock(f, out, acts)
     parts.append(("Desempenho", finish(out, acts, f)))
     out = []
-    check_disk(out)        # cartão sem marca não é alerta: só aparece no "Testar velocidade"
+    check_disk(out)        # cartão sem marca não é alerta: só aparece no "Detalhe do cartão"
     parts.append(("Armazenamento", finish(out, [], {})))
     out, acts = [], []
     check_services(out, acts)

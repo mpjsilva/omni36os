@@ -456,9 +456,6 @@ TIPS = {
     "Detalhes da tela": "Mostra o modelo da tela e qual opção escolher no SELECT MODEL ao atualizar.",
     "Verificar tudo": "Junta numa lista só os avisos de todos os cards, cada um com o card de origem.",
     "Sobre": "Manual, cuidados, novidades desta versão e créditos.",
-    "Detalhes": "Tamanho, espaço livre, sistema de arquivos e saúde dos cartões.",
-    "Testar velocidade": "Mede a leitura e a escrita de cada cartão. Cartão lento deixa os ports lentos "
-                         "para abrir.",
     "Verificar e reparar": "Reinicia, procura e corrige erros na partição dos jogos (/roms2, ou /roms sem segundo cartão) e volta sozinho. Leva alguns "
                            "minutos.",
     "Arquivos": "Copiar, mover, renomear e apagar nos cartões e no pendrive, aqui dentro.",
@@ -891,8 +888,10 @@ class App:
             tog.act = "desligar_pendrive" if on else "ligar_pendrive"
             mounted = getattr(self, "fake_usb", False) if FAKE else os.path.ismount("/mnt/usbdrive")
             return [Choice("Jogos lidos de", "folder", "fonte", list(SOURCE_NAMES), SOURCE_NAMES),
-                    A("Detalhes dos cartões", "info-circle", lambda: self.run_info("Cartões SD", "check_microsd_info")),
-                    A("Testar velocidade", "brand-speedtest", self.speed_test),
+                    tip(A("Detalhe dos cartões" if self.sd_count() > 1 else "Detalhe do cartão", "info-circle",
+                          self.speed_test),
+                        "Marca, tamanho e um teste de escrita e leitura em cada cartão (até 1 minuto). Cartão "
+                        "lento deixa os ports lentos para abrir."),
                     tip(tog, "O console vira um pendrive para o PC: ligue o cabo na porta OTG e copie jogos direto "
                              "para o cartão. Reinicia ao ligar e ao desligar; o Wi-Fi para enquanto estiver ligado."),
                     tip(Choice("Partição no PC", "device-floppy", "part",
@@ -1042,25 +1041,28 @@ class App:
     def run_tool_toast(self, tool):
         self.worker(lambda: D.run(tool), self._action_done, busy="Fazendo...")
 
+    def sd_count(self):
+        return 2 if FAKE else max(1, len(omni_checks.sd_facts()["cartoes"]))
+
     def speed_test(self):
         def fn():
             if FAKE:
                 time.sleep(1)
                 return {"nivel": "ok", "acoes": [], "achados": [
-                    ("ok", "Cartão de sistema: 18.2 MB/s escrita, 41.0 MB/s leitura."),
-                    ("ok", "Cartão de jogos: 12.5 MB/s escrita, 38.7 MB/s leitura."),
+                    ("ok", "Cartão do sistema: 16 GB, SanDisk (SL16G). 18.2 MB/s escrita, 41.0 MB/s leitura."),
+                    ("ok", "Cartão de jogos: 64 GB, sem marca (SD64G). 12.5 MB/s escrita, 38.7 MB/s leitura."),
                     ("info", "Cartão de jogos sem marca identificada (código 0xfe), comum em cartões genéricos. "
                              "Se ele travar ou perder arquivos, vale trocar.")]}
-            return omni_checks.velocidade()
+            return omni_checks.detalhes()
 
         def done(res):
             if isinstance(res, dict):
                 self.findings = res
-                self.toast = ("Teste dos cartões concluído", "ok", self.t + 3)
+                self.toast = ("Pronto: detalhes e velocidade no painel", "ok", self.t + 3)
             else:
-                self.modal = {"title": "Velocidade", "text": str(res), "icon": "brand-speedtest",
+                self.modal = {"title": "Cartões", "text": str(res), "icon": "brand-speedtest",
                               "buttons": ["OK"], "sel": 0}
-        self.worker(fn, done, busy="Testando os cartões... (até 1 minuto)")
+        self.worker(fn, done, busy="Lendo e testando... (até 1 minuto)")
 
     def show_list(self, title, icon, rows, on_ok, ok_label, start=None):
         """rows: {"head", "tag", "tagc"} (título de grupo) ou {"name", "right", "icon", ...}.

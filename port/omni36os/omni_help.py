@@ -92,7 +92,7 @@ Memória extra (zram): desligada por padrão. 256, 512 ou 768 MB de memória com
 # Armazenamento
 Tudo sobre onde ficam os jogos: os cartões, o pendrive e a porta USB. As ações que reiniciam ou apagam ficam no fim da página.
 "Jogos lidos de": ROMS (cartão do sistema), ROMS2 (segundo cartão) ou ROMS e ROMS2. Ao sair da página depois de trocar (B ou START), o Omni36OS procura os jogos e os ports de novo, uma vez só, e atualiza a biblioteca e o Testar ports. Com as duas, o mesmo sistema dos dois cartões vira uma lista só. ROMS2 só entra se o segundo cartão estiver no console.
-Marca, tamanho, espaço livre e velocidade dos cartões. "Testar velocidade" leva até um minuto. Cartões genéricos sem marca costumam ser lentos e falhar mais: o teste avisa quando o cartão não tem marca identificada (não é alerta).
+"Detalhe do cartão" (com dois cartões, "Detalhe dos cartões"): mostra a marca e o tamanho e testa a escrita e a leitura de cada cartão; leva até um minuto. O espaço livre aparece no painel. Cartões genéricos sem marca costumam ser lentos e falhar mais: o detalhe avisa quando o cartão não tem marca identificada (não é alerta).
 O Omni36OS avisa quando um cartão passa de 90% de uso ou tem menos de 1 GB livre.
 "Verificar e reparar os jogos" reinicia o aparelho e roda o reparo do Omni36OS (fsck.exfat) com o cartão desmontado. Depois o resultado aparece neste card, e o log fica em /boot/sd2_scan.log (segundo cartão) ou /boot/sd1p3_scan.log (só o cartão do sistema).
 

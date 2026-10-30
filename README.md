@@ -35,7 +35,7 @@ boot (logo.bmp = frame 0 de "Carregando")
 | **Controles** | Testar o controle (sair segurando SELECT+START), subpágina **Atalhos**, Botão de power, Consertar atalhos (reinicia o `ogage`) |
 | **Bateria** | Carga, brilho e modo do processador. Subpágina **Calibrar a bateria** (`/usr/local/etc/battery-cal`) |
 | **Desempenho** | No menu, CPU/GPU/memória sempre no mínimo (`relax_clocks`: powersave). Limites de CPU/GPU (valem nos ports), **Memória extra (zram)** 0/256/512/768 MB, Liberar overclock |
-| **Armazenamento** | Jogos lidos de, detalhes e velocidade dos cartões, modo pendrive (+ partição no PC), montar/desmontar pendrive, estado da porta USB, limpar lixo do Mac; por último as ações que reiniciam: verificar e reparar, restaurar boot |
+| **Armazenamento** | Jogos lidos de, detalhe do(s) cartão(ões) com teste de velocidade, modo pendrive (+ partição no PC), montar/desmontar pendrive, estado da porta USB, limpar lixo do Mac; por último as ações que reiniciam: verificar e reparar, restaurar boot |
 | **Ferramentas** | Arquivos, subpágina **Testar ports** (15 s; causa provável e "Corrigir e testar de novo", `omni_ports_fix.py`), PortMaster, 351Files |
 | **Geral** | Nome do jogador, subpáginas **Segurança** e **Backup**, Procurar atualização / Voltar à versão anterior, **Verificar tudo** (resumo dos avisos de todos os cards), **Sobre** (Manual, Cuidados, Novidades, Créditos), Redefinir o sistema (último) |
 
@@ -115,7 +115,7 @@ OMNI_FAKE=1 OMNI_WINDOWED=1 python3 omni_ui.py
 - `OMNI_TRAVA=1`
 - `OMNI_TRAVA_SENHA` (padrão `1234`)
 - `OMNI_RESUME=testar` + `OMNI_FAKE_TESTE=falhou|ok`: mostra o resultado de um teste de port
-- Cada card tem dados de teste próprios (o "Testar velocidade" de Armazenamento mostra o aviso de cartão sem marca)
+- Cada card tem dados de teste próprios (o "Detalhe dos cartões" de Armazenamento mostra o aviso de cartão sem marca)
 
 **Teclas do simulador** (Num Lock ligado): setas = direcional, 2 = A, 1 = B, Enter = START, Shift direito = SELECT, 5/4 = X/Y, 6/3 = L1/R1, 0 = botão de power, 7/9 = analógico esquerdo para os lados, 8 = FN (só ao gravar atalho). `OMNI_JOGO=1` simula o menu Energia por cima de um jogo. Mouse: clique esquerdo = A, direito = B, roda = cima/baixo. + / - do teclado numérico = botões de volume.
 
