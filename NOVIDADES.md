@@ -2,6 +2,11 @@
 
 Histórico completo. Dentro do console (Geral > Sobre > Novidades) aparece só a versão em uso.
 
+## 1.15.6 (30/10/2026)
+
+- Rede pelo cabo USB: a página mostra qual modo está ligado ("Modo universal: ligado") e quando a rede está desligada.
+- Compatibilidade da rede USB: o cliente DHCP aparece numa linha só; faltar o dhcpcd não é mais um problema (basta um cliente).
+
 ## 1.15.5 (30/10/2026)
 
 - Rede pelo cabo USB e modo pendrive se revezam sozinhos: ligar um desliga o outro, sem aviso para fazer à mão (sair do pendrive reinicia uma vez e a rede USB liga sozinha na volta).

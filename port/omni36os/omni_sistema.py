@@ -580,8 +580,10 @@ def usbnet_compat():
             seen.add(node)
             out.append(f"{node}: {omni.read_text(f, '').strip(chr(0))}")
     out.append("# Programas")
-    for c in ("ip", "dnsmasq", *DHCP_CLIENTS, "filebrowser", "smbd"):
+    for c in ("ip", "dnsmasq", "filebrowser", "smbd"):
         out.append(f"{c}: {'ok' if has(c) else 'falta'}")
+    tem = [c for c in DHCP_CLIENTS if has(c)]          # o modo internet usa o primeiro que existir; basta um
+    out.append("Cliente DHCP: " + (", ".join(tem) if tem else "nenhum (o modo internet usa um endereço fixo)"))
     return "\n".join(out)
 
 

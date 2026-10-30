@@ -1179,15 +1179,28 @@ class App:
         if cid == "usbrede":
             S = omni_sistema if not FAKE else None
             run = lambda fn, busy: (lambda: self.worker(fn if S else (lambda: "teste"), self._sys_done, busy=busy))
-            return [A("Ligar: modo universal", "usb", run(S and S.usbnet_universal, "Ligando a rede USB..."),
+            mode = S.usbnet_mode() if S else self.__dict__.get("fake_vals", {}).get("usbnet", "desligada")
+            if not S:
+                def fake(m, txt):
+                    return lambda: self.__dict__.setdefault("fake_vals", {}).update(usbnet=m) or txt
+                run_u = lambda f: (lambda: self.worker(f, self._sys_done, busy="Aguarde..."))
+                uni = run_u(fake("universal", "Modo universal ligado. Use ssh omni@10.44.44.1"))
+                net = run_u(fake("internet", "Rede USB ligada, internet pelo PC."))
+                off = run_u(fake("desligada", "Rede USB desligada."))
+            else:
+                uni = run(S.usbnet_universal, "Ligando a rede USB...")
+                net = run(S.usbnet_internet, "Pedindo IP ao PC... (até 30 s)")
+                off = run(S.usbnet_stop, "Desligando...")
+            on = lambda m, txt: f"{txt}: ligado" if mode == m else f"Ligar: {txt}"
+            return [A(on("universal", "modo universal"), "check" if mode == "universal" else "usb", uni,
                       confirm="Ligar a rede USB no modo universal?\nO console dá o IP ao PC: ligue o cabo de dados "
                               "na porta OTG e use ssh omni@10.44.44.1."),
-                    A("Ligar: internet pelo PC", "wifi", run(S and S.usbnet_internet, "Pedindo IP ao PC... (até 30 s)"),
+                    A(on("internet", "internet pelo PC"), "check" if mode == "internet" else "wifi", net,
                       confirm="Ligar a rede USB usando a internet do PC?\nO PC precisa já estar compartilhando a "
                               "conexão pelo cabo."),
                     Choice("Serviços remotos", "device-floppy", "remoto", ["desligados", "ligados"],
                            {"desligados": "Desligados", "ligados": "Ligados"}),
-                    A("Desligar a rede USB", "power", run(S and S.usbnet_stop, "Desligando...")),
+                    A("Desligar a rede USB" if mode != "desligada" else "Rede USB: desligada", "power", off),
                     A("Compatibilidade", "info-circle", lambda: self.worker(
                         (S and S.usbnet_compat) or (lambda: "teste"),
                         lambda r: self.read("Compatibilidade da rede USB", "network", str(r)), busy="Verificando..."))]
