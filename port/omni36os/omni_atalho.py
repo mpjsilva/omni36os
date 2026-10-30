@@ -290,6 +290,11 @@ def open_pad():
 
 def main():
     apply_flags()
+    try:                                 # o power sempre abre o menu de energia (pause.sh com o desvio)
+        import omni
+        omni.set_power_button({"mode": "menu"})
+    except Exception as e:
+        print(f"power: {e}", file=sys.stderr, flush=True)
     signal.signal(signal.SIGHUP, lambda *_: apply_flags())
     fd = open_pad()
     down, since, waiting = set(), None, None

@@ -280,7 +280,7 @@ def reset_custom():
     # ajustes de uso nos padrões de fábrica: Equilibrado, 1296/520 MHz (sem OC), atalho e power
     for fn, arg in ((omni.set_preferred_governor, {"governor": "ondemand"}), (omni.set_cpu_max, {"mhz": 1296}),
                     (omni.set_gpu_max, {"mhz": 520}), (omni.set_atalho, {"key": "fps", "value": True}),
-                    (omni.set_power_button, {"mode": "desligar"})):
+                    (omni.set_power_button, {"mode": "menu"})):
         try:
             fn(arg)
         except Exception:     # um ajuste que falhe não impede o resto

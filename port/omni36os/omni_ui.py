@@ -291,8 +291,6 @@ class Data:
             return THEME
         if what.startswith("at_"):          # Controles > Atalhos
             return omni.get_atalhos()[what[3:]]
-        if what == "power":
-            return omni.get_power_button()
 
     def set(self, what, value):
         if what == "tema":
@@ -327,8 +325,6 @@ class Data:
             return omni.set_led({"color": value})
         if what.startswith("at_"):
             return omni.set_atalho({"key": what[3:], "value": value})
-        if what == "power":
-            return omni.set_power_button({"mode": value})
 
     def run(self, tool, args=None):
         if FAKE:
@@ -399,7 +395,7 @@ SIM_BUTTONS = {"ok": 305, "back": 304, "x": 307, "y": 308, "l1": 310, "r1": 311,
 # o que o ogage (serviço do dArkOSen) já faz com o FN: nenhum atalho do Omni36OS usa essas combinações
 FN_SYSTEM = [("info", "FN + cima/baixo: brilho da tela. FN + volume: brilho fino."),
              ("info", "FN + L1/R1, esquerda/direita, A, L3 e R3: ajustes do sistema (gamma, Wi-Fi, Bluetooth, saves)."),
-             ("info", "SELECT + FN: fala a carga da bateria. FN + power: modo pânico (fecha o jogo e acalma o console).")]
+             ("info", "SELECT + FN: fala a carga da bateria. FN + power: desliga na hora, gravando tudo.")]
 
 
 class Choice:
@@ -462,7 +458,6 @@ TIPS = {
     "Testar ports": "Abre um port por 15 s, mostra a causa provável se falhar e oferece a correção.",
     "Escolher o port": "Escolha um port da lista para abrir e testar.",
     "Limpar avisos de falha": "Apaga os avisos de ports que falharam no teste.",
-    "Botão de power": "O que o botão de power faz: desligar como no Omni36OS ou abrir o menu de energia.",
     "Manual": "Como usar cada card do Omni36OS.",
     "Cuidados": "O que pode dar errado com overclock, DTB e cartões, e como evitar.",
     "Novidades": "O que mudou em cada versão.",
@@ -817,8 +812,6 @@ class App:
         if cid == "controles":
             return [A("Testar o controle", "device-gamepad-2", self.open_pad),
                     subpage(A("Atalhos", "keyboard", lambda: self.open_page("atalhos")), "atalhos"),
-                    *([] if FAKE else [Choice("Botão de power", "power", "power", list(omni.POWER_NAMES),
-                                              omni.POWER_NAMES)]),
                     A("Consertar atalhos", "rotate", lambda: self.native("fix_hotkeys", "Reiniciando os atalhos..."),
                       confirm="Reiniciar o serviço de atalhos (brilho e volume pelos botões)?"),
                     recheck]
@@ -1391,7 +1384,7 @@ class App:
             self.worker((lambda: "Sistema zerado.") if FAKE else omni_sistema.reset_custom, done, busy="Zerando...")
         self.warn("Redefinir o sistema", "Volta o Omni36OS ao primeiro boot: apaga o nome do jogador, a trava por "
                   "senha e o tema, desliga a memória extra (zram) e volta processador (Equilibrado, 1296 MHz), "
-                  "GPU (520 MHz), atalhos (FN + X, FN + B, FN + Y, todos ligados) e botão de power ao padrão.", go, secs=5,
+                  "GPU (520 MHz), atalhos (FN + X, FN + B, FN + Y, todos ligados) ao padrão.", go, secs=5,
                   risk="O nome e a senha da trava somem; o Omni36OS pergunta o nome de novo. Ports, jogos, testes e as "
                        "senhas do sistema e do Samba não mudam.",
                   undo="Não tem volta automática: ajuste de novo em Tela e som e em Controles. Se exportou um backup antes, Backup > "

@@ -1,9 +1,8 @@
 """Botão de power do Omni36OS. O ogage chama o /usr/local/bin/pause.sh a cada toque no
 power; com o botão ligado em Ajuda, aquele pause.sh chama este arquivo antes do original.
 
-- FN + power: modo pânico. Fecha o que estiver na tela (jogo, port, ferramenta) e volta ao
-  Omni36OS, com o processador sem overclock e o brilho e o som em níveis normais.
-  Duas vezes em menos de 10 s: grava tudo e reinicia.
+- FN + power: desliga na hora, com segurança: fecha o jogo (que salva o que sabe salvar), grava
+  tudo e desmonta o /boot antes de desligar.
 - Power sozinho: abre o menu de energia do Omni36OS (o dele, se estiver na tela, ou por cima
   do jogo, que congela).
 - Power com o menu de energia já na tela: desliga com segurança.
@@ -18,7 +17,6 @@ import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
-import omni           # noqa: E402
 import omni_atalho as at   # noqa: E402
 
 PAD = at.PAD
@@ -32,8 +30,6 @@ PRESS = f"{SHM}/press"            # o Omni36OS grava o pid dele quando o menu es
 PENDING = f"{SHM}/pending"        # menu pedido, ainda abrindo (o Omni36OS carregando)
 MENU_FLAG = f"{SHM}/menu"         # o Omni36OS abre direto no menu de energia
 UI_PID = f"{SHM}/ui-pid"
-PANIC_LAST = f"{SHM}/panic-last"
-PANIC_MSG = f"{SHM}/panic-msg"
 PENDING_WINDOW = 25   # toques enquanto o menu abre são ignorados; depois disso, tenta de novo
 
 
@@ -117,32 +113,6 @@ def close_front():
     return True
 
 
-def calm():
-    """Volta ao seguro o que pode travar ou esquentar: overclock, modo do processador, tela, som."""
-    done = []
-    try:
-        omni.relax_clocks()
-        if omni.get_cpu_max() > omni.CPU_SAFE_MHZ:
-            omni.write_text(f"{omni.CPUFREQ}/scaling_max_freq", omni.CPU_SAFE_MHZ * 1000)
-            done.append(f"processador em {omni.CPU_SAFE_MHZ} MHz")
-    except Exception:
-        pass
-    try:
-        if omni.get_brightness() < 20:
-            omni.set_screen_brightness({"value": 50})
-            done.append("brilho em 50%")
-    except Exception:
-        pass
-    try:
-        omni.amixer("-q", "sset", "Playback", "unmute")
-        if omni.get_volume() > 85:
-            omni.set_system_volume({"value": 70})
-            done.append("volume em 70%")
-    except Exception:
-        pass
-    return done
-
-
 def safe(what):
     """Como o finish.sh original: fecha o Omni36OS, desmonta o /boot e grava tudo."""
     os.sync()
@@ -151,27 +121,6 @@ def safe(what):
                                   f"/usr/local/bin/omni36os-tela {'reiniciando' if what == 'reboot' else 'desligando'}; "
                                   "mountpoint -q /boot && umount /boot; "
                                   f"sync; sleep 1; systemctl {what}"])
-
-
-def panic():
-    now = time.time()
-    last = stamp(PANIC_LAST)
-    put(PANIC_LAST, str(now))
-    if now - last < 10:
-        put(PANIC_MSG, "Pânico duas vezes: reiniciando com segurança")
-        safe("reboot")
-        return
-    closed = close_front()
-    done = calm()
-    msg = "Pânico: " + ("o que estava na tela foi fechado" if closed else "nada para fechar")
-    if done:
-        msg += "; " + ", ".join(done)
-    put(PANIC_MSG, msg)
-    for p in ui_pids():
-        try:
-            os.kill(p, signal.SIGUSR2)     # o Omni36OS na tela mostra o aviso na hora
-        except ProcessLookupError:
-            pass
 
 
 def menu():
@@ -206,7 +155,8 @@ def main():
             at.freeze_and_open(game)
         return 0
     if fn_held():
-        panic()
+        close_front()
+        safe("poweroff")
         return 0
     return menu()
 

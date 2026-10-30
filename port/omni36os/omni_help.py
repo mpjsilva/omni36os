@@ -57,7 +57,7 @@ A página mostra o IP e os comandos para o PC, e se atualiza sozinha. A rede USB
 # Controles
 "Testar o controle" mostra o R36S com cada botão aceso ao apertar, os gatilhos L2/R2 e a posição dos analógicos. Para sair, segure SELECT + START por 1 segundo (B também é testado).
 "Atalhos": combinações com o botão FN que valem dentro dos jogos (veja Atalhos abaixo).
-"Botão de power": Menu de energia (um toque abre Cancelar, Suspender, Reiniciar e Desligar; outro toque com o menu aberto desliga com segurança) ou Como no Omni36OS (suspende, ou desliga se a opção de trocar power e suspender estiver ligada). Com o menu ligado, FN + power é o modo pânico: fecha o que estiver na tela, tira o overclock, põe o processador no modo normal, sobe o brilho se estiver quase apagado e abaixa o som se estiver no máximo. Duas vezes em menos de 10 s, o console grava tudo e reinicia. Segurar o power por uns 8 s sempre desliga à força: isso é do chip de energia, não do Omni36OS. O botão de reset reinicia por hardware e não pode ser mudado.
+Botão de power: um toque abre Energia (Cancelar, Suspender, Reiniciar e Desligar); outro toque com o menu aberto desliga com segurança. FN + power desliga na hora, fechando o jogo e gravando tudo antes. Segurar o power por uns 8 s sempre desliga à força: isso é do chip de energia, não do Omni36OS. O botão de reset reinicia por hardware e não pode ser mudado.
 "Consertar atalhos" reinicia o serviço que cuida do brilho e do volume pelos botões.
 Serviços que falham no boot aparecem aqui. A falha do dmc-governor (ajuste da RAM) tem conserto com um botão; a do systemd-remount-fs é conhecida e inofensiva no Omni36OS.
 
@@ -69,7 +69,7 @@ Valem com um port aberto. Cada atalho tem Ligado ou Desligado na página, e os b
 «fechar» (segure 1 s): fecha o jogo e volta ao Omni36OS. Serve para port travado ou sem opção de sair. Este é fixo.
 "Personalizar um atalho": escolha o atalho e aperte a tecla nova; ele vira FN + essa tecla. O Omni36OS recusa o que já é do sistema ou de outro atalho. "Voltar aos botões padrão" desfaz (FN + X, FN + B e FN + Y).
 Pelo botão de power, com um jogo aberto: o jogo congela e o menu Energia abre por cima com as mesmas opções (mostrar o contador, limitar a 30 FPS, captura de tela e fechar o jogo), além de suspender, reiniciar e desligar. Captura e contador valem quando o jogo volta.
-O sistema (ogage) já usa: FN + cima/baixo e FN + volume para o brilho; FN com L1/R1, esquerda/direita, A, L3 e R3 para ajustes do sistema; SELECT + FN fala a bateria; FN + power é o modo pânico.
+O sistema (ogage) já usa: FN + cima/baixo e FN + volume para o brilho; FN com L1/R1, esquerda/direita, A, L3 e R3 para ajustes do sistema; SELECT + FN fala a bateria; FN + power desliga gravando tudo.
 O contador, o limite e a captura funcionam em ports que desenham com OpenGL ES (a maioria). Ports em 32 bits ou que trocam o LD_PRELOAD não mostram o contador.
 
 # Bateria
@@ -127,7 +127,7 @@ O que é seu e do Omni36OS, como nos Ajustes do iPhone, nesta ordem:
 "Procurar atualização" (precisa de Wi-Fi): procura uma versão nova no GitHub. Antes de instalar, o Omni36OS baixa e confere tudo; a versão de agora fica guardada. Se a nova não chegar ao menu em 3 tentativas, a anterior volta sozinha e um aviso explica. "Voltar à versão anterior" aparece depois de uma atualização e troca de volta a pedido. Deixe o carregador ligado durante a atualização.
 "Verificar tudo": mostra só o que precisa de atenção em todos os cards (bateria, tela e som, desempenho, armazenamento e serviços), cada linha com o card de origem. Sem alertas, aparece "Tudo certo". O detalhe fica em cada card.
 "Sobre": este manual, os cuidados, as novidades de cada versão e os créditos (com os projetos usados como base).
-"Redefinir o sistema": volta ao primeiro boot. Apaga o nome do jogador, a trava por senha e o tema, desliga a memória extra (zram) e volta processador (Equilibrado, 1296 MHz), GPU (520 MHz), atalhos e botão de power ao padrão; depois pergunta o nome de novo. Ports, jogos, testes e as senhas do sistema e do Samba ficam.
+"Redefinir o sistema": volta ao primeiro boot. Apaga o nome do jogador, a trava por senha e o tema, desliga a memória extra (zram) e volta processador (Equilibrado, 1296 MHz), GPU (520 MHz) e atalhos ao padrão; depois pergunta o nome de novo. Ports, jogos, testes e as senhas do sistema e do Samba ficam.
 
 # Segurança (dentro de Geral)
 Tudo o que é senha fica aqui. B volta para Geral.
