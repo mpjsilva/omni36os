@@ -4,6 +4,9 @@ Linhas que começam com "# " viram títulos no leitor."""
 
 # A versão em uso vem do arquivo VERSION. Aqui fica só ela; o histórico completo está no NOVIDADES.md.
 NOVIDADES = [
+    ("1.12.5", "30/10/2026", [
+        "Aplicativos mostra só a lista de apps; as opções do Músicas (visualização, apagar a tela e subpastas) ficam dentro do app, no START.",
+    ]),
     ("1.12.4", "30/10/2026", [
         "Músicas: a pílula de estado (Wi-Fi, volume, bateria, temperatura e hora) aparece no tocador, o nome da visualização usa o aviso do sistema, e a captura (FN) acende a tela apagada antes de gravar.",
     ]),
@@ -143,7 +146,7 @@ Bateria no fim (a porcentagem do R36S não é confiável, por isso os limites s�
 "Músicas" toca as músicas (mp3, e também ogg, flac e wav) das pastas musicas dos cartões: EASYROMS/musicas e, com o cartão 2, ROMS2/musicas. A pasta do cartão 1 é criada sozinha.
 Cada pasta mostra as músicas soltas nela e as subpastas; A numa subpasta entra nela, A numa música toca a pasta a partir dela, Y toca a pasta inteira e B volta. Com "Ler subpastas" ligado, tocar uma pasta inclui as músicas das subpastas, nível por nível.
 Na tela Tocando: A pausa, esquerda/direita trocam de música, L1/R1 voltam e avançam 10 s, Y troca a visualização e B volta à lista (a música continua; X volta para a tela Tocando). Sair das Músicas para a música.
-"Visualização": Capa do álbum (a imagem da pasta, como cover.jpg, ou a capa embutida no mp3), Barras, Ondas, Anel ou Aurora, dançando com o som. "Apagar a tela": com a música tocando e sem apertar nada, a luz da tela apaga em 30 s, 1, 2 ou 5 minutos (ou Manter ligada); qualquer botão acende.
+Opções (START, dentro do app): "Visualização": Capa do álbum (a imagem da pasta, como cover.jpg, ou a capa embutida no mp3), Barras, Ondas, Anel ou Aurora, dançando com o som. "Apagar a tela": com a música tocando e sem apertar nada, a luz da tela apaga em 30 s, 1, 2 ou 5 minutos (ou Manter ligada); qualquer botão acende.
 As pastas ficam num índice (nome, título e artista das tags): só a pasta que mudou é lida de novo, e a lista guarda só os caminhos.
 
 # Desempenho

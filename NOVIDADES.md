@@ -2,6 +2,10 @@
 
 Histórico completo. Dentro do console (Geral > Sobre > Novidades) aparece só a versão em uso.
 
+## 1.12.5 (30/10/2026)
+
+- Aplicativos mostra só a lista de apps; as opções do Músicas (visualização, apagar a tela e subpastas) ficam dentro do app, no START.
+
 ## 1.12.4 (30/10/2026)
 
 - Músicas: a pílula de estado (Wi-Fi, volume, bateria, temperatura e hora) aparece no tocador, o nome da visualização usa o aviso do sistema, e a captura (FN) acende a tela apagada antes de gravar.

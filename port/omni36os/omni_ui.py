@@ -1012,14 +1012,8 @@ class App:
                     recheck]
         if cid == "apps":
             return [tip(A("Músicas", "music", self.open_music),
-                        "Toca os mp3 das pastas musicas dos cartões (ROMS/musicas e ROMS2/musicas)."),
-                    tip(Choice("Visualização", "wave-sine", "m_vis", list(VIS_NAMES), VIS_NAMES),
-                        "A animação que dança com a música. No tocador, Y troca."),
-                    tip(Choice("Apagar a tela", "moon", "m_tela", list(BLANK_NAMES), BLANK_NAMES),
-                        "Com a música tocando e sem apertar nada, a tela apaga para poupar bateria. "
-                        "Qualquer botão acende."),
-                    tip(Choice("Ler subpastas", "folder", "m_sub", [False, True], ONOFF),
-                        "Ligado: tocar uma pasta inclui as músicas das pastas de dentro, nível por nível.")]
+                        "Toca os mp3 das pastas musicas dos cartões (ROMS/musicas e ROMS2/musicas). "
+                        "As opções ficam dentro do app: START.")]
         if cid == "tela":
             return [tip(A("Brilho, contraste e volume", "adjustments", self.open_levels),
                         "Abre os três ajustes: cima/baixo escolhe, esquerda/direita ajusta, A confirma e B desfaz."),
@@ -2024,8 +2018,13 @@ class App:
         if m["off"]:                      # tela apagada: o botão só acende
             self.music_screen(True)
             return
+        if m["mode"] == "opcoes":
+            self.music_options_input(cmd)
+            return
         if m["mode"] == "tocando":
-            if cmd == "ok":
+            if cmd == "start":
+                m["back_to"], m["mode"], m["osel"] = "tocando", "opcoes", 0
+            elif cmd == "ok":
                 pl.toggle()
             elif cmd in ("left", "right"):
                 pl.step(1 if cmd == "right" else -1)
@@ -2054,12 +2053,62 @@ class App:
             self.music_play()
         elif cmd == "x" and pl.current():
             m["mode"] = "tocando"
+        elif cmd == "start":
+            m["back_to"], m["mode"], m["osel"] = "lista", "opcoes", 0
         elif cmd == "back":
             if len(m["stack"]) > (1 if len(m["roots"]) == 1 else 0):
                 left = m["stack"].pop()[0]
                 self.music_rows(keep=left)
             else:
                 self.music_close()
+
+    MUSIC_OPTIONS = (("Visualização", "wave-sine", "vis", list(VIS_NAMES), VIS_NAMES,
+                      "A animação que dança com a música. Tocando, Y troca."),
+                     ("Apagar a tela", "moon", "tela", list(BLANK_NAMES), BLANK_NAMES,
+                      "Com a música tocando e sem apertar nada, a tela apaga para poupar bateria. Qualquer botão acende."),
+                     ("Ler subpastas", "folder", "sub", [False, True], ONOFF,
+                      "Ligado: tocar uma pasta inclui as músicas das pastas de dentro, nível por nível."))
+
+    def music_options_input(self, cmd):
+        """Opções do app Músicas (START): cima/baixo escolhe, esquerda/direita ou A muda, B volta."""
+        m = self.music
+        n = len(self.MUSIC_OPTIONS)
+        if cmd in ("up", "down"):
+            m["osel"] = (m["osel"] + (1 if cmd == "down" else -1)) % n
+        elif cmd in ("left", "right", "ok"):
+            _, _, key, values, _, _ = self.MUSIC_OPTIONS[m["osel"]]
+            cur = music_cfg()[key]
+            k = values.index(cur) if cur in values else 0
+            val = values[(k + (-1 if cmd == "left" else 1)) % len(values)]
+            music_save(**{key: val})
+            if key == "vis":
+                m["vis"] = val
+        elif cmd in ("back", "start"):
+            m["mode"] = m.get("back_to", "lista")
+
+    def draw_music_options(self, dt, a1, a2):
+        g, m = self.g, self.music
+        cfg = music_cfg()
+        g.rrect(22, 22, 40, 40, 12, a1, a2)
+        g.icon("music", 30, 30, 24, ON_TEXT)
+        g.text("Bold", 22, "Opções", 74, 22, TEXT)
+        g.text("Regular", 12, "Músicas", 75, 49, MUTED)
+        for i, (label, icon, key, _, names, _) in enumerate(self.MUSIC_OPTIONS):
+            y, on = 84 + i * 64, i == m["osel"]
+            if on:
+                g.rrect(22, y, W - 44, 56, 16, a1, a2)
+            else:
+                g.rrect(22, y, W - 44, 56, 16, alpha(GLASS, 14))
+            c = ON_TEXT if on else TEXT
+            g.icon(icon, 40, y + 17, 22, c)
+            g.text("Regular", 12, label, 76, y + 10, c if on else MUTED)
+            g.text("SemiBold", 15, names.get(cfg[key], str(cfg[key])), 76, y + 27, c)
+            g.chevron(W - 56, y + 28, 8, c, left=True)
+            g.chevron(W - 40, y + 28, 8, c)
+        tipt = self.MUSIC_OPTIONS[m["osel"]][5]
+        for k, ln in enumerate(g.wrap("Regular", 13, tipt, W - 80)):
+            g.text("Regular", 13, ln, 40, 290 + 20 * k, MUTED)
+        self.draw_footer_at(H - 29, [("LR", "Mudar"), ("B", "Voltar")], center=W / 2)
 
     def draw_music(self, dt):
         g, m = self.g, self.music
@@ -2075,7 +2124,9 @@ class App:
             g.rrect(0, 0, W, H, 0, (0, 0, 0, 255), feather=0)
             return
         a1, a2 = hexc("f472b6"), hexc("8b5cf6")
-        if m["mode"] == "tocando" and pl.current():
+        if m["mode"] == "opcoes":
+            self.draw_music_options(dt, a1, a2)
+        elif m["mode"] == "tocando" and pl.current():
             self.draw_playing(dt, a1, a2)
         else:
             self.draw_music_list(dt, a1, a2)
@@ -2135,6 +2186,7 @@ class App:
             hints.insert(1, ("Y", "Tocar tudo"))
         if cur:
             hints.insert(1, ("X", "Tocando"))
+        hints.insert(-1, ("START", "Opções"))
         self.draw_footer_at(H - 29, hints, center=W / 2)
 
     def music_spectrum(self):
@@ -2245,7 +2297,7 @@ class App:
         if pl.paused:
             g.text("SemiBold", 12, "Pausado", W / 2, by + 22, a1, "c", "m")
         self.draw_footer_at(H - 29, [("A", "Tocar" if pl.paused else "Pausar"), ("LR", "Música"),
-                                     ("L1", "−10 s"), ("R1", "+10 s"), ("Y", "Visual"), ("B", "Lista")], center=W / 2)
+                                     ("L1", "−10 s"), ("R1", "+10 s"), ("Y", "Visual"), ("START", "Opções"), ("B", "Lista")], center=W / 2)
 
     def _fs(self, fn, busy="Fazendo..."):
         here = self.files_at
