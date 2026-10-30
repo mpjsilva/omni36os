@@ -96,6 +96,7 @@ def sd_facts():
 def velocidade():
     """Testar velocidade (Armazenamento): escreve e lê um arquivo em cada cartão."""
     out = []
+    generic = {c["cartao"]: c["codigo"] for c in sd_facts()["cartoes"] if c["fabricante"] == "desconhecido"}
     for card, path in (("sistema", "/roms"), ("jogos", "/roms2")):
         if not os.path.ismount(path):
             continue
@@ -109,6 +110,9 @@ def velocidade():
             out.append(("problema", f"Cartão de {card} lento: {f['w']} MB/s de escrita. Vale trocar por um melhor."))
         else:
             out.append(("ok", f"Cartão de {card}: {f['w']} MB/s escrita, {f.get('r', 0)} MB/s leitura."))
+        if card in generic:
+            out.append(("info", f"Cartão de {card} sem marca identificada (código {generic[card]}), comum em "
+                                "cartões genéricos. Se ele travar ou perder arquivos, vale trocar."))
     return finish(out or [("aviso", "Nenhum cartão montado para testar.")], [], {})
 
 
@@ -204,11 +208,7 @@ def checkup():
     check_overclock(f, out, acts)
     parts.append(("Desempenho", finish(out, acts, f)))
     out = []
-    check_disk(out)
-    for c in sd_facts()["cartoes"]:
-        if c["fabricante"] == "desconhecido":
-            out.append(("aviso", f"Cartão de {c['cartao']} sem marca identificada (código {c['codigo']}), "
-                                 "comum em cartões genéricos."))
+    check_disk(out)        # cartão sem marca não é alerta: só aparece no "Testar velocidade"
     parts.append(("Armazenamento", finish(out, [], {})))
     out, acts = [], []
     check_services(out, acts)

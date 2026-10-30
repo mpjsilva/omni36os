@@ -213,18 +213,17 @@ class Data:
     def check(self, name):
         if FAKE:
             time.sleep(0.4)
-            sd = ("aviso", "Cartão de jogos sem marca identificada (código 0xfe), comum em cartões genéricos.")
             som = ("ok", "Som saindo no alto-falante (automático).")
             fake = {
-                "checkup": ([], [("aviso", "Cartões SD: " + sd[1]),
-                                                  ("info", "Cada card mostra o detalhe do seu assunto.")]),
+                "checkup": ([], [("ok", "Tudo certo: nenhum card tem alerta."),
+                                 ("info", "Cada card mostra o detalhe do seu assunto.")]),
                 "bateria": ([], [("ok", "Bateria em 87%, descarregando."), ("ok", "Brilho em 40%."),
                                  ("ok", "No menu, o processador fica no mínimo para poupar bateria.")]),
                 "atualizar": ([], [("ok", "Volume em 60%."), som]),
                 "desempenho": ([], [("ok", "Temperatura normal: 52 °C."),
                                     ("ok", "Processador a 1008 MHz, modo Equilibrado."),
                                     ("info", "Limites: processador 1296 MHz, GPU 520 MHz. ZRAM 0 MB (0 MB em uso).")]),
-                "cartoes": ([], [sd, ("ok", "Cartão do sistema: 16 GB, SanDisk."),
+                "cartoes": ([], [("ok", "Cartão do sistema: 16 GB, SanDisk."), ("ok", "Cartão de jogos: 64 GB."),
                                  ("ok", "Espaço do sistema: 4.7 GB livres (50% usado)."),
                                  ("ok", "Espaço de jogos: 31.2 GB livres (50% usado).")]),
                 "pc": (["ligar_pendrive"], [("ok", "A partição /roms2 (31.2 GB livres) vai aparecer no PC como pendrive."),
@@ -768,9 +767,8 @@ class App:
     def _cartoes(self):
         out = []
         for c in omni_checks.sd_facts()["cartoes"]:
-            lvl = "ok" if c["fabricante"] != "desconhecido" else "aviso"
-            fab = c["fabricante"] if lvl == "ok" else f"marca não identificada ({c['codigo']})"
-            out.append((lvl, f"Cartão de {c['cartao']}: {c['tamanho_gb']} GB, {fab}."))
+            fab = f", {c['fabricante']}" if c["fabricante"] != "desconhecido" else ""   # sem marca: só no teste
+            out.append(("ok", f"Cartão de {c['cartao']}: {c['tamanho_gb']} GB{fab}."))
         omni_checks.check_disk(out)
         for part, r in omni.last_scan().items():
             ok = r["resultado"] == "clean"
@@ -1047,7 +1045,12 @@ class App:
     def speed_test(self):
         def fn():
             if FAKE:
-                return D.run("x")
+                time.sleep(1)
+                return {"nivel": "ok", "acoes": [], "achados": [
+                    ("ok", "Cartão de sistema: 18.2 MB/s escrita, 41.0 MB/s leitura."),
+                    ("ok", "Cartão de jogos: 12.5 MB/s escrita, 38.7 MB/s leitura."),
+                    ("info", "Cartão de jogos sem marca identificada (código 0xfe), comum em cartões genéricos. "
+                             "Se ele travar ou perder arquivos, vale trocar.")]}
             return omni_checks.velocidade()
 
         def done(res):
