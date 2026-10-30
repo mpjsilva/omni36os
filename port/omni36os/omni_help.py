@@ -47,6 +47,7 @@ Cor do LED: verde ou vermelho, também no boot. Com a bateria em 10% ou menos, o
 "Detalhes da tela" mostra o modelo da sua tela, diz qual opção escolher no SELECT MODEL ao atualizar o Omni36OS e avisa se o aparelho é um clone.
 
 # Rede
+Data, hora e fuso se acertam sozinhos: na primeira vez que o console pega internet depois de ligar, o Omni36OS descobre o fuso pela conexão, acerta a hora, grava no relógio do console e desliga o serviço de hora até o próximo boot.
 "Ligar o Wi-Fi" liga e desliga o adaptador, "Procurar redes" lista as redes por perto (com cadeado pede a senha no teclado; START confirma), "Redes salvas" conecta de novo ou esquece uma, "Desconectar" sai da rede atual. O painel mostra a rede, o sinal e o IP do console, e se atualiza sozinho.
 "Rede pelo cabo USB": o console vira uma placa de rede no cabo.
 - Modo universal: o console dá o IP ao PC. No PC: ssh omni@10.44.44.1.

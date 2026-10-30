@@ -70,7 +70,7 @@ SIS=(etc/hostname etc/hosts etc/zram.conf etc/hostapd/hostapd.conf
      etc/systemd/system/rotate-boot-logo.service etc/systemd/system/boot_volume.service.d
      etc/systemd/system/emulationstation.service.d etc/systemd/system/welcome-message.service.d
      etc/systemd/system/nmbd.service.d etc/systemd/system/remote-autostart.service.d
-     etc/NetworkManager/dispatcher.d/90-omni36os-remoto
+     etc/NetworkManager/dispatcher.d/90-omni36os-remoto etc/systemd/system/omni36os-hora.service usr/local/bin/omni36os-hora
      etc/systemd/system/omni36os-launcher.service.wants
      etc/systemd/system/multi-user.target.wants/omni36os-atalho.service
      etc/systemd/system/multi-user.target.wants/omni36os-launcher.service
