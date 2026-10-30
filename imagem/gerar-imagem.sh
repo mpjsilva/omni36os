@@ -73,6 +73,7 @@ SIS=(etc/hostname etc/hosts etc/zram.conf etc/hostapd/hostapd.conf
      etc/NetworkManager/dispatcher.d/90-omni36os-remoto etc/systemd/system/omni36os-hora.service usr/local/bin/omni36os-hora usr/local/bin/omni36os-volume
      usr/local/bin/omni36os-wifi-boot etc/systemd/system/omni36os-wifi-boot.service
      etc/systemd/system/multi-user.target.wants/omni36os-wifi-boot.service
+     etc/modprobe.d/omni36os-wifi.conf
      etc/systemd/system/omni36os-launcher.service.wants
      etc/systemd/system/multi-user.target.wants/omni36os-atalho.service
      etc/systemd/system/multi-user.target.wants/omni36os-launcher.service
