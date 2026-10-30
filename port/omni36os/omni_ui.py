@@ -261,7 +261,7 @@ class Data:
             return {"brilho": 40, "volume": 60, "gov": "ondemand", "govs": ["powersave", "ondemand", "performance"],
                     "part": "roms2", "pendrive": False, "cpu_max": 1296, "cpu_freqs": [1296, 1416, 1512],
                     "gpu_max": 520, "gpu_freqs": [400, 480, 520, 600], "zram": 0, "fonte": "roms", "gamma": 1.0, "contraste": 50, "led": "verde", "remoto": "desligados",
-                    "ab": "trocados" if swapped_ab() else "padrao", "xy": "padrao",
+                    "inverter": "ligado" if swapped_ab() else "desligado",
                     "power": "desligar", "tema": THEME}[what]
         if what == "brilho":
             return omni.get_brightness()
@@ -295,10 +295,8 @@ class Data:
             return omni.get_led()
         if what == "remoto":
             return "ligados" if omni_sistema.remote_on() else "desligados"
-        if what == "ab":
-            return "trocados" if omni.get_swap_ab() else "padrao"
-        if what == "xy":
-            return "trocados" if omni.get_swap_xy() else "padrao"
+        if what == "inverter":
+            return "ligado" if omni.get_swap_ab() or omni.get_swap_xy() else "desligado"
         if what == "tema":
             return THEME
         if what.startswith("at_"):          # Controles > Atalhos
@@ -337,11 +335,13 @@ class Data:
             return omni.set_led({"color": value})
         if what == "remoto":
             return "ok" if FAKE else omni_sistema.usbnet_services(value == "ligados")
-        if what in ("ab", "xy"):
+        if what == "inverter":            # A com B e X com Y, sempre juntos
             if FAKE:
                 return "ok"
-            fn = omni.set_swap_ab if what == "ab" else omni.set_swap_xy
-            return fn({"on": value == "trocados"})
+            on = {"on": value == "ligado"}
+            omni.set_swap_ab(on)
+            omni.set_swap_xy(on)
+            return "ok"
         if what.startswith("at_"):
             return omni.set_atalho({"key": what[3:], "value": value})
 
@@ -434,7 +434,7 @@ UI_SHOT = "/dev/shm/omni36os-power/shot"
 SHOT_DIR = "/roms/imagens"
 
 
-SWAP_NAMES = {"padrao": "Padrão", "trocados": "Trocados"}
+SWAP_NAMES = {"desligado": "Desligado", "ligado": "Ligado"}
 
 
 def is_image(name):
@@ -921,10 +921,8 @@ class App:
             return [recheck]
         if cid == "controles":
             return [A("Testar o controle", "device-gamepad-2", self.open_pad),
-                    tip(Choice("Botões A e B", "arrows-exchange", "ab", ["padrao", "trocados"], SWAP_NAMES),
-                        "Trocados: A volta e B confirma, no Omni36OS, no PortMaster e nos ports."),
-                    tip(Choice("Botões X e Y", "arrows-exchange", "xy", ["padrao", "trocados"], SWAP_NAMES),
-                        "Troca X e Y no Omni36OS e nos ports do PortMaster."),
+                    tip(Choice("Inverter botões", "arrows-exchange", "inverter", ["desligado", "ligado"], SWAP_NAMES),
+                        "Ligado: A troca com B e X troca com Y, no Omni36OS, no PortMaster e nos ports."),
                     subpage(A("Atalhos", "keyboard", lambda: self.open_page("atalhos")), "atalhos"),
                     A("Consertar atalhos", "tool", lambda: self.native("fix_hotkeys", "Reiniciando os atalhos..."),
                       confirm="Reiniciar o serviço de atalhos (brilho e volume pelos botões)?"),
@@ -2864,12 +2862,8 @@ class App:
                 self.g.flush()
             if it.key == "fonte":         # a busca espera o jogador sair da página: trocar várias
                 self.source_dirty = res   # vezes seguidas não relê os cartões a cada toque
-            if it.key in ("ab", "xy"):        # o próprio Omni36OS passa a usar a troca na hora
-                on = it.options[it.index] == "trocados"
-                if it.key == "ab":
-                    self.swap = on
-                else:
-                    self.swap_xy = on
+            if it.key == "inverter":          # o próprio Omni36OS passa a usar a troca na hora
+                self.swap = self.swap_xy = it.options[it.index] == "ligado"
             if (it.key == "remoto" or it.key.startswith("at_")) and isinstance(res, str) and res != "ok":
                 self.toast = (res, "ok", self.t + 4)
         elif isinstance(it, Action) and cmd == "ok":

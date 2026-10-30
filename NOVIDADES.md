@@ -2,6 +2,10 @@
 
 Histórico completo. Dentro do console (Geral > Sobre > Novidades) aparece só a versão em uso.
 
+## 1.11.1 (30/10/2026)
+
+- Controles: "Botões A e B" e "Botões X e Y" viram uma opção só, Inverter botões (Ligado/Desligado), que troca os dois pares juntos.
+
 ## 1.11.0 (30/10/2026)
 
 - Boot: `omni36os-turbo` põe CPU, GPU e memória no máximo do início do boot até o menu ficar pronto (~27,4 s → ~24,3 s) e também ao desligar/reiniciar; o launcher volta ao mínimo quando termina de montar as páginas.

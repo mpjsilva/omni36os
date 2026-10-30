@@ -4,6 +4,9 @@ Linhas que começam com "# " viram títulos no leitor."""
 
 # A versão em uso vem do arquivo VERSION. Aqui fica só ela; o histórico completo está no NOVIDADES.md.
 NOVIDADES = [
+    ("1.11.1", "30/10/2026", [
+        "Controles: uma opção só, Inverter botões (Ligado/Desligado), troca A com B e X com Y juntos.",
+    ]),
     ("1.11.0", "30/10/2026", [
         "Boot mais rápido e sem tela preta: tudo no máximo até o menu ficar pronto (cerca de 3 s a menos) e "
         "depois no mínimo. O logo e a boas-vindas seguem direto até o Omni36OS abrir.",
