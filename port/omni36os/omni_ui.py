@@ -488,6 +488,8 @@ def music_save(**kw):
     return cfg
 
 
+NOTE_COLORS = (hexc("fbbf24"), hexc("f97316"))
+VIDEO_COLORS = (hexc("38bdf8"), hexc("8b5cf6"))
 TEXT_EXT = (".txt", ".md", ".log", ".ini", ".cfg", ".conf")
 NOTES_DIR = "/roms/notas"
 
@@ -1316,20 +1318,33 @@ class App:
 
     def draw_picker(self, dt):
         g, pk = self.g, self.picker
-        g.rrect(0, 0, W, H, 0, (5, 7, 20, 190), feather=0)
-        mx, my, mw, mh = 24, 20, W - 48, H - 40
-        g.rrect(mx, my, mw, mh, 22, MODAL_A, MODAL_B)
-        g.stroke(mx, my, mw, mh, 22, ink(25))
-        a1, a2 = self.accent
-        g.rrect(mx + 20, my + 16, 36, 36, 12, a1, a2)
-        g.icon(pk["icon"], mx + 28, my + 24, 20, ON_TEXT)
-        title = pk["title"]
-        while g.measure("Bold", 18, title)[0] > mw - 100 and len(title) > 8:
-            title = "…" + title[2:]          # caminhos longos: mostra o fim
-        g.text("Bold", 18, title, mx + 68, my + 22, TEXT)
+        app = pk.get("app")               # lista de um app (Vídeos, Notas): tela cheia, como as Músicas
+        if app:
+            a1, a2 = app
+            self.draw_bg(dt)
+            g.rrect(22, 22, 40, 40, 12, a1, a2)
+            g.icon(pk["icon"], 30, 30, 24, ON_TEXT)
+            g.text("Bold", 22, pk["title"][:22], 74, 22, TEXT)
+            g.text("Regular", 12, pk.get("sub", "")[-34:], 75, 49, MUTED)
+            self.draw_status()
+            mx, my, mw, mh = 16, 0, W - 32, H
+            g.rrect(16, 74, W - 32, 352, 18, alpha(GLASS, 14))
+            ty, th = 80, 340
+        else:
+            g.rrect(0, 0, W, H, 0, (5, 7, 20, 190), feather=0)
+            mx, my, mw, mh = 24, 20, W - 48, H - 40
+            g.rrect(mx, my, mw, mh, 22, MODAL_A, MODAL_B)
+            g.stroke(mx, my, mw, mh, 22, ink(25))
+            a1, a2 = self.accent
+            g.rrect(mx + 20, my + 16, 36, 36, 12, a1, a2)
+            g.icon(pk["icon"], mx + 28, my + 24, 20, ON_TEXT)
+            title = pk["title"]
+            while g.measure("Bold", 18, title)[0] > mw - 100 and len(title) > 8:
+                title = "…" + title[2:]          # caminhos longos: mostra o fim
+            g.text("Bold", 18, title, mx + 68, my + 22, TEXT)
+            ty, th = my + 66, mh - 66 - 44
         rows = pk["rows"]
         hs = [34 if "head" in r else 40 for r in rows]
-        ty, th = my + 66, mh - 66 - 44
         ys = [sum(hs[:i]) for i in range(len(rows))]
         # rola para manter a linha escolhida visível (com o título do grupo)
         sel_y, sel_h = ys[pk["sel"]], hs[pk["sel"]]
@@ -1373,6 +1388,9 @@ class App:
         extra = pk.get("hints")
         if extra is None:
             extra = [("L1/R1", "Letra")] if pk.get("letters") else [("LR", "Pular")]
+        if app:
+            self.draw_footer_at(H - 29, [("A", pk["ok_label"])] + extra + [("B", "Voltar")], center=W / 2)
+            return
         self.draw_footer_at(my + mh - 30, [("A", pk["ok_label"])] + extra, mx + 24)
         self.draw_footer_at(my + mh - 30, [("B", "Voltar")], mx + mw - 110)
 
@@ -2089,7 +2107,7 @@ class App:
                 return
             rows = [{"name": n, "icon": "device-sd-card", "path": p, "dir": True} for p, n in roots]
             self.show_list("Vídeos", "movie", rows, lambda r: self.open_videos(r["path"]), "Abrir")
-            self.picker["hints"] = []
+            self.picker.update(hints=[], app=VIDEO_COLORS, sub="Escolha o cartão")
             return
         top = path in [p for p, _ in roots]
         try:
@@ -2107,7 +2125,7 @@ class App:
             return
         title = "Vídeos" if top else os.path.basename(path)
         self.show_list(title, "movie", rows, lambda r: self.video_pick(path, r), "Abrir", start)
-        self.picker["hints"] = []
+        self.picker.update(hints=[], app=VIDEO_COLORS, sub=path)
         if not (top and len(roots) == 1):
             self.picker["on_back"] = lambda: self.open_videos(None if top else os.path.dirname(path))
 
@@ -2208,6 +2226,7 @@ class App:
                   "right": (time.strftime("%d/%m %H:%M", time.localtime(os.path.getmtime(os.path.join(folder, n)))), MUTED)}
                  for n in names]
         self.show_list("Notas", "notes", rows, self.note_pick, "Abrir", start)
+        self.picker.update(app=NOTE_COLORS, sub=folder)
         self.picker["on_x"] = self.note_delete
         self.picker["hints"] = [("X", "Apagar")] if names else []
 
@@ -2306,7 +2325,7 @@ class App:
 
     def draw_note(self, dt):
         g, n = self.g, self.note
-        a1, a2 = hexc("fbbf24"), hexc("f97316")
+        a1, a2 = NOTE_COLORS
         g.rrect(22, 22, 40, 40, 12, a1, a2)
         g.icon("notes", 30, 30, 24, ON_TEXT)
         name = os.path.basename(n["path"])

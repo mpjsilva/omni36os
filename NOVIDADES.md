@@ -2,6 +2,10 @@
 
 Histórico completo. Dentro do console (Geral > Sobre > Novidades) aparece só a versão em uso.
 
+## 1.14.2 (30/10/2026)
+
+- Vídeos e Notas: as listas ficam em tela cheia, como as Músicas, com a pílula de estado (Wi-Fi, volume, bateria, temperatura e hora). O vídeo tocando continua em tela cheia, sem nada por cima. Apagar uma nota pede confirmação, com Cancelar já escolhido.
+
 ## 1.14.1 (30/10/2026)
 
 - Manual revisado para o lançamento: apresentação nova, caminhos EASYROMS das pastas de vídeos e notas, Cartões no Verificar tudo, créditos do SDL2 e do FFmpeg, e sem a menção ao RetroArch, que não vem mais no sistema.
