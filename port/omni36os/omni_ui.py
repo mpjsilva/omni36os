@@ -3250,10 +3250,11 @@ class App:
         # da etiqueta SUGERIDO, se houver) e o botão cresce para caber tudo.
         gap, tag = 10, "SUGERIDO"
         tw = g.measure("Bold", 9, tag)[0] + 14
-        layout, y = [], cy + 22
+        # o primeiro botão começa na mesma altura da borda do painel da esquerda (py)
+        layout, y = [], cy
         for k, it in enumerate(self.items):
             if k == half:
-                y = cy + 22                     # segunda coluna recomeça no topo
+                y = cy                          # segunda coluna recomeça no topo
             lines = None
             ih = 44 if two else 50
             if isinstance(it, Action):
@@ -3263,13 +3264,13 @@ class App:
             layout.append((y, ih, lines))
             y += ih + (5 if two else gap)
         # muitas ações (Geral, Armazenamento): a coluna rola para o item escolhido caber acima do rodapé
-        top, bottom = cy + 18, H - 52
-        sy, sh = layout[self.item_sel][:2] if layout else (cy + 22, 50)
-        want = max(0, sy + sh - bottom) if sy - (cy + 22) > 0 else 0
+        top, bottom = cy - 4, py + ph
+        sy, sh = layout[self.item_sel][:2] if layout else (cy, 50)
+        want = max(0, sy + sh - bottom) if sy - cy > 0 else 0
         self.act_off = approach(getattr(self, "act_off", 0), want, dt, 18)
         same = lambda k: (k < half) == (self.item_sel < half)   # só a coluna do item escolhido rola
         layout = [(y - (self.act_off if same(k) else 0), ih, lines) for k, (y, ih, lines) in enumerate(layout)]
-        sel_y, sel_h = layout[self.item_sel][:2] if layout else (cy + 22, 50)
+        sel_y, sel_h = layout[self.item_sel][:2] if layout else (cy, 50)
         g.clip(cx - 20, top, (xs[-1] if xs else cx) + cw + 40 - cx, bottom - top + 4)
         self.item_y = approach(self.item_y or sel_y, sel_y, dt, 18)
         sel_x = xs[self.item_sel] if xs else cx
