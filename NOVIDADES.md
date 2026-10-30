@@ -2,6 +2,10 @@
 
 Histórico completo. Dentro do console (Geral > Sobre > Novidades) aparece só a versão em uso.
 
+## 1.15.10 (30/10/2026)
+
+- Lista de ports: cada jogo mostra em qual cartão está (ícone de cartão SD com o número 1 ou 2), e a ficha do jogo diz "Cartão 1" ou "Cartão 2".
+
 ## 1.15.9 (30/10/2026)
 
 - Tela certa no primeiro boot mais segura: cada teste troca só a tela dentro do DTB original do console. O boot.ini, o u-boot e o resto do hardware nunca são trocados, então uma tela errada só deixa a tela apagada, sem travar o boot.

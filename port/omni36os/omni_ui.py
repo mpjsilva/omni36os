@@ -159,6 +159,11 @@ def omni_version():
 SEEN_FILE = "/home/ark/.config/omni36os/versao-vista"   # versão cujas novidades já apareceram
 
 
+def card_of(game):
+    """Em qual cartão o port está: "2" para /roms2, "1" para o resto (/roms)."""
+    return "2" if game.get("path", "").startswith("/roms2/") else "1"
+
+
 def vtuple(v):
     m = re.match(r"^(\d+)\.(\d+)\.(\d+)", (v or "").strip())
     return tuple(int(x) for x in m.groups()) if m else (0, 0, 0)
@@ -190,7 +195,7 @@ FAKE_GAMES = [
     {"name": "ports", "full": "Ports", "path": "/roms2/ports", "n_unknown": 0, "unknown": [], "games": [
         {"path": "/roms2/ports/Stardew Valley.sh", "name": "Stardew Valley", "size": 524288000, "fav": 1,
          "plays": 12, "time": 18400, "last": "20261024T201000"},
-        {"path": "/roms2/ports/Celeste.sh", "name": "Celeste", "size": 1200000000, "plays": 3,
+        {"path": "/roms/ports/Celeste.sh", "name": "Celeste", "size": 1200000000, "plays": 3,
          "time": 3600, "last": "20261020T101000"},
         {"path": "/roms2/ports/Undertale.sh", "name": "Undertale", "size": 180000000, "fav": 1},
         {"path": FAKE_CARD + "/Daytona USA.sh", "name": "Daytona USA", "size": 90000000},   # pasta info
@@ -2896,13 +2901,17 @@ class App:
             if on:
                 g.rrect(gx + 6, y, gw - 12, rh - 2, 10, a1, a2)
             name = game["name"]
-            while g.measure("Regular", 14, name)[0] > gw - 50 and len(name) > 6:
+            room = gw - (88 if game.get("fav") else 70)
+            while g.measure("Regular", 14, name)[0] > room and len(name) > 6:
                 name = name[:-2]
             if name != game["name"]:
                 name = name.rstrip() + "…"
             g.text("SemiBold" if on else "Regular", 14, name, gx + 16, y + 6, ON_TEXT if on else TEXT)
+            soft = ON_TEXT if on else FAINT
+            g.icon("device-sd-card", gx + gw - 40, y + 8, 12, soft)                  # em qual cartão está
+            g.text("Medium", 11, card_of(game), gx + gw - 26, y + 8, soft)
             if game.get("fav"):
-                g.icon("check", gx + gw - 30, y + 7, 14, ON_TEXT if on else FAINT)   # favorito
+                g.icon("check", gx + gw - 60, y + 7, 14, soft)                       # favorito
         g.clip()
         if len(games) > vis:
             bh = max(24, lh * vis / len(games))
@@ -2938,7 +2947,7 @@ class App:
             "Descrição não encontrada." if self.meta_cache.get(game["name"], (None,))[0] is not None else
             "Busca automática desligada (Ferramentas)." if not busca_on() else
             "Sem descrição: ligue o Wi-Fi para buscar.")
-        local = []
+        local = [f"Cartão {card_of(game)}"]
         if (info or {}).get("porter"):
             local.append("Port: " + info["porter"][:28])
         if info and "pronto" in info and not info["pronto"]:
@@ -2956,7 +2965,7 @@ class App:
         if local:
             ln = " · ".join(local)
             while g.measure("Medium", 11, ln)[0] > pw - 28 and len(local) > 1:
-                local.pop(0)                  # sem espaço: fica o mais útil (o fim)
+                local.pop(1)                  # sem espaço: fica o cartão e o mais útil (o fim)
                 ln = " · ".join(local)
             g.text("Medium", 11, ln, px + 14, py + ph - 24, FAINT)
         self.draw_footer([("A", "Ver o jogo", TEXT), ("LR", "Página", MUTED), ("L1 / R1", "Letra", MUTED),
