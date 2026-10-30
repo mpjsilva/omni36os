@@ -2,6 +2,12 @@
 
 Histórico completo. Dentro do console (Geral > Sobre > Novidades) aparece só a versão em uso.
 
+## 1.12.0 (30/10/2026)
+
+- Card Aplicativos (`omni_musica.py`): tocador de música com SDL_mixer dentro do Omni36OS. Lê `/roms/musicas` e `/roms2/musicas` (a do cartão 1 é criada); cada pasta mostra as músicas soltas e as subpastas, e "Ler subpastas" inclui as subpastas, nível por nível, ao tocar. Índice por pasta em `~/.config/omni36os/musicas.json` (data da pasta, títulos e artistas das tags ID3): só a pasta que mudou é relida, e a lista guarda só caminhos.
+- Tela Tocando: A pausa, esquerda/direita trocam de música, L1/R1 −10/+10 s, Y troca a visualização. Visualizações Barras, Ondas, Anel e Aurora com o som de verdade (cópia do áudio mixado + DFT em 16 faixas, ~4 ms por quadro no R36S, com ganho automático). "Apagar a tela" (30 s a 5 min ou Manter ligada) apaga a luz (`bl_power`) com a música tocando; qualquer botão acende.
+- Cards 3 x 3: Bateria entra em Tela, som e bateria (painel e Calibrar a bateria); Ports no centro, com o destaque nascendo nele (animação de entrega) toda vez que o menu aparece. Subtítulos com as três coisas de cada card; Geral não mostra mais a versão.
+
 ## 1.11.11 (30/10/2026)
 
 - Inverter botões: dica e ajuda dizem só "Ligado troca A com B e X com Y."

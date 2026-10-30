@@ -4,6 +4,11 @@ Linhas que começam com "# " viram títulos no leitor."""
 
 # A versão em uso vem do arquivo VERSION. Aqui fica só ela; o histórico completo está no NOVIDADES.md.
 NOVIDADES = [
+    ("1.12.0", "30/10/2026", [
+        "Aplicativos, o card novo: Músicas toca os mp3 das pastas musicas dos cartões, com pastas e subpastas, visualizações (Barras, Ondas, Anel e Aurora) e a tela apagando sozinha enquanto a música toca.",
+        "Bateria agora mora em Tela, som e bateria. Ports fica no centro e recebe o destaque toda vez que o menu aparece.",
+        "Cada card diz as três coisas que faz.",
+    ]),
     ("1.11.11", "30/10/2026", [
         "Texto de Inverter botões mais curto.",
     ]),
@@ -60,7 +65,7 @@ Ele não usa internet nem inteligência artificial: são verificações e script
 Direcional ou analógico: andar pelos cards e opções.
 A: abrir ou confirmar. B: voltar. O botão de power abre Energia (suspender, reiniciar, desligar).
 L1/R1: rolam o diagnóstico (painel da esquerda) quando ele não cabe; "L1: N acima" e "R1: mais N" mostram o que está escondido. No manual e nas listas, L1/R1 pulam de bloco em bloco.
-Nas opções de valor (modo do processador, limites), use esquerda e direita. Em Tela e som, as barras (volume, brilho, contraste) e as escolhas mudam com o analógico esquerdo, e o direcional só navega.
+Nas opções de valor (modo do processador, limites), use esquerda e direita. Em Tela, som e bateria, as barras (volume, brilho, contraste) e as escolhas mudam com o analógico esquerdo, e o direcional só navega.
 Cada página explica a opção escolhida no topo do painel da esquerda (lâmpada roxa).
 Se os botões A e B estiverem trocados no sistema, o Omni36OS segue a mesma troca.
 
@@ -70,12 +75,12 @@ Quando há conserto, ele aparece no topo das ações com a etiqueta SUGERIDO.
 As verificações rodam na tela de carregamento. Depois de uma ação, o card verifica de novo sozinho; "Atualizar status" força uma nova leitura.
 Geral > "Verificar tudo" junta numa lista só os alertas de todos os cards.
 
-# Ports (primeiro card)
-O console liga nos cards, com Ports já escolhido: A abre a biblioteca. É uma lista só, com os favoritos primeiro e o resto por nome. Cima/baixo escolhem o port, esquerda/direita pulam de 10 em 10 e L1/R1 pulam de letra. Ao lado aparece a ficha do jogo (capa, estúdio, data, gêneros e descrição); A abre o port e, ao fechar, a lista volta no mesmo lugar.
+# Ports (card do centro)
+O console liga nos cards e entrega o destaque no Ports, no centro: A abre a biblioteca. É uma lista só, com os favoritos primeiro e o resto por nome. Cima/baixo escolhem o port, esquerda/direita pulam de 10 em 10 e L1/R1 pulam de letra. Ao lado aparece a ficha do jogo (capa, estúdio, data, gêneros e descrição); A abre o port e, ao fechar, a lista volta no mesmo lugar.
 B volta para os cards. O botão de power abre Energia: suspender, reiniciar ou desligar.
-A ficha vem da pasta info do port (info.json, imagem e .txt), e depois do PortMaster e da Steam, buscados uma vez com Wi-Fi e guardados no cartão.
+A capa e a descrição vêm da pasta info do port (info.json, imagem e .txt) e, com o Wi-Fi conectado, do PortMaster, da Steam, da Wikipédia e do DuckDuckGo, buscados uma vez e guardados no cartão. Ferramentas > Busca automática liga e desliga a busca.
 
-# Tela e som
+# Tela, som e bateria
 "Brilho, contraste e volume" abre um painel com as três barras: cima/baixo escolhe, esquerda/direita ajusta na hora, A confirma e B desfaz o que mudou.
 "Tema": escuro ou claro, vale na hora e fica salvo.
 Brilho: a luz da tela.
@@ -113,14 +118,21 @@ Pelo botão de power, com um jogo aberto: o jogo congela e o menu Energia abre p
 O sistema (ogage) já usa: FN + cima/baixo e FN + volume para o brilho; FN com L1/R1, esquerda/direita, A, L3 e R3 para ajustes do sistema; SELECT + FN fala a bateria; FN + power desliga gravando tudo.
 O contador, o limite e a captura funcionam em ports que desenham com OpenGL ES (a maioria). Ports em 32 bits ou que trocam o LD_PRELOAD não mostram o contador.
 
-# Bateria
-Mostra a carga, se está carregando, o brilho e o modo do processador. Com o brilho alto ou o processador no máximo, aparece a dica de economia com um botão. O brilho se ajusta em Tela e som e o processador em Desempenho.
+# Bateria (dentro de Tela, som e bateria)
+O painel mostra a carga, se está carregando, o brilho e o modo do processador. Com o brilho alto ou o processador no máximo, aparece a dica de economia com um botão. O processador se ajusta em Desempenho.
 Bateria no fim (a porcentagem do R36S não é confiável, por isso os limites são altos): em 30% o Omni36OS sugere conectar o carregador; em 15%, sugere salvar o progresso (num jogo, o contador surge com a bateria em vermelho). Em 10%, sem o carregador, o Omni36OS fecha o jogo dando tempo de ele salvar, grava tudo e desliga, em vez de o console apagar de repente.
 "Calibrar a bateria" abre a página da calibração. Calibre quando a porcentagem pular ou o aparelho desligar com carga sobrando:
 1. Carregue até o fim e tire o carregador.
 2. Toque em "Iniciar a calibração" e use o console normalmente (pode jogar) até ele desligar sozinho. Uma amostra por minuto fica gravada em /usr/local/etc/battery-cal.
 3. Ligue, carregue e toque em "Aplicar a curva". A porcentagem passa a seguir a sua bateria.
 "Voltar à curva de fábrica" desfaz.
+
+# Aplicativos
+"Músicas" toca as músicas (mp3, e também ogg, flac e wav) das pastas musicas dos cartões: EASYROMS/musicas e, com o cartão 2, ROMS2/musicas. A pasta do cartão 1 é criada sozinha.
+Cada pasta mostra as músicas soltas nela e as subpastas; A numa subpasta entra nela, A numa música toca a pasta a partir dela, Y toca a pasta inteira e B volta. Com "Ler subpastas" ligado, tocar uma pasta inclui as músicas das subpastas, nível por nível.
+Na tela Tocando: A pausa, esquerda/direita trocam de música, L1/R1 voltam e avançam 10 s, Y troca a visualização e B volta à lista (a música continua; X volta para a tela Tocando). Sair das Músicas para a música.
+"Visualização": Barras, Ondas, Anel, Aurora ou Nenhuma, todas dançando com o som. "Apagar a tela": com a música tocando e sem apertar nada, a luz da tela apaga em 30 s, 1, 2 ou 5 minutos (ou Manter ligada); qualquer botão acende.
+As pastas ficam num índice (nome, título e artista das tags): só a pasta que mudou é lida de novo, e a lista guarda só os caminhos.
 
 # Desempenho
 No menu, o processador, a GPU e a memória ficam sempre no mínimo: o console esfria e a bateria rende. Ao abrir um port, tudo sobe até os limites abaixo; ao voltar, desce de novo.
@@ -200,7 +212,7 @@ O reparo apaga entradas corrompidas: se o cartão já estava com erros, algum ar
 
 # Restaurar e atualizar
 "Restaurar de fábrica" do RetroArch apaga os seus ajustes (uma cópia fica guardada).
-Antes de atualizar o Omni36OS, copie a partição BOOT do cartão para o PC e veja em Tela e som > "Detalhes da tela" qual modelo escolher.
+Antes de atualizar o Omni36OS, copie a partição BOOT do cartão para o PC e veja em Tela, som e bateria > "Detalhes da tela" qual modelo escolher.
 
 # Primeiro boot
 Na primeira vez que liga, o Omni36OS acerta a tela sozinho: se aparecer "Está vendo esta tela?", aperte qualquer botão. Se a tela ficar apagada, não desligue: ele testa a próxima tela e reinicia sozinho (cada tentativa leva menos de um minuto). Se nenhuma for confirmada, volta tudo como estava.

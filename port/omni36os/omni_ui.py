@@ -11,6 +11,7 @@ OMNI_WINDOWED=1, OMNI_DEMO="right,ok,wait800,shot,..." + OMNI_SHOT_DIR (roteiro
 com screenshots PPM, para testar sem mãos).
 """
 import ctypes as C
+import glob
 import json
 import math
 import os
@@ -83,22 +84,23 @@ LEVEL = {"ok": hexc("34d399"), "aviso": hexc("fbbf24"), "problema": hexc("f87171
 LEVEL_ICON = {"ok": "check", "aviso": "alert-triangle", "problema": "x", "info": "info-circle", "dica": "bulb"}
 
 CARDS = [
-    # id, título, ícone, cor 1, cor 2
-    ("ports", "Ports", "device-gamepad-2", "c084fc", "7c3aed"),     # abre a biblioteca
-    ("tela", "Tela e som", "device-tv", "fbbf24", "f97316"),
+    # id, título, ícone, cor 1, cor 2 (3 x 3: Ports no centro, a abertura entrega o destaque nele)
+    ("tela", "Tela, som e bateria", "device-tv", "fbbf24", "f97316"),
     ("rede", "Rede", "wifi", "38bdf8", "0ea5e9"),
     ("controles", "Controles", "keyboard", "818cf8", "4f46e5"),
-    ("bateria", "Bateria", "battery-charging", "a3e635", "16a34a"),
     ("desempenho", "Desempenho", "gauge", "fb7185", "e11d48"),
+    ("ports", "Ports", "device-gamepad-2", "c084fc", "7c3aed"),     # abre a biblioteca
+    ("apps", "Aplicativos", "apps", "f472b6", "db2777"),
     ("cartoes", "Armazenamento", "device-sd-card", "2dd4bf", "0284c7"),
     ("ferramentas", "Ferramentas", "adjustments", "94a3b8", "475569"),
     ("geral", "Geral", "settings", "60a5fa", "a78bfa"),
 ]
+PORTS_AT = next(i for i, c in enumerate(CARDS) if c[0] == "ports")
 COLS = 3
 # Páginas abertas de dentro de outro card: B volta para o card de origem e os
 # alertas delas aparecem no ponto do card de origem.
 TWO_COLS = set()      # cartões sem painel de diagnóstico: as ações vêm em duas colunas (hoje nenhum)
-SUBPAGES = {            "calibracao": ("Calibrar a bateria", "battery-2", "a3e635", "16a34a", "bateria"),
+SUBPAGES = {            "calibracao": ("Calibrar a bateria", "battery-2", "a3e635", "16a34a", "tela"),
             "usbrede": ("Rede pelo cabo USB", "network", "38bdf8", "4f46e5", "rede"),
             "seguranca": ("Segurança", "lock", "60a5fa", "a78bfa", "geral"),
             "backup": ("Backup", "device-floppy", "60a5fa", "a78bfa", "geral"),
@@ -138,6 +140,7 @@ STATE_CACHE = "/dev/shm/omni36os-estado.json"
 STATE_MAX_AGE = 30 * 60
 
 import omni_help
+import omni_musica  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 
@@ -253,6 +256,8 @@ class Data:
         return omni_checks.ACTIONS[name][0]
 
     def get(self, what):
+        if what.startswith("m_"):         # Aplicativos > Músicas (o mesmo arquivo no simulador e no console)
+            return music_cfg()[what[2:]]
         if FAKE:
             if what in self.__dict__.get("fake_vals", {}):   # simulador: guarda o que foi mudado
                 return self.fake_vals[what]
@@ -307,6 +312,9 @@ class Data:
             return omni.get_atalhos()[what[3:]]
 
     def set(self, what, value):
+        if what.startswith("m_"):
+            music_save(**{what[2:]: value})
+            return "ok"
         if what == "tema":
             apply_theme(value)
             if not FAKE:
@@ -449,6 +457,30 @@ SHOT_DIR = "/roms/imagens"
 
 
 SWAP_NAMES = {"desligado": "Desligado", "ligado": "Ligado"}
+VIS_NAMES = {"barras": "Barras", "ondas": "Ondas", "anel": "Anel", "aurora": "Aurora", "nenhuma": "Nenhuma"}
+BLANK_NAMES = {30: "Em 30 s", 60: "Em 1 min", 120: "Em 2 min", 300: "Em 5 min", 0: "Manter ligada"}
+MUSIC_CFG = "/tmp/omni36os-musica.json" if FAKE else "/home/ark/.config/omni36os/musica.json"
+MUSIC_DEF = {"vis": "barras", "tela": 60, "sub": False}
+
+
+def music_cfg():
+    try:
+        with open(MUSIC_CFG) as f:
+            return {**MUSIC_DEF, **json.load(f)}
+    except (OSError, ValueError):
+        return dict(MUSIC_DEF)
+
+
+def music_save(**kw):
+    cfg = {**music_cfg(), **kw}
+    try:
+        with open(MUSIC_CFG + ".tmp", "w") as f:
+            json.dump(cfg, f)
+        os.replace(MUSIC_CFG + ".tmp", MUSIC_CFG)
+        os.chmod(MUSIC_CFG, 0o666)
+    except OSError:
+        pass
+    return cfg
 
 
 def is_image(name):
@@ -543,6 +575,23 @@ def approach(cur, target, dt, speed=14.0):
     return target + (cur - target) * math.exp(-speed * dt)
 
 
+def quad(x0, y0, x1, y1, c_top, c_bot):
+    """Retângulo em 2 triângulos com degradê vertical (para juntar vários num só desenho)."""
+    return [(x0, y0, c_top), (x1, y0, c_top), (x0, y1, c_bot), (x0, y1, c_bot), (x1, y0, c_top), (x1, y1, c_bot)]
+
+
+def polyline(pts, width, c):
+    """Linha grossa ligando os pontos, em triângulos."""
+    v, h = [], width / 2
+    for (xa, ya), (xb, yb) in zip(pts, pts[1:]):
+        dx, dy = xb - xa, yb - ya
+        n = math.hypot(dx, dy) or 1
+        nx, ny = -dy / n * h, dx / n * h
+        v += [(xa + nx, ya + ny, c), (xb + nx, yb + ny, c), (xa - nx, ya - ny, c),
+              (xa - nx, ya - ny, c), (xb + nx, yb + ny, c), (xb - nx, yb - ny, c)]
+    return v
+
+
 class App:
     def __init__(self):
         if not FAKE:
@@ -560,9 +609,10 @@ class App:
         self.running = True
         self.last_input = time.monotonic()
         self.t = 0.0
-        self.sel = 0
+        self.sel = PORTS_AT           # a abertura entrega o destaque no Ports (centro)
         self.sel_x, self.sel_y = 0.0, 0.0
-        self.accent = [hexc(CARDS[0][3]), hexc(CARDS[0][4])]
+        self.deliver = None           # instante em que o menu apareceu (animação de entrega)
+        self.accent = [hexc(CARDS[PORTS_AT][3]), hexc(CARDS[PORTS_AT][4])]
         self.page = None              # id do cartão aberto
         self.vol, self.vol_at = None, 0.0   # volume da pílula: lido no início e após os botões de volume
         self.last_page = None         # a página que está saindo (na transição)
@@ -575,6 +625,7 @@ class App:
         self.modal = None             # {"title","text","icon","buttons":[...], "sel"}
         self.levels = None            # painel de brilho, contraste e volume (Tela e som)
         self.viewer = None            # imagem em tela cheia (Arquivos)
+        self.music = None             # Aplicativos > Músicas (tela cheia)
         self.want_shot = False        # FN + Y no menu: grava a tela no próximo quadro
         self.reader = None            # texto longo com rolagem (Ajuda)
         self.find_top = self.find_max = 0   # rolagem do diagnóstico (L1/R1)
@@ -695,10 +746,17 @@ class App:
         if cid == "tela":                 # Tela e som: brilho e contraste + as duas verificações (o som já diz volume e saída)
             now = [("info", f"Brilho {D.get('brilho')}%  ·  Contraste {D.get('contraste')}%")]
             if FAKE:
-                return joined({"achados": now, "acoes": []}, D.check("atualizar"))
-            a, b = D.check("atualizar"), D.check("sem_som")
-            return omni_checks.finish(now + a["achados"] + b["achados"], a["acoes"] + b["acoes"],
-                                      {**a.get("fatos", {}), **b.get("fatos", {})})
+                return joined({"achados": now, "acoes": []}, D.check("atualizar"), D.check("bateria"))
+            a, b, c = D.check("atualizar"), D.check("sem_som"), D.check("bateria")
+            return omni_checks.finish(now + a["achados"] + b["achados"] + c["achados"],
+                                      a["acoes"] + b["acoes"] + c["acoes"],
+                                      {**a.get("fatos", {}), **b.get("fatos", {}), **c.get("fatos", {})})
+        if cid == "apps":
+            here = omni_musica.roots() if not FAKE else [("/roms/musicas", "Cartão 1")]
+            return {"nivel": "ok", "acoes": [], "achados": [
+                ("ok", "Pastas de música: " + ", ".join(f"{n} ({p})" for p, n in here)) if here else
+                ("info", "Crie a pasta musicas no cartão (ROMS ou ROMS2) e coloque seus mp3 nela."),
+                ("info", "Soltas na pasta, as músicas tocam juntas; cada subpasta vira uma lista.")]}
         if FAKE and cid == "cartoes":
             return joined(D.check("cartoes"), D.check("pc"))
         name = {"tela": "atualizar"}.get(cid, cid)
@@ -942,15 +1000,23 @@ class App:
                     A("Consertar atalhos", "tool", lambda: self.native("fix_hotkeys", "Reiniciando os atalhos..."),
                       confirm="Reiniciar o serviço de atalhos (brilho e volume pelos botões)?"),
                     recheck]
-        if cid == "bateria":
-            out = [subpage(A("Calibrar a bateria", "battery-2", lambda: self.open_page("calibracao")), "calibracao")]
-            return out + [recheck]
+        if cid == "apps":
+            return [tip(A("Músicas", "music", self.open_music),
+                        "Toca os mp3 das pastas musicas dos cartões (ROMS/musicas e ROMS2/musicas)."),
+                    tip(Choice("Visualização", "wave-sine", "m_vis", list(VIS_NAMES), VIS_NAMES),
+                        "A animação que dança com a música. No tocador, Y troca."),
+                    tip(Choice("Apagar a tela", "moon", "m_tela", list(BLANK_NAMES), BLANK_NAMES),
+                        "Com a música tocando e sem apertar nada, a tela apaga para poupar bateria. "
+                        "Qualquer botão acende."),
+                    tip(Choice("Ler subpastas", "folder", "m_sub", [False, True], ONOFF),
+                        "Ligado: tocar uma pasta inclui as músicas das pastas de dentro, nível por nível.")]
         if cid == "tela":
             return [tip(A("Brilho, contraste e volume", "adjustments", self.open_levels),
                         "Abre os três ajustes: cima/baixo escolhe, esquerda/direita ajusta, A confirma e B desfaz."),
                     Choice("Tema", "palette", "tema", list(THEMES), {"escuro": "Escuro", "claro": "Claro"}),
                     Choice("Cor do LED", "bulb", "led", ["verde", "vermelho"], {"verde": "Verde", "vermelho": "Vermelho"}),
                     A("Detalhes da tela", "info-circle", lambda: self.run_info("Tela e modelo", "detect_hardware_and_screen")),
+                    subpage(A("Calibrar a bateria", "battery-2", lambda: self.open_page("calibracao")), "calibracao"),
                     tagged(A("Restaurar áudio", "rotate", lambda: self.do_action("restaurar_audio"),
                              confirm="Restaurar o áudio do sistema?\nSaída de som padrão e volume em 40%."),
                            "restaurar_audio")]
@@ -1541,7 +1607,7 @@ class App:
                   "GPU (520 MHz), atalhos (FN + X, FN + B, FN + Y, todos ligados) ao padrão.", go, secs=5,
                   risk="O nome e a senha da trava somem; o Omni36OS pergunta o nome de novo. Ports, jogos, testes e as "
                        "senhas do sistema e do Samba não mudam.",
-                  undo="Não tem volta automática: ajuste de novo em Tela e som e em Controles. Se exportou um backup antes, Backup > "
+                  undo="Não tem volta automática: ajuste de novo em Tela, som e bateria e em Controles. Se exportou um backup antes, Backup > "
                        "Importar devolve nome, tema, atalhos, processador e GPU.")
 
     def lock_screen(self, then):
@@ -1868,6 +1934,300 @@ class App:
             g.rrect(0, H - 40, W, 40, 0, (0, 0, 0, int(150 * k)), feather=0)
             self.draw_footer_at(H - 29, [("LR", "Outra imagem"), ("A", "Mostrar/esconder"), ("B", "Voltar")],
                                 center=W / 2)
+
+    # --- Aplicativos > Músicas ---
+
+    def open_music(self):
+        """Tocador: a lista (pastas e músicas da pasta) e a tela Tocando, com a visualização."""
+        if not hasattr(self, "music_lib"):
+            self.music_lib = omni_musica.Library()
+        cfg = music_cfg()
+        here = omni_musica.roots() if not FAKE else [(os.environ.get("OMNI_MUSICAS", "/tmp/omni36os-musicas"), "Cartão 1")]
+        self.music = {"mode": "lista", "stack": [] if len(here) != 1 else [here[0]], "roots": here, "rows": [],
+                      "sel": 0, "top": 0.0, "spec": [0.0] * omni_musica.BANDS, "peaks": [0.0] * omni_musica.BANDS,
+                      "vis": cfg["vis"], "vis_t": -9.0, "last": self.t, "off": False, "phase": 0.0,
+                      "player": getattr(self, "music_player", None)}
+        if not self.music["player"]:
+            self.music["player"] = self.music_player = omni_musica.Player(gfx.sdl)
+        self.music_rows()
+
+    def music_rows(self, keep=None):
+        m = self.music
+        if not m["stack"]:
+            m["rows"] = [{"dir": p, "name": n} for p, n in m["roots"]]
+            m["sel"] = 0
+            return
+        path = m["stack"][-1][0]
+
+        def read():
+            li = self.music_lib.listing(path)
+            self.music_lib.save()
+            return li
+
+        def done(li):
+            if isinstance(li, Exception) or not self.music:
+                return
+            rows = [{"dir": os.path.join(path, d), "name": d} for d in li["dirs"]]
+            rows += [{"song": os.path.join(path, s["f"]), "name": s["t"], "artist": s["a"]} for s in li["songs"]]
+            m["rows"] = rows
+            m["sel"] = next((i for i, r in enumerate(rows) if keep and r.get("dir") == keep), 0)
+        self.worker(read, done, busy="Lendo as músicas...")
+
+    def music_play(self, start_song=None):
+        m, path = self.music, self.music["stack"][-1][0]
+        deep = music_cfg()["sub"]
+
+        def make():
+            return self.music_lib.playlist(path, deep)
+
+        def done(pl):
+            if isinstance(pl, Exception) or not pl or not self.music:
+                self.toast = ("Nenhuma música nesta pasta.", "aviso", self.t + 3)
+                return
+            i = next((k for k, s in enumerate(pl) if s[0] == start_song), 0)
+            if m["player"].play(pl, i):
+                m["mode"], m["last"] = "tocando", self.t
+            else:
+                self.toast = (m["player"].error or "Não consegui tocar.", "problema", self.t + 4)
+        self.worker(make, done, busy="Montando a lista..." if deep else None)
+
+    def music_close(self):
+        self.music_screen(True)
+        self.music["player"].close()
+        self.music = None
+
+    def music_screen(self, on):
+        """Apaga ou acende a luz da tela (a música continua)."""
+        self.music["off"] = not on
+        if FAKE:
+            return
+        for p in glob.glob("/sys/class/backlight/*/bl_power"):
+            try:
+                with open(p, "w") as f:
+                    f.write("0" if on else "4")
+            except OSError:
+                pass
+
+    def music_input(self, cmd):
+        m, pl = self.music, self.music["player"]
+        m["last"] = self.t
+        if m["off"]:                      # tela apagada: o botão só acende
+            self.music_screen(True)
+            return
+        if m["mode"] == "tocando":
+            if cmd == "ok":
+                pl.toggle()
+            elif cmd in ("left", "right"):
+                pl.step(1 if cmd == "right" else -1)
+            elif cmd in ("l1", "r1"):
+                pl.seek(10 if cmd == "r1" else -10)
+            elif cmd == "y":
+                order = list(VIS_NAMES)
+                m["vis"] = order[(order.index(m["vis"]) + 1) % len(order)]
+                m["vis_t"] = self.t
+                music_save(vis=m["vis"])
+            elif cmd in ("back", "x"):
+                m["mode"] = "lista"
+            return
+        rows = m["rows"]
+        if cmd in ("up", "down", "l1", "r1") and rows:
+            step = {"up": -1, "down": 1, "l1": -6, "r1": 6}[cmd]
+            m["sel"] = max(0, min(len(rows) - 1, m["sel"] + step))
+        elif cmd == "ok" and rows:
+            r = rows[m["sel"]]
+            if "dir" in r:
+                m["stack"].append((r["dir"], r["name"]))
+                self.music_rows()
+            else:
+                self.music_play(r["song"])
+        elif cmd == "y" and m["stack"]:
+            self.music_play()
+        elif cmd == "x" and pl.current():
+            m["mode"] = "tocando"
+        elif cmd == "back":
+            if len(m["stack"]) > (1 if len(m["roots"]) == 1 else 0):
+                left = m["stack"].pop()[0]
+                self.music_rows(keep=left)
+            else:
+                self.music_close()
+
+    def draw_music(self, dt):
+        g, m = self.g, self.music
+        pl = m["player"]
+        pl.tick() if pl.ok else None
+        blank = music_cfg()["tela"]
+        playing = pl.current() and not pl.paused
+        if blank and playing and not m["off"] and self.t - m["last"] > blank:
+            self.music_screen(False)
+        if m["off"] and (self.modal or self.busy):   # o menu de energia por cima acende a tela
+            self.music_screen(True)
+        if m["off"]:
+            g.rrect(0, 0, W, H, 0, (0, 0, 0, 255), feather=0)
+            return
+        a1, a2 = hexc("f472b6"), hexc("8b5cf6")
+        if m["mode"] == "tocando" and pl.current():
+            self.draw_playing(dt, a1, a2)
+        else:
+            self.draw_music_list(dt, a1, a2)
+
+    def draw_music_list(self, dt, a1, a2):
+        g, m, pl = self.g, self.music, self.music["player"]
+        g.rrect(22, 22, 40, 40, 12, a1, a2)
+        g.icon("music", 30, 30, 24, ON_TEXT)
+        where = " / ".join(n for _, n in m["stack"]) or "Escolha o cartão"
+        g.text("Bold", 22, "Músicas", 74, 22, TEXT)
+        g.text("Regular", 12, where[-60:], 75, 49, MUTED)
+        cur = pl.current()
+        bot = 370 if cur else 426
+        rows, rh, ly = m["rows"], 36, 80
+        g.rrect(16, ly - 6, W - 32, bot - ly + 6, 18, alpha(GLASS, 14))
+        if not rows:
+            msg = ("Nenhuma pasta de música. Crie a pasta musicas no cartão (ROMS ou ROMS2) e copie seus mp3."
+                   if not m["roots"] else "Esta pasta está vazia: copie mp3 para ela pelo PC ou pela rede.")
+            for k, ln in enumerate(g.wrap("Regular", 13, msg, W - 120)):
+                g.text("Regular", 13, ln, W / 2, 200 + 20 * k, MUTED, "c")
+        vis = int((bot - ly) // rh)
+        want = max(0, min(m["sel"] - vis // 2, len(rows) - vis))
+        m["top"] = approach(m["top"], want * rh, dt, 18)
+        g.clip(16, ly, W - 32, bot - ly)
+        first = max(0, int(m["top"] // rh) - 1)
+        for i in range(first, min(len(rows), first + vis + 3)):
+            r, y = rows[i], ly + i * rh - m["top"]
+            on = i == m["sel"]
+            if on:
+                g.rrect(24, y, W - 48, rh - 4, 12, a1, a2)
+            c = ON_TEXT if on else TEXT
+            playing = cur and r.get("song") == cur[0]
+            g.icon("folder" if "dir" in r else ("player-play" if playing else "music"), 36, y + 7, 18,
+                   c if on else (a1 if playing else MUTED))
+            name = r["name"]
+            limit = W - 120 - (140 if r.get("artist") else 0)
+            while g.measure("Medium", 14, name)[0] > limit and len(name) > 4:
+                name = name[:-2]
+            g.text("SemiBold" if on else "Medium", 14, name if name == r["name"] else name.rstrip() + "…",
+                   64, y + rh / 2 - 2, c, "l", "m")
+            if r.get("artist"):
+                g.text("Regular", 12, r["artist"][:22], W - 40, y + rh / 2 - 2, c if on else MUTED, "r", "m")
+            elif "dir" in r:
+                g.chevron(W - 44, y + rh / 2 - 2, 8, c if on else FAINT)
+        g.clip()
+        if cur:                               # o que está tocando, embaixo
+            g.rrect(16, 380, W - 32, 46, 16, alpha(a1, 40), alpha(a2, 40))
+            g.icon("player-pause" if not pl.paused else "player-play", 30, 391, 22, TEXT)
+            g.text("SemiBold", 13, cur[1][:48], 62, 392, TEXT)
+            g.text("Regular", 11, (cur[2] or "Tocando")[:48], 62, 409, MUTED)
+            self.draw_spectrum_mini(W - 120, 388, 90, 30, a1)
+        hints = [("A", "Abrir" if rows and "dir" in rows[m["sel"]] else "Tocar"), ("B", "Voltar")]
+        if m["stack"]:
+            hints.insert(1, ("Y", "Tocar tudo"))
+        if cur:
+            hints.insert(1, ("X", "Tocando"))
+        self.draw_footer_at(H - 29, hints, center=W / 2)
+
+    def music_spectrum(self):
+        m, pl = self.music, self.music["player"]
+        raw = omni_musica.spectrum(pl.samples(128)) if pl.current() and not pl.paused else [0.0] * omni_musica.BANDS
+        # ganho automático: a faixa mais forte dos últimos segundos vira o topo (música baixa ou alta dança igual)
+        m["gain"] = max(max(raw), m.get("gain", 0.02) * 0.992, 0.004)
+        new = [min(1.0, (r / m["gain"]) ** 0.8) for r in raw]
+        m["spec"] = [max(n, o * 0.82) for n, o in zip(new, m["spec"])]
+        m["peaks"] = [max(s, p - 0.012) for s, p in zip(m["spec"], m["peaks"])]
+        return m["spec"]
+
+    def draw_spectrum_mini(self, x, y, w, h, c):
+        spec = self.music_spectrum()
+        bw = w / len(spec)
+        v = []
+        for k, e in enumerate(spec):
+            bh = max(2, h * e)
+            x0, x1, y0 = x + k * bw + 1, x + (k + 1) * bw - 1, y + h - bh
+            v += quad(x0, y0, x1, y + h, alpha(c, 255), alpha(c, 120))
+        self.g.tris(v)
+
+    def draw_playing(self, dt, a1, a2):
+        g, m, pl = self.g, self.music, self.music["player"]
+        cur = pl.current()
+        spec = self.music_spectrum()
+        bass = sum(spec[:3]) / 3
+        m["phase"] += dt * (0.6 + 2.5 * bass)
+        top, vh = 30, 262                    # área da visualização
+        vis = m["vis"]
+        if vis == "barras":
+            n, x0, w = len(spec) * 2, 40, W - 80
+            bw = w / n
+            vals = spec[::-1] + spec           # espelhado: graves no meio
+            peaks = m["peaks"][::-1] + m["peaks"]
+            v = []
+            for k, e in enumerate(vals):
+                bh = max(4, vh * 0.92 * e)
+                xa, xb = x0 + k * bw + 2, x0 + (k + 1) * bw - 2
+                v += quad(xa, top + vh - bh, xb, top + vh, alpha(a1, 250), alpha(a2, 200))
+                v += quad(xa, top + vh + 4, xb, top + vh + 4 + min(14, bh * 0.2), alpha(a2, 70), alpha(a2, 0))   # reflexo
+                py = top + vh - max(4, vh * 0.92 * peaks[k]) - 6
+                v += quad(xa, py, xb, py + 3, alpha(TEXT, 220), alpha(TEXT, 220))
+            g.tris(v)
+        elif vis == "ondas":
+            s = pl.samples(128) if not pl.paused else [0.0] * 128
+            m["wgain"] = max(max(abs(x) for x in s), m.get("wgain", 0.05) * 0.99, 0.02)
+            s = [x / m["wgain"] * 0.38 for x in s]
+            g.blob(W / 2, top + vh / 2, 160 + 160 * bass, alpha(a2, 70))
+            for layer, (c, amp, off) in enumerate(((a2, 0.6, 0.0), (a1, 1.0, 0.0), (TEXT, 0.35, 1.3))):
+                pts = []
+                for k, val in enumerate(s):
+                    x = 20 + (W - 40) * k / (len(s) - 1)
+                    wob = math.sin(k / 9 + m["phase"] * (1 + layer) + off) * 10 * (0.3 + bass)
+                    pts.append((x, top + vh / 2 + val * vh * 0.9 * amp + wob))
+                g.tris(polyline(pts, 3 if layer == 1 else 2, alpha(c, 230 if layer == 1 else 140)))
+        elif vis == "anel":
+            cx, cy, r0 = W / 2, top + vh / 2 + 6, 62 + 18 * bass
+            g.blob(cx, cy, 150 + 80 * bass, alpha(a1, 80))
+            n, v = 48, []
+            vals = spec + spec[::-1]
+            for k in range(n):
+                e = vals[int(k * len(vals) / n)]
+                a = 2 * math.pi * k / n + m["phase"] * 0.25
+                l = 8 + 70 * e
+                ca, sa = math.cos(a), math.sin(a)
+                nx, ny = -sa * 3, ca * 3
+                p0, p1 = (cx + ca * r0, cy + sa * r0), (cx + ca * (r0 + l), cy + sa * (r0 + l))
+                c0, c1 = alpha(a2, 230), alpha(a1, 250)
+                v += [(p0[0] - nx, p0[1] - ny, c0), (p0[0] + nx, p0[1] + ny, c0), (p1[0] - nx, p1[1] - ny, c1),
+                      (p1[0] - nx, p1[1] - ny, c1), (p0[0] + nx, p0[1] + ny, c0), (p1[0] + nx, p1[1] + ny, c1)]
+            g.tris(v)
+            g.circle(cx, cy, r0 - 8, a1, a2)
+            g.icon("music", cx - 22, cy - 22, 44, ON_TEXT)
+        elif vis == "aurora":
+            t = m["phase"]
+            for k, (c, band) in enumerate(((a1, 0), (a2, 5), (hexc("38bdf8"), 10), (hexc("fbbf24"), 14))):
+                e = spec[band]
+                x = W / 2 + math.sin(t * (0.5 + k * 0.17) + k * 2) * 200
+                y = top + vh / 2 + math.cos(t * (0.4 + k * 0.13) + k) * 80
+                g.blob(x, y, 110 + 170 * e, alpha(c, 70 + 120 * e))
+        else:
+            g.rrect(W / 2 - 80, top + vh / 2 - 80, 160, 160, 32, a1, a2)
+            g.icon("music", W / 2 - 36, top + vh / 2 - 36, 72, ON_TEXT)
+        if self.t - m["vis_t"] < 1.6:          # nome da visualização ao trocar
+            k = min(1.0, (1.6 - (self.t - m["vis_t"])) / 0.4)
+            label = VIS_NAMES[m["vis"]]
+            tw = g.measure("SemiBold", 13, label)[0] + 28
+            g.rrect(W / 2 - tw / 2, 40, tw, 30, 15, alpha(GLASS, 200 * k))
+            g.text("SemiBold", 13, label, W / 2, 55, alpha(TEXT, 255 * k), "c", "m")
+        # música, artista e tempo
+        g.text("Bold", 20, cur[1][:40], W / 2, 314, TEXT, "c")
+        sub = cur[2] or os.path.basename(os.path.dirname(cur[0]))
+        g.text("Regular", 13, f"{sub[:40]}  ·  {pl.i + 1} de {len(pl.list)}", W / 2, 342, MUTED, "c")
+        pos, dur = pl.position(), pl.duration()
+        bx, bw, by = 60, W - 120, 378
+        g.rrect(bx, by, bw, 6, 3, ink(30))
+        if dur > 0:
+            g.rrect(bx, by, max(6, bw * min(1, pos / dur)), 6, 3, a1, a2)
+        tm = lambda x: f"{int(x) // 60}:{int(x) % 60:02d}"
+        g.text("Medium", 11, tm(pos), bx - 8, by + 3, MUTED, "r", "m")
+        g.text("Medium", 11, tm(dur) if dur > 0 else "--:--", bx + bw + 8, by + 3, MUTED, "l", "m")
+        if pl.paused:
+            g.text("SemiBold", 12, "Pausado", W / 2, by + 22, a1, "c", "m")
+        self.draw_footer_at(H - 29, [("A", "Tocar" if pl.paused else "Pausar"), ("LR", "Música"),
+                                     ("L1", "−10 s"), ("R1", "+10 s"), ("Y", "Visual"), ("B", "Lista")], center=W / 2)
 
     def _fs(self, fn, busy="Fazendo..."):
         here = self.files_at
@@ -2840,6 +3200,9 @@ class App:
                 if m.get("on_back"):
                     m["on_back"]()
             return
+        if getattr(self, "music", None):
+            self.music_input(cmd)
+            return
         if getattr(self, "viewer", None):
             self.viewer_input(cmd)
             return
@@ -3115,19 +3478,18 @@ class App:
             x += w + g.text("Medium", 12, label, x + w, H - 21.5, MUTED, "l", "m") + 18
 
     def card_subtitle(self, cid):
-        s = self.status
         return {
             "checkup": self._home_summary(),
-            "rede": "Wi-Fi e rede pelo cabo",
+            "rede": "Wi-Fi, cabo USB e acesso remoto",
             "controles": "Teste, botões e atalhos",
-            "geral": f"Nome, backup · versão {omni_version()}",
+            "geral": "Nome, backup e atualização",
             "sobre": "Manual, cuidados e créditos",
-            "bateria": f"{s['bat']}%" + (" · Carregando" if s["carregando"] else ""),
-            "tela": "Brilho, volume e tema",
-            "desempenho": f"Ports até {s.get('cpu_max', '?')} MHz · {s['temp']}°C",
+            "tela": "Brilho, som e bateria",
+            "desempenho": "Processador, GPU e memória",
             "cartoes": "Cartões, pendrive e espaço",
             "ferramentas": "Arquivos, testes e PortMaster",
-            "ports": f"{sum(len(s['games']) for s in self.games())} Jogos",
+            "ports": "Jogos, capas e descrições",
+            "apps": "Músicas, playlists e animações",
             "testar": f"{self.port_count} Ports instalados" if getattr(self, "port_count", 0) else "Abre e fecha em 15 s",
         }[cid]
 
@@ -3185,8 +3547,14 @@ class App:
         cw, x0, y0 = 192, 22, 136
         ch, gap = (94, 10) if rows <= 3 else (68, 8)
         col, row = self.sel % COLS, self.sel // COLS
-        self.sel_x = approach(self.sel_x, x0 + col * (cw + gap), dt, 18)
-        self.sel_y = approach(self.sel_y, y0 + row * (ch + gap), dt, 18)
+        tx, ty_ = x0 + col * (cw + gap), y0 + row * (ch + gap)
+        if self.deliver is None:      # primeira vez na tela: o destaque nasce no card escolhido
+            self.deliver, self.sel_x, self.sel_y = self.t, tx, ty_
+        self.sel_x = approach(self.sel_x, tx, dt, 18)
+        self.sel_y = approach(self.sel_y, ty_, dt, 18)
+        # entrega: o destaque cresce do centro do card com um leve passo além (0,7 s)
+        dk = min(1.0, (self.t - self.deliver) / 0.7)
+        grow = 1 + 2.70158 * (dk - 1) ** 3 + 1.70158 * (dk - 1) ** 2      # ease-out-back
         pos = lambda i: (x0 + (i % COLS) * (cw + gap), y0 + (i // COLS) * (ch + gap))
         self.hits_home = [(i, *pos(i), cw, ch) for i in range(len(CARDS))]
         for i in range(len(CARDS)):
@@ -3197,13 +3565,19 @@ class App:
         sx, sy = self.sel_x, self.sel_y
         pulse = 0.5 + 0.5 * math.sin(self.t * 3)
         a1, a2 = self.accent
-        g.sprite(("hl-glow", a1), cw + 4, ch + 4, 20,
-                 lambda ox, oy: g.glow(ox, oy, cw + 4, ch + 4, 20, alpha(a1, 110), 20),
-                 sx - 2, sy - 3, (0.64 + 0.36 * pulse) * 255 * fade)
-        g.sprite(("hl", a1, a2), cw + 4, ch + 4, 1, lambda ox, oy: (
-                 g.rrect(ox, oy, cw + 4, ch + 4, 20, alpha(a1, 235), alpha(a2, 235)),
-                 g.rrect(ox, oy, cw + 4, (ch + 4) * 0.5, 20, (255, 255, 255, 30), (255, 255, 255, 0))),
-                 sx - 2, sy - 3, 255 * fade)
+        if dk < 1:
+            hw, hh = (cw + 4) * max(0.05, grow), (ch + 4) * max(0.05, grow)
+            hx, hy = sx - 2 + (cw + 4 - hw) / 2, sy - 3 + (ch + 4 - hh) / 2
+            g.glow(hx, hy, hw, hh, 20, alpha(a1, 110 * dk), 20)
+            g.rrect(hx, hy, hw, hh, min(20, hh / 2), alpha(a1, 235 * min(1, dk * 2)), alpha(a2, 235 * min(1, dk * 2)))
+        else:
+            g.sprite(("hl-glow", a1), cw + 4, ch + 4, 20,
+                     lambda ox, oy: g.glow(ox, oy, cw + 4, ch + 4, 20, alpha(a1, 110), 20),
+                     sx - 2, sy - 3, (0.64 + 0.36 * pulse) * 255 * fade)
+            g.sprite(("hl", a1, a2), cw + 4, ch + 4, 1, lambda ox, oy: (
+                     g.rrect(ox, oy, cw + 4, ch + 4, 20, alpha(a1, 235), alpha(a2, 235)),
+                     g.rrect(ox, oy, cw + 4, (ch + 4) * 0.5, 20, (255, 255, 255, 30), (255, 255, 255, 0))),
+                     sx - 2, sy - 3, 255 * fade)
         for i, (cid, title, ic, c1, c2) in enumerate(CARDS):
             x, y = pos(i)
             on = i == self.sel
@@ -3586,6 +3960,10 @@ class App:
             return
         if not self.warm and not FAKE and os.path.exists(TURBO):
             self.turbo_off()
+        if getattr(self, "music", None):    # tocador em tela cheia: o menu não é desenhado por baixo
+            self.draw_music(dt)
+            self.draw_overlays(dt)
+            return
         self.draw_header()
         p = self.page_anim
         if p < 0.01 or p > 0.99:
@@ -3663,6 +4041,7 @@ class App:
         g.arc(W / 2, 170, 100, 4, self.t * 300 % 360, self.t * 300 % 360 + 260, alpha(BOOT_CIANO, 230))
         if self.results and not self.warm and self.load_shown > 0.98:
             self.loading = False
+            self.deliver = None           # a entrega do Ports começa agora, com o menu na tela
             self.warm = getattr(self, "warm_later", None) or self.warm
             print(f"menu na tela em {time.monotonic() - self.t_start:.1f} s", file=sys.stderr, flush=True)
             print(f"menu na tela {time.clock_gettime(time.CLOCK_BOOTTIME):.1f} s após ligar", file=sys.stderr, flush=True)
@@ -3703,14 +4082,14 @@ class App:
             return
         cid = self.warm.pop(0)
         if cid == "home":
-            keep = (self.sel_x, self.sel_y)
+            keep = (self.sel, self.sel_x, self.sel_y, self.accent, self.deliver)
+            self.deliver = -99.0            # monta o destaque pronto (sem a entrega)
             self.g.begin_layer(self.g.layer("warm"))
             for i, c in enumerate(CARDS):   # destaque, selo e cor de cada cartão
                 self.sel, self.accent = i, [hexc(c[3]), hexc(c[4])]
                 self.draw_header()
                 self.draw_home(0.016, 1)
-            self.sel, (self.sel_x, self.sel_y) = 0, keep
-            self.accent = [hexc(CARDS[0][3]), hexc(CARDS[0][4])]
+            self.sel, self.sel_x, self.sel_y, self.accent, self.deliver = keep
             self.g.end_layer()
             return
         saved = (self.page, getattr(self, "items", None), getattr(self, "item_sel", 0),
@@ -3780,7 +4159,9 @@ class App:
                     self.worker(self.check_all, self._all_checked, quiet=True)
                 # Ritmo: 30 quadros/s em uso e 10 parado. A 60 quadros/s sem parar a
                 # Omni36OS ocupava 70% de um núcleo e deixava o aparelho perto de 80 °C.
+                music = getattr(self, "music", None)
                 moving = (self.loading or self.busy or getattr(self, "danger", None) or self.toast or 0.01 < self.page_anim < 0.99
+                          or (music and not music["off"] and music["player"].current() and not music["player"].paused)
                           or getattr(self, "kbd", None) or getattr(self, "pad", None)
                           or now - self.last_input < IDLE_AFTER)
                 spare = 1 / (FPS_ACTIVE if moving else FPS_IDLE) - (time.monotonic() - now)

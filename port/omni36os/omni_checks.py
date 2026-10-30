@@ -225,7 +225,7 @@ def checkup():
     """Resumo: só o que precisa de atenção, de todos os cards (cada card mostra o seu em detalhe)."""
     parts = [("Bateria", bateria())]
     a, b = sem_som(), atualizar()
-    parts.append(("Tela e som", finish(a["achados"] + b["achados"], a["acoes"], {})))
+    parts.append(("Tela, som e bateria", finish(a["achados"] + b["achados"], a["acoes"], {})))
     f = cpu_facts()
     out, acts = [], []
     check_temp(f, out)
