@@ -4,6 +4,9 @@ Linhas que começam com "# " viram títulos no leitor."""
 
 # A versão em uso vem do arquivo VERSION. Aqui fica só ela; o histórico completo está no NOVIDADES.md.
 NOVIDADES = [
+    ("1.15.1", "30/10/2026", [
+        "Teclado: X dá espaço e Y troca letras e símbolos. A trava das maiúsculas fica só na tecla da tela (dois toques). Vale em todo o sistema.",
+    ]),
     ("1.15.0", "30/10/2026", [
         "Notas: abrir mostra a nota inteira para ler, com rolagem. A edita a nota toda, como numa máquina de escrever: o texto sobe quando a linha enche, o teclado ganha Enter e L1/R1 levam o cursor entre as linhas. START salva.",
     ]),
@@ -224,7 +227,7 @@ O que é seu e do Omni36OS, como nos Ajustes do iPhone, nesta ordem:
 
 # Segurança (dentro de Geral)
 Tudo o que é senha fica aqui. B volta para Geral.
-"Trocar a senha" muda a senha do usuário omni (SSH, SFTP e Samba; a senha padrão é omni) com o teclado na tela: direcional escolhe, A digita, B apaga, X troca letras e símbolos, Y trava as maiúsculas, START confirma e SELECT cancela (como no teclado do Android, começa em maiúscula; senha começa em minúscula). A senha é pedida duas vezes.
+"Trocar a senha" muda a senha do usuário omni (SSH, SFTP e Samba; a senha padrão é omni) com o teclado na tela: direcional escolhe, A digita, B apaga, X dá espaço, Y troca letras e símbolos (as maiúsculas travam com dois toques na tecla da tela), START confirma e SELECT cancela (como no teclado do Android, começa em maiúscula; senha começa em minúscula). A senha é pedida duas vezes.
 "Senha do Samba" redefine só a senha das pastas compartilhadas (usuário omni), sem mexer na do SSH.
 "Trava por senha": com ela ligada, o console pede a senha ao ligar, antes de mostrar os jogos (o botão de power ainda abre Energia para desligar). A senha fica em texto simples em EASYROMS/senha/senha.txt: esqueceu, abra o cartão no PC e leia. Apagar esse arquivo desliga a trava. Para desligar pelo console, a senha atual é pedida.
 

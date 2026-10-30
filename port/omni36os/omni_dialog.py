@@ -384,7 +384,7 @@ def run_list(w, o, text, items, mode):
 
 def run_osk(w, o, prompt, init="", password=False):
     """Teclado na tela, o mesmo do launcher (omni_teclado): direcional escolhe, A digita, B apaga,
-    X letras/símbolos, Y trava as maiúsculas, START confirma, SELECT cancela."""
+    X espaço, Y letras/símbolos, START confirma, SELECT cancela."""
     sys.path.insert(0, HERE)
     import omni_teclado
     tk = omni_teclado.Teclado(init, password, 256)
@@ -426,7 +426,7 @@ def run_osk(w, o, prompt, init="", password=False):
                     g.rrect(x + ws[cc] / 2 - 10, ky + kh - 6, 20, 3, 1.5, (255, 255, 255, 255) if cur else w.A1)
                 x += ws[cc] + gap
             ky += kh + 4
-        g.text("Regular", 11, "A digita · B apaga · X símbolos · Y caps · START confirma · SELECT cancela",
+        g.text("Regular", 11, "A digita · B apaga · X espaço · Y símbolos · START confirma · SELECT cancela",
                W / 2, my + mh - 18, w.FAINT, "c")
         w.present()
 

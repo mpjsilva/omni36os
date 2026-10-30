@@ -5,7 +5,7 @@ Funciona como o teclado do Google no Android:
 - depois de ". ", "! " ou "? " a próxima letra volta a ser maiúscula (início de frase);
 - a tecla de maiúsculas: um toque deixa só a próxima letra maiúscula (ou desfaz a automática);
   dois toques seguidos travam (caps lock); mais um toque destrava;
-- Y trava e destrava as maiúsculas direto; X troca entre letras e símbolos.
+- Y troca entre letras e símbolos; X é espaço (a trava das maiúsculas fica só na tecla da tela).
 Senhas não ganham maiúscula automática.
 A fileira de números fica sempre no topo; o desenho fica com quem usa (omni_ui e omni_dialog).
 """
@@ -97,15 +97,8 @@ class Teclado:
             self.shift = "off"
         self.shift_t = now
 
-    def caps(self):
-        """Y: trava ou destrava as maiúsculas."""
-        self.symbols = False
-        self.shift = "off" if self.shift == "lock" else "lock"
-        if self.shift == "off":
-            self.auto()
-
     def toggle_symbols(self):
-        """X: letras ⇄ símbolos (a fileira de números e a de baixo não mudam)."""
+        """Y: letras ⇄ símbolos (a fileira de números e a de baixo não mudam)."""
         self.symbols = not self.symbols
 
     def move(self, cmd):
@@ -125,9 +118,9 @@ class Teclado:
         elif cmd == "back":
             self.backspace()
         elif cmd == "y":
-            self.caps()
-        elif cmd == "x":
             self.toggle_symbols()
+        elif cmd == "x":
+            self.type(" ")
         elif cmd == "select":
             return "cancel"
         elif cmd == "start":

@@ -1473,8 +1473,8 @@ class App:
     # --- teclado na tela (a lógica é a do omni_teclado, igual em todo o sistema) ---
 
     def keyboard(self, title, on_done, secret=False, value="", hint="", locked=False, texto=False):
-        """Teclado do Omni36OS: direcional escolhe, A digita, B apaga, X letras/símbolos, Y trava as
-        maiúsculas, Start confirma, Select cancela. locked: tela da trava (não dá para cancelar; o power
+        """Teclado do Omni36OS: direcional escolhe, A digita, B apaga, X espaço, Y letras/símbolos,
+        Start confirma, Select cancela. locked: tela da trava (não dá para cancelar; o power
         abre Energia). texto: linhas longas (bloco de notas)."""
         self.kbd = {"title": title, "fn": on_done, "hint": hint, "locked": locked,
                     "tk": omni_teclado.Teclado(value, secret, self.NOTE_LIMIT if texto else 64, multiline=texto)}
@@ -1549,11 +1549,11 @@ class App:
                 x += ws[c] + gap
             ky += kh + gap
         if multi:
-            hints = [("B", "Apagar", TEXT), ("X", "Letras" if tk.symbols else "Símbolos", TEXT), ("Y", "Caps", TEXT),
+            hints = [("B", "Apagar", TEXT), ("X", "Espaço", TEXT), ("Y", "Letras" if tk.symbols else "Símbolos", TEXT),
                      ("L1/R1", "Linha", TEXT), ("START", "Salvar", TEXT), ("SELECT", "Sair", TEXT)]
         else:
-            hints = [("A", "Digitar", TEXT), ("B", "Apagar", TEXT), ("X", "Letras" if tk.symbols else "Símbolos", TEXT),
-                     ("Y", "Caps", TEXT), ("START", "OK", TEXT),
+            hints = [("A", "Digitar", TEXT), ("B", "Apagar", TEXT), ("X", "Espaço", TEXT),
+                     ("Y", "Letras" if tk.symbols else "Símbolos", TEXT), ("START", "OK", TEXT),
                      *([] if k.get("locked") else [("SELECT", "Cancelar", TEXT)])]
         self.draw_footer_at(my + mh - 28, hints, center=W / 2)
 
