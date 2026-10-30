@@ -1245,12 +1245,11 @@ class App:
             by = ty + (th - bh) * min(1, pk["scroll"] / max(1, total - th))
             g.rrect(mx + mw - 14, ty, 4, th, 2, ink(18))
             g.rrect(mx + mw - 14, by, 4, bh, 2, alpha(a1, 220))
-        self.btn_glyph(mx + 24, my + mh - 32, "A", TEXT)
-        g.text("Regular", 12, f"{pk['ok_label']}  ·  " + (pk.get("hint") or ("L1/R1: letra" if pk.get("letters") else
-                                                                            "Esquerda/direita: pular")),
-               mx + 50, my + mh - 30, MUTED)
-        self.btn_glyph(mx + mw - 110, my + mh - 32, "B", TEXT)
-        g.text("Regular", 12, "Voltar", mx + mw - 82, my + mh - 30, MUTED)
+        extra = pk.get("hints")
+        if extra is None:
+            extra = [("L1/R1", "Letra")] if pk.get("letters") else [("LR", "Pular")]
+        self.draw_footer_at(my + mh - 30, [("A", pk["ok_label"])] + extra, mx + 24)
+        self.draw_footer_at(my + mh - 30, [("B", "Voltar")], mx + mw - 110)
 
     # --- ferramentas do Omni36OS ---
 
@@ -1424,17 +1423,40 @@ class App:
                                            ("START", "Confirmar", TEXT),
                                            *([] if k.get("locked") else [("SELECT", "Cancelar", TEXT)])], mx + 22)
 
-    def draw_footer_at(self, y, hints, x):
+    def _hint_glyph_w(self, letter):
+        if letter in ("A", "B", "X", "Y"):
+            return 24
+        if letter in ("LR", "UD"):
+            return 36
+        return self.g.measure("Bold", 9, letter)[0] + 12 + 6
+
+    def hints_width(self, hints):
+        return sum(self._hint_glyph_w(h[0]) + self.g.measure("Medium", 12, h[1])[0] + 16 for h in hints) - 16
+
+    def draw_footer_at(self, y, hints, x=None, center=None):
+        """Legenda com a arte de cada botão: A/B/X/Y (círculo), LR/UD (setas do direcional) ou o nome
+        numa pílula (START, L1/R1...). `center`: centraliza a linha nesse x."""
         g = self.g
-        for letter, label, c in hints:
-            if letter in ("A", "B"):
+        if center is not None:
+            x = center - self.hints_width(hints) / 2
+        for h in hints:
+            letter, label = h[0], h[1]
+            c = h[2] if len(h) > 2 else TEXT
+            w = self._hint_glyph_w(letter)
+            if letter in ("A", "B", "X", "Y"):
                 self.btn_glyph(x, y - 2, letter, c)
-                w = 24
+            elif letter in ("LR", "UD"):
+                g.rrect(x, y - 1, 30, 19, 9.5, ink(40))
+                if letter == "LR":
+                    g.chevron(x + 9, y + 8.5, 6, TEXT, left=True)
+                    g.chevron(x + 21, y + 8.5, 6, TEXT)
+                else:
+                    g.chevron_v(x + 9, y + 8.5, 6, TEXT, up=True)
+                    g.chevron_v(x + 21, y + 8.5, 6, TEXT)
             else:
-                pw = g.measure("Bold", 9, letter)[0] + 12
+                pw = w - 6
                 g.rrect(x, y, pw, 17, 8, ink(40))
                 g.text("Bold", 9, letter, x + pw / 2, y + 9, TEXT, "c", "m")
-                w = pw + 6
             x += w + g.text("Medium", 12, label, x + w, y + 8.5, MUTED, "l", "m") + 16
 
     def ask_password(self):
@@ -1709,7 +1731,7 @@ class App:
             g.circle(sx + vx * 34, sy + vy * 34, 15, a1 if b in d else a2)
             g.text("Regular", 10, f"{vx:+.2f} {vy:+.2f}", sx, sy + 56, MUTED, "c")
         g.text("SemiBold", 13, p["last"], W / 2, my + 222, TEXT, "c", "m")
-        g.text("Regular", 12, "Segure SELECT + START por 1 segundo para sair", W / 2, my + mh - 24, MUTED, "c", "m")
+        self.draw_footer_at(my + mh - 33, [("SELECT + START", "Segure por 1 segundo para sair")], center=W / 2)
 
     # --- arquivos ---
 
@@ -1723,7 +1745,7 @@ class App:
                      "dir": True} for r in roots]
             self.files_at = None
             self.show_list("Arquivos", "folder", rows, lambda r: self.open_files(r["path"]), "Abrir")
-            self.picker["hint"] = "Escolha um cartão"
+            self.picker["hints"] = []
             return
         self.files_at = path
         items = ([("ports", True, 0), ("Daytona USA.sh", False, 2400)] if FAKE else omni_sistema.listdir(path))
@@ -1737,9 +1759,7 @@ class App:
         pk["on_back"] = lambda: self.file_up()
         pk["on_x"] = self.file_menu
         pk["on_start"] = self.folder_menu
-        pk["hint"] = ("START: colar " + ("e mais" if clip else "") if clip else "X: opções  ·  START: pasta")
-        if any(r.get("img") for r in rows):
-            pk["hint"] += "  ·  A na imagem: ver"
+        pk["hints"] = [("START", "Colar")] if clip else [("X", "Opções"), ("START", "Pasta")]
 
     def file_up(self):
         path = self.files_at
@@ -1807,8 +1827,8 @@ class App:
             g.text("SemiBold", 13, v["pics"][v["i"]], 16, 23, alpha(TEXT, 255 * k), "l", "m")
             g.text("Medium", 12, f"{v['i'] + 1} de {len(v['pics'])}", W - 16, 23, alpha(MUTED, 255 * k), "r", "m")
             g.rrect(0, H - 40, W, 40, 0, (0, 0, 0, int(150 * k)), feather=0)
-            g.text("Regular", 12, "Esquerda/direita: outra imagem  ·  A: mostrar/esconder  ·  B: voltar",
-                   W / 2, H - 20, alpha(MUTED, 255 * k), "c", "m")
+            self.draw_footer_at(H - 29, [("LR", "Outra imagem"), ("A", "Mostrar/esconder"), ("B", "Voltar")],
+                                center=W / 2)
 
     def _fs(self, fn, busy="Fazendo..."):
         here = self.files_at
@@ -2139,8 +2159,8 @@ class App:
             g.rrect(bx, by, bw, 6, 3, (255, 255, 255, 70) if on else ink(30))
             g.rrect(bx, by, max(6, bw * it.shown / 100), 6, 3, col if on else c1)
             g.circle(bx + bw * it.shown / 100, by + 3, 8 if on else 5, col)
-        g.text("Regular", 12, "Cima/baixo: escolher  ·  Esquerda/direita: ajustar  ·  A: confirmar  ·  B: desfazer",
-               W / 2, my + mh - 24, MUTED, "c", "m")
+        self.draw_footer_at(my + mh - 33, [("UD", "Escolher"), ("LR", "Ajustar"), ("A", "Confirmar"), ("B", "Desfazer")],
+                            center=W / 2)
 
     def power_check(self):
         """Sinais do power_button.py: USR1 abre o menu de energia, USR2 mostra o aviso do pânico.
@@ -3461,10 +3481,9 @@ class App:
             by = ty + (th - bh) * (r["scroll"] / max(1, sum(heights[:r["max"]])))
             g.rrect(mx + mw - 14, ty, 4, th, 2, ink(18))
             g.rrect(mx + mw - 14, by, 4, bh, 2, alpha(a1, 220))
-        g.text("Regular", 12, "Cima/baixo: rolar  ·  Esquerda/direita: pular" +
-               ("  ·  A: abrir o repositório" if r.get("link") else ""), mx + 24, my + mh - 30, MUTED)
-        self.btn_glyph(mx + mw - 110, my + mh - 32, "B", TEXT)
-        g.text("Regular", 12, "Voltar", mx + mw - 82, my + mh - 30, MUTED)
+        self.draw_footer_at(my + mh - 30, [("UD", "Rolar"), ("LR", "Pular")] +
+                            ([("A", "Abrir o repositório")] if r.get("link") else []), mx + 24)
+        self.draw_footer_at(my + mh - 30, [("B", "Voltar")], mx + mw - 110)
 
     def frame(self, dt):
         self.t += dt

@@ -292,6 +292,12 @@ class Gfx:
         self.tris([(cx - d * size * 0.45, cy - size * 0.6, c), (cx + d * size * 0.55, cy, c),
                    (cx - d * size * 0.45, cy + size * 0.6, c)])
 
+    def chevron_v(self, cx, cy, size, c, up=False):
+        """Seta cheia (triângulo) apontando para cima ou para baixo."""
+        d = -1 if up else 1
+        self.tris([(cx - size * 0.6, cy - d * size * 0.45, c), (cx, cy + d * size * 0.55, c),
+                   (cx + size * 0.6, cy - d * size * 0.45, c)])
+
     def vgradient(self, c1, c2):
         self.cached(("bg", c1, c2), lambda: [(0, 0, c1), (W, 0, c1), (0, H, c2), (0, H, c2), (W, 0, c1), (W, H, c2)])
 
