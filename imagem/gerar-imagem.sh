@@ -95,6 +95,8 @@ chmod 755 "$P"
 grep -q "^H=/opt/omni36os/power_button.py" "$P" || { echo "Desvio do power não foi gravado."; exit 1; }
 cp "$TELAS/tela-certa.raw" "$TELAS/tela-certa.png" "$R/opt/omni36os-telas/"
 mkdir -p "$H/.config/omni36os" && chown 1000:1000 "$H/.config/omni36os" "$H/usb-disco.sh"
+# navegador de arquivos (porta 80) com o usuário omni/omni, em português (no lugar do ark/ark)
+install -m644 -o 1000 -g 1000 "$REPO/imagem/filebrowser.db" "$H/.config/filebrowser.db"
 touch "$R/var/log/omni36os.log"
 
 echo "== BOOT: logo, bateria e textos do primeiro boot"

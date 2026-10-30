@@ -515,6 +515,7 @@ class App:
         self.status_at = 0.0
         self.home_check = None
         self.modal = None             # {"title","text","icon","buttons":[...], "sel"}
+        self.levels = None            # painel de brilho, contraste e volume (Tela e som)
         self.reader = None            # texto longo com rolagem (Ajuda)
         self.find_top = self.find_max = 0   # rolagem do diagnóstico (L1/R1)
         self.find_scroll = 0.0
@@ -819,9 +820,8 @@ class App:
             out = [subpage(A("Calibrar a bateria", "battery-2", lambda: self.open_page("calibracao")), "calibracao")]
             return out + [recheck]
         if cid == "tela":
-            return [Slider("Brilho", "sun", "brilho", lo=10),
-                    Slider("Volume", "volume", "volume"),
-                    Slider("Contraste", "adjustments", "contraste"),
+            return [tip(A("Brilho, contraste e volume", "adjustments", self.open_levels),
+                        "Abre os três ajustes: cima/baixo escolhe, esquerda/direita ajusta, A confirma e B desfaz."),
                     Choice("Tema", "sun", "tema", list(THEMES), {"escuro": "Escuro", "claro": "Claro"}),
                     Choice("Cor do LED", "bulb", "led", ["verde", "vermelho"], {"verde": "Verde", "vermelho": "Vermelho"}),
                     A("Detalhes da tela", "info-circle", lambda: self.run_info("Tela e modelo", "detect_hardware_and_screen")),
@@ -1933,6 +1933,67 @@ class App:
             omni_atalho.close_game(omni_atalho.game_pids())
         self.quit()                    # volta para o jogo (que descongela) ou para o Omni36OS
 
+    # --- Brilho, contraste e volume ---
+
+    def open_levels(self):
+        """Painel por cima da página: esquerda/direita ajusta na hora, A confirma, B volta como estava."""
+        items = [Slider("Brilho", "sun", "brilho", lo=10), Slider("Contraste", "adjustments", "contraste"),
+                 Slider("Volume", "volume", "volume")]
+        self.levels = {"items": items, "sel": 0, "orig": {it.key: it.value for it in items}}
+
+    def levels_input(self, cmd):
+        lv = self.levels
+        it = lv["items"][lv["sel"]]
+        if cmd in ("up", "down"):
+            lv["sel"] = (lv["sel"] + (1 if cmd == "down" else -1)) % len(lv["items"])
+        elif cmd in ("left", "right"):
+            new = max(it.lo, min(100, it.value + (it.step if cmd == "right" else -it.step)))
+            if new != it.value:
+                it.value = new
+                D.set(it.key, new)
+                if it.key == "volume":        # a pílula do topo mostra o volume novo na hora
+                    self.vol = new
+        elif cmd == "ok":
+            self.levels = None
+        elif cmd == "back":                   # desfaz o que mudou desde que o painel abriu
+            for x in lv["items"]:
+                if x.value != lv["orig"][x.key]:
+                    D.set(x.key, lv["orig"][x.key])
+                    if x.key == "volume":
+                        self.vol = lv["orig"][x.key]
+            self.levels = None
+
+    def draw_levels(self, dt):
+        g, lv = self.g, self.levels
+        g.rrect(0, 0, W, H, 0, (5, 7, 20, 175), feather=0)
+        mw, mh = 460, 336
+        mx, my = (W - mw) / 2, (H - mh) / 2 - 10
+        g.glow(mx, my, mw, mh, 24, alpha(self.accent[0], 60), 26)
+        g.rrect(mx, my, mw, mh, 24, MODAL_A, MODAL_B)
+        g.stroke(mx, my, mw, mh, 24, ink(25))
+        g.rrect(mx + 24, my + 22, 38, 38, 12, self.accent[0], self.accent[1])
+        g.icon("adjustments", mx + 32, my + 30, 22, ON_TEXT)
+        g.text("Bold", 18, "Brilho, contraste e volume", mx + 74, my + 28, TEXT)
+        c1 = self.accent[0]
+        for k, it in enumerate(lv["items"]):
+            on = k == lv["sel"]
+            x, y, w, h = mx + 20, my + 80 + 68 * k, mw - 40, 58
+            if on:
+                g.rrect(x, y, w, h, 16, self.accent[0], self.accent[1])
+            else:
+                g.rrect(x, y, w, h, 16, ink(14))
+            col = ON_TEXT if on else TEXT
+            it.shown = approach(it.shown, it.value, dt, 16)
+            g.icon(it.icon, x + 14, y + h / 2 - 11, 22, col)
+            g.text("SemiBold", 14, it.label, x + 48, y + 10, col)
+            g.text("SemiBold", 14, f"{it.value}%", x + w - 16, y + 10, col, "r")
+            bx, by, bw = x + 48, y + 38, w - 64
+            g.rrect(bx, by, bw, 6, 3, (255, 255, 255, 70) if on else ink(30))
+            g.rrect(bx, by, max(6, bw * it.shown / 100), 6, 3, col if on else c1)
+            g.circle(bx + bw * it.shown / 100, by + 3, 8 if on else 5, col)
+        g.text("Regular", 12, "Cima/baixo: escolher  ·  Esquerda/direita: ajustar  ·  A: confirmar  ·  B: desfazer",
+               W / 2, my + mh - 24, MUTED, "c", "m")
+
     def power_check(self):
         """Sinais do power_button.py: USR1 abre o menu de energia, USR2 mostra o aviso do pânico."""
         if self.loading:
@@ -2484,6 +2545,7 @@ class App:
     def handle(self, cmd):
         if cmd in ("vleft", "vright"):   # analógico para os lados: fora de uma barra/escolha, navega
             over = (getattr(self, "kbd", None) or getattr(self, "danger", None) or self.reader or self.modal
+                    or getattr(self, "levels", None)
                     or getattr(self, "sheet", None) or self.picker)
             it = self.items[self.item_sel] if self.page and self.items and not over else None
             if self.page and not over:
@@ -2528,6 +2590,9 @@ class App:
                 self.modal = None
                 if m.get("on_back"):
                     m["on_back"]()
+            return
+        if getattr(self, "levels", None):
+            self.levels_input(cmd)
             return
         if getattr(self, "sheet", None):
             self.sheet_input(cmd)
@@ -2653,7 +2718,7 @@ class App:
                     v = D.get("volume")                                   # (no console quem muda é o ogage)
                     D.set("volume", max(0, min(100, v + (10 if sym == 0x40000057 else -10))))
                     self.vol_at = self.t + 0.15
-                    for it in self.items or []:
+                    for it in (self.items or []) + (self.levels["items"] if getattr(self, "levels", None) else []):
                         if isinstance(it, Slider) and it.key == "volume":
                             it.value = D.get("volume")
                     continue
@@ -3099,6 +3164,8 @@ class App:
             self.draw_picker(dt)
         if getattr(self, "sheet", None):
             self.draw_sheet(dt)
+        if getattr(self, "levels", None):
+            self.draw_levels(dt)
         if getattr(self, "danger", None):
             self.draw_danger(dt)
         if getattr(self, "capture", None):

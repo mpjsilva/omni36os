@@ -37,12 +37,12 @@ B volta para os cards. O botão de power abre Energia: suspender, reiniciar ou d
 A ficha vem da pasta info do port (info.json, imagem e .txt), e depois do PortMaster e da Steam, buscados uma vez com Wi-Fi e guardados no cartão.
 
 # Tela e som
-Brilho, Volume e Contraste são barras: mudam com o analógico esquerdo; o direcional navega entre os itens e troca de coluna.
+"Brilho, contraste e volume" abre um painel com as três barras: cima/baixo escolhe, esquerda/direita ajusta na hora, A confirma e B desfaz o que mudou.
 "Tema": escuro ou claro, vale na hora e fica salvo.
-Volume: o som do console. "Restaurar áudio" conserta o som quando ele some ou sai pelo lugar errado: põe de volta o arquivo de som do sistema (.asoundrc), aponta a saída para o lugar certo e deixa o volume em 40%.
-A saída de som é automática: com o fone encaixado, o som sai só no fone; sem ele, só no alto-falante. A troca acontece na hora e vale também no boot e depois de um jogo que mexa no som.
 Brilho: a luz da tela.
 Contraste: barra de 0 a 100% (50% é o normal, gamma 1.0); acima de 50% a imagem fica mais contrastada, abaixo mais clara. Vale na hora e fica salvo para o boot; as teclas de atalho de gamma do sistema continuam a partir do valor escolhido.
+Volume: o som do console. "Restaurar áudio" conserta o som quando ele some ou sai pelo lugar errado: põe de volta o arquivo de som do sistema (.asoundrc), aponta a saída para o lugar certo e deixa o volume em 40%.
+A saída de som é automática: com o fone encaixado, o som sai só no fone; sem ele, só no alto-falante. A troca acontece na hora e vale também no boot e depois de um jogo que mexa no som.
 Cor do LED: verde ou vermelho, também no boot. Com a bateria em 10% ou menos, o LED pisca.
 "Detalhes da tela" mostra o modelo da sua tela, diz qual opção escolher no SELECT MODEL ao atualizar o Omni36OS e avisa se o aparelho é um clone.
 
@@ -51,7 +51,7 @@ Cor do LED: verde ou vermelho, também no boot. Com a bateria em 10% ou menos, o
 "Rede pelo cabo USB": o console vira uma placa de rede no cabo.
 - Modo universal: o console dá o IP ao PC. No PC: ssh omni@10.44.44.1.
 - Internet pelo PC: o PC compartilha a internet pelo cabo e o console recebe o IP dele.
-- Serviços remotos: liga o Samba e o navegador web de arquivos (usuário e senha: ark).
+- Serviços remotos: liga o Samba e o navegador web de arquivos (usuário e senha: omni).
 A página mostra o IP e os comandos para o PC, e se atualiza sozinha. A rede USB e o modo pendrive usam a mesma porta: desligue um antes de ligar o outro.
 
 # Controles
@@ -106,7 +106,7 @@ Ao conectar o PC, o Omni36OS fecha para soltar a partição. Ao tirar o cabo ou 
 
 # Ferramentas
 "Arquivos": navega pelos cartões (/roms, /roms2) e pelo pendrive. A abre a pasta, B sobe um nível, X abre as opções do item (copiar, mover, renomear, apagar) e START abre as opções da pasta (colar aqui, nova pasta). Para copiar: X > Copiar no item, vá até a pasta de destino e START > Colar aqui.
-"PortMaster" e "351Files" abrem em tela cheia; o Omni36OS volta quando eles fecham.
+"PortMaster" abre em tela cheia; o Omni36OS volta quando ele fecha. Para copiar, mover, renomear e apagar, use "Arquivos", aqui mesmo no Omni36OS.
 As outras ferramentas do sistema ficam nos cards: Testar o controle (Controles), Trocar a senha (Geral > Segurança), Wi-Fi e rede pelo cabo (Rede), pendrive (Armazenamento), Calibrar a bateria (Bateria), Liberar overclock (Desempenho). Tudo o que mexe no boot abre um aviso vermelho com contagem; Cancelar fica escolhido desde o início.
 
 # Testar ports (dentro de Ferramentas)

@@ -507,7 +507,7 @@ def usbnet_services(on):
             subprocess.Popen(["filebrowser", "-a", "0.0.0.0", "-p", "80", "-d",
                               "/home/ark/.config/filebrowser.db", "-r", "/"],
                              stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
-        return "Serviços remotos ligados (usuário e senha: ark)."
+        return "Serviços remotos ligados (usuário e senha: omni)."
     for u in ("smbd", "nmbd"):
         sh("systemctl", "stop", u)
     sh("pkill", "-x", "filebrowser")

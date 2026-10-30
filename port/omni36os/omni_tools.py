@@ -71,7 +71,6 @@ NATIVE = {"fix_hotkeys": fix_hotkeys, "usb_mount": usb_mount, "usb_umount": usb_
 # ver omni_sistema.py). Abrem pelo handoff tool: do launch-direct.sh.
 APPS = {
     "Tools/PortMaster.sh": ("PortMaster", "Loja de ports (precisa de internet)."),
-    "351Files.sh": ("351Files (avançado)", "Gerenciador de arquivos completo, com visualizador de imagens e textos."),
 }
 
 
