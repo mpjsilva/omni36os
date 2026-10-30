@@ -426,6 +426,7 @@ class Choice:
 
 IMAGE_EXT = (".png", ".jpg", ".jpeg", ".bmp", ".gif", ".webp")
 # FN + Y fora de um jogo: o serviço de atalhos cria este arquivo e o Omni36OS grava a própria tela
+BOOT_CIANO, BOOT_ROXO = (0x2D, 0xE2, 0xE6, 255), (0xA8, 0x55, 0xF7, 255)   # cores das telas do boot
 UI_SHOT = "/dev/shm/omni36os-power/shot"
 SHOT_DIR = "/roms/imagens"
 
@@ -902,12 +903,12 @@ class App:
             return [recheck]
         if cid == "controles":
             return [A("Testar o controle", "device-gamepad-2", self.open_pad),
-                    tip(Choice("Botões A e B", "rotate", "ab", ["padrao", "trocados"], SWAP_NAMES),
+                    tip(Choice("Botões A e B", "arrows-exchange", "ab", ["padrao", "trocados"], SWAP_NAMES),
                         "Trocados: A volta e B confirma, no Omni36OS, no PortMaster e nos ports."),
-                    tip(Choice("Botões X e Y", "rotate", "xy", ["padrao", "trocados"], SWAP_NAMES),
+                    tip(Choice("Botões X e Y", "arrows-exchange", "xy", ["padrao", "trocados"], SWAP_NAMES),
                         "Troca X e Y no Omni36OS e nos ports do PortMaster."),
                     subpage(A("Atalhos", "keyboard", lambda: self.open_page("atalhos")), "atalhos"),
-                    A("Consertar atalhos", "rotate", lambda: self.native("fix_hotkeys", "Reiniciando os atalhos..."),
+                    A("Consertar atalhos", "tool", lambda: self.native("fix_hotkeys", "Reiniciando os atalhos..."),
                       confirm="Reiniciar o serviço de atalhos (brilho e volume pelos botões)?"),
                     recheck]
         if cid == "bateria":
@@ -916,7 +917,7 @@ class App:
         if cid == "tela":
             return [tip(A("Brilho, contraste e volume", "adjustments", self.open_levels),
                         "Abre os três ajustes: cima/baixo escolhe, esquerda/direita ajusta, A confirma e B desfaz."),
-                    Choice("Tema", "sun", "tema", list(THEMES), {"escuro": "Escuro", "claro": "Claro"}),
+                    Choice("Tema", "palette", "tema", list(THEMES), {"escuro": "Escuro", "claro": "Claro"}),
                     Choice("Cor do LED", "bulb", "led", ["verde", "vermelho"], {"verde": "Verde", "vermelho": "Vermelho"}),
                     A("Detalhes da tela", "info-circle", lambda: self.run_info("Tela e modelo", "detect_hardware_and_screen")),
                     tagged(A("Restaurar áudio", "rotate", lambda: self.do_action("restaurar_audio"),
@@ -986,7 +987,7 @@ class App:
                                {"roms2": "ROMS2", "roms": "ROMS"}),
                         "Qual partição o PC enxerga no modo pendrive: ROMS2 (cartão 2, se houver) ou ROMS "
                         "(cartão 1). Sem o cartão 2, só ROMS aparece."),
-                    tip(A("Desmontar pendrive", "x", lambda: self.native("usb_umount", "Desmontando..."))
+                    tip(A("Desmontar pendrive", "player-eject", lambda: self.native("usb_umount", "Desmontando..."))
                         if mounted else
                         A("Montar pendrive", "plug", lambda: self.native("usb_mount", "Montando o pendrive...")),
                         self.pendrive_tip(mounted)),
@@ -1020,7 +1021,7 @@ class App:
                         "Lista as redes por perto, a mais forte primeiro. A rede com cadeado pede a senha."),
                     tip(A("Redes salvas", "device-floppy", self.wifi_saved),
                         "As redes que o console já conhece: conecte de novo ou esqueça uma."),
-                    tip(A("Desconectar", "x", lambda: self.wifi_run(omni_sistema.wifi_disconnect if not FAKE else
+                    tip(A("Desconectar", "plug-connected-x", lambda: self.wifi_run(omni_sistema.wifi_disconnect if not FAKE else
                                                                     (lambda: "Desconectado."), "Desconectando...")),
                         "Sai da rede atual sem desligar o Wi-Fi."),
                     tip(subpage(A("Rede pelo cabo USB", "network", lambda: self.open_page("usbrede")), "usbrede"),
@@ -3539,6 +3540,31 @@ class App:
             g.draw_layer(page, 24 * (1 - p), 255 * p)
         self.draw_overlays(dt)
 
+    def draw_welcome(self):
+        """A boas-vindas do boot (telas/gerar_telas.py + omni_tela.py) redesenhada pixel a pixel: o
+        console passa da imagem do boot para a abertura do Omni36OS sem a tela mudar. Sempre nas
+        cores do tema escuro, que são as do boot."""
+        g = self.g
+        g.vgradient(hexc("0b1024"), hexc("140f30"))
+        g.blob(50, 10, 260, (*BOOT_CIANO[:3], 40))
+        g.blob(610, 490, 260, (*BOOT_ROXO[:3], 40))
+        g.glow(W / 2 - 75, 95, 150, 150, 30, alpha(BOOT_CIANO, 70), 40)
+        g.image("logo-boas-vindas", W / 2 - 75, 95, 150, smooth=True)
+        g.text("Medium", 20, "Bem-vindo de volta", W / 2, 262, hexc("b8bedb"), "c")
+        parts = [("Omni", hexc("f4f6ff")), ("36", BOOT_CIANO), ("OS", BOOT_ROXO)]
+        x = W / 2 - sum(g.measure("ExtraBold", 48, t)[0] for t, _ in parts) / 2
+        for t, c in parts:
+            g.text("ExtraBold", 48, t, x, 290, c)
+            x += g.measure("ExtraBold", 48, t)[0]
+        nome = self.player or "Jogador"
+        w = 56 + g.measure("SemiBold", 16, nome)[0] + 22          # pílula do tamanho do nome
+        x0, y0 = round((W - w) / 2), 370
+        g.rrect(x0, y0, w, 50, 25, hexc("1b1f42"))
+        g.stroke(x0, y0, w, 50, 25, hexc("2a3060"))
+        g.circle(x0 + 26, y0 + 25, 16, BOOT_CIANO)
+        g.text("SemiBold", 16, nome[0].upper(), x0 + 26, y0 + 25, hexc("0b1024"), "c", "m")
+        g.text("SemiBold", 16, nome, x0 + 56, y0 + 25, hexc("f4f6ff"), "l", "m")
+
     def draw_loading(self, dt):
         g = self.g
         if self.results and self.warm:
@@ -3548,12 +3574,9 @@ class App:
             self.load_done = self.load_total
         frac = self.load_done / max(1, self.load_total)
         self.load_shown = approach(self.load_shown, frac, dt, 10)
-        a1, a2 = self.accent
-        cx, cy = W / 2, H / 2 - 40
-        g.glow(cx - 40, cy - 40, 80, 80, 24, alpha(a1, 90), 20)
-        g.image("logo-160", cx - 40, cy - 40, 80, smooth=True)
-        g.arc(cx, cy, 62, 4, self.t * 300 % 360, self.t * 300 % 360 + 260, alpha(a1, 230))
-        g.text("Bold", 24, f"Bem-vindo, {self.player}" if self.player else "Bem-vindo", cx, cy + 82, TEXT, "c", "m")
+        self.draw_welcome()
+        # a única diferença para a tela do boot: o anel girando em volta do ícone
+        g.arc(W / 2, 170, 100, 4, self.t * 300 % 360, self.t * 300 % 360 + 260, alpha(BOOT_CIANO, 230))
         if self.results and not self.warm and self.load_shown > 0.98:
             self.loading = False
             self.warm = getattr(self, "warm_later", None) or self.warm
