@@ -24,6 +24,7 @@ import sys
 import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import omni_audio          # noqa: E402
 import omni_combos as oc   # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -292,12 +293,16 @@ def main():
     signal.signal(signal.SIGHUP, lambda *_: apply_flags())
     fd = open_pad()
     down, since, waiting = set(), None, None
-    guard = BatteryGuard()
+    guard, route = BatteryGuard(), omni_audio.AutoRoute()
     while True:
         try:
             guard.tick()
         except Exception as e:           # a leitura da bateria nunca derruba os atalhos
             print(f"bateria: {e}", file=sys.stderr, flush=True)
+        try:
+            route.tick()                 # fone encaixado = fone; sem fone = alto-falante
+        except Exception as e:
+            print(f"som: {e}", file=sys.stderr, flush=True)
         try:
             r, _, _ = select.select([fd], [], [], 0.2)
             data = os.read(fd, EVENT.size * 64) if r else b""

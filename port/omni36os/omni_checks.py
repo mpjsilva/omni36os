@@ -13,6 +13,7 @@ import os
 import sys
 
 import omni
+import omni_audio
 
 TEMP_QUENTE = 75      # °C: acima disso o aparelho está aquecendo
 BATERIA_BAIXA = 20    # %
@@ -69,7 +70,8 @@ def audio_facts():
     return {
         "volume_pct": omni.get_volume(),
         "saida_audio": route,
-        "saida_esperada": omni.device_alsa_path(),
+        # automático (omni_audio): HP com o fone encaixado, SPK sem; sem detecção do fone, o do sistema
+        "saida_esperada": omni_audio.expected_path() or omni.device_alsa_path(),
         # O perfmax do Omni36OS apaga o .asoundrc ao abrir qualquer port (o Omni36OS
         # inclusive) e o perfnorm o devolve ao sair: ausente é o normal aqui.
         "asoundrc_padrao": asound is None or backup is None or asound == backup,
@@ -183,8 +185,13 @@ def check_audio(f, out):
         out.append(("aviso", f"O volume está baixo ({f['volume_pct']}%)."))
     else:
         out.append(("ok", f"Volume em {f['volume_pct']}%."))
+    nome = {"HP": "no fone", "SPK": "no alto-falante", "SPK_HP": "no alto-falante e no fone"}
     if f["saida_audio"] and f["saida_audio"] != f["saida_esperada"]:
-        out.append(("problema", f"A saída de som está em {f['saida_audio']}, o certo é {f['saida_esperada']}."))
+        out.append(("problema", f"O som está saindo {nome.get(f['saida_audio'], 'em ' + f['saida_audio'])}, mas "
+                                f"deveria sair {nome.get(f['saida_esperada'], 'em ' + f['saida_esperada'])}. "
+                                "Restaurar áudio corrige."))
+    elif f["saida_audio"]:
+        out.append(("ok", f"Som saindo {nome.get(f['saida_audio'], 'em ' + f['saida_audio'])} (automático)."))
     if not f["asoundrc_padrao"]:
         out.append(("aviso", "A configuração de som foi alterada por algum jogo ou app."))
 

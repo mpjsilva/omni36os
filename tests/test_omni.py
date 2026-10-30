@@ -200,6 +200,55 @@ class Bateria(unittest.TestCase):
         self.assertEqual(len(self.msgs), 2)
 
 
+class SomAutomatico(unittest.TestCase):
+    def setUp(self):
+        import omni_audio as a
+        self.a = a
+        self.saved = (a.jack_device, a.headphones_in, a.current_path, a.amixer, a.time.monotonic)
+        self.path, self.sets, self.clock = ["SPK"], [], [100.0]
+        a.jack_device = lambda: "/dev/input/event9"
+        a.current_path = lambda: self.path[0]
+
+        def mixer(*args):
+            if args[:2] == ("-q", "cset"):
+                self.path[0] = args[-1]
+                self.sets.append(args[-1])
+            return ""
+        a.amixer = mixer
+        a.time.monotonic = lambda: self.clock[0]
+
+    def tearDown(self):
+        a = self.a
+        a.jack_device, a.headphones_in, a.current_path, a.amixer, a.time.monotonic = self.saved
+
+    def step(self, hp, secs=1.1):
+        self.a.headphones_in = lambda dev=None: hp
+        self.clock[0] += secs
+        self.r.tick()
+
+    def test_troca_com_o_fone(self):
+        self.r = self.a.AutoRoute()
+        self.step(True)                       # fone já encaixado no boot
+        self.assertEqual(self.path[0], "HP")
+        self.step(True)
+        self.step(False)                      # tirou o fone
+        self.assertEqual(self.path[0], "SPK")
+        self.assertEqual(self.sets, ["HP", "SPK"])
+
+    def test_corrige_se_alguem_mudar(self):
+        self.r = self.a.AutoRoute()
+        self.step(False)
+        self.path[0] = "SPK_HP"               # um jogo mexeu na saída
+        self.step(False, secs=11)
+        self.assertEqual(self.path[0], "SPK")
+
+    def test_sem_deteccao_nao_mexe(self):
+        self.a.jack_device = lambda: None
+        self.r = self.a.AutoRoute()
+        self.step(None)
+        self.assertEqual(self.sets, [])
+
+
 class Atualizacao(unittest.TestCase):
     def setUp(self):
         import omni_update as u

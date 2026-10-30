@@ -212,7 +212,7 @@ class Data:
         if FAKE:
             time.sleep(0.4)
             sd = ("aviso", "Cartão de jogos sem marca identificada (código 0xfe), comum em cartões genéricos.")
-            som = ("problema", "A saída de som está em SPK, o certo é SPK_HP.")
+            som = ("problema", "O som está saindo no alto-falante, mas deveria sair no fone. Restaurar áudio corrige.")
             fake = {
                 "checkup": (["restaurar_audio"], [("problema", "Sistema: " + som[1]), ("aviso", "Cartões SD: " + sd[1]),
                                                   ("info", "Cada card mostra o detalhe do seu assunto.")]),

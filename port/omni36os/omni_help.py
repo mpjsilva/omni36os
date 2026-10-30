@@ -46,7 +46,8 @@ Bateria no fim (a porcentagem do R36S não é confiável, por isso os limites s�
 
 # Sistema
 Som, tela e segurança num card só, nesta ordem: Volume, Brilho e Contraste. As barras mudam com o analógico esquerdo; o direcional navega entre os itens e troca de coluna.
-Volume: o som do console. "Restaurar áudio" conserta o som quando ele some ou sai pelo lugar errado: põe de volta o arquivo de som do sistema (.asoundrc), aponta a saída para o alto-falante/fone certo deste modelo e deixa o volume em 40%.
+Volume: o som do console. "Restaurar áudio" conserta o som quando ele some ou sai pelo lugar errado: põe de volta o arquivo de som do sistema (.asoundrc), aponta a saída para o lugar certo e deixa o volume em 40%.
+A saída de som é automática: com o fone encaixado, o som sai só no fone; sem ele, só no alto-falante. A troca acontece na hora e vale também no boot e depois de um jogo que mexa no som.
 Brilho: a luz da tela.
 Contraste: barra de 0 a 100% (50% é o normal, gamma 1.0); acima de 50% a imagem fica mais contrastada, abaixo mais clara. Vale na hora e fica salvo para o boot; as teclas de atalho de gamma do sistema continuam a partir do valor escolhido.
 Cor do LED: verde ou vermelho, também no boot. Com a bateria em 10% ou menos, o LED pisca.

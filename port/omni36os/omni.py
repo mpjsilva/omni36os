@@ -899,7 +899,8 @@ def restore_audio(_args=None):
         shutil.copy(backup, f"{HOME}/.asoundrc")
         os.chown(f"{HOME}/.asoundrc", 1000, 1000)
         lines.append(".asoundrc restaurado do backup do sistema")
-    route = device_alsa_path()
+    import omni_audio
+    route = omni_audio.expected_path() or device_alsa_path()   # automático: fone ou alto-falante
     amixer("-q", "cset", "name=Playback Path", route)
     amixer("-q", "sset", "Playback", "40%")
     lines += [f"Saída de áudio: {route}", "Volume: 40%"]
