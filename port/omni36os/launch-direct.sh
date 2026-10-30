@@ -79,7 +79,7 @@ port_end() {
     PORT_STOPPED=""
 }
 
-# Contador de FPS, limite e captura de tela (Sistema > Atalhos): o hud/omni_hud.so entra nos
+# Contador de FPS, limite e captura de tela (Controles > Atalhos): o hud/omni_hud.so entra nos
 # ports por LD_PRELOAD. Com os três desligados, o port roda sem ele.
 hud_preload() {
     local lib="$OMNI_DIR/hud/omni_hud.so"

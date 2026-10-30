@@ -56,7 +56,7 @@ def systems():
         if path in seen:        # dois sistemas na mesma pasta: conta uma vez
             continue
         seen.add(path)
-        # a mesma pasta em cada cartão escolhido (Cartões SD > Jogos lidos de)
+        # a mesma pasta em cada cartão escolhido (Armazenamento > Jogos lidos de)
         rel = path.split("/", 2)[2] if path.startswith(("/roms/", "/roms2/")) else None
         paths = [f"{r}/{rel}" for r in omni.game_roots()] if rel else [path]
         emus = []

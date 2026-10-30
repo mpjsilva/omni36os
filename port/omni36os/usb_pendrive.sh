@@ -1,6 +1,6 @@
 #!/bin/bash
 # usb-disco.sh — porta OTG do R36S como pendrive (USB Mass Storage).
-# A interface é o Omni36OS (card USB); o Omni36OS instala este arquivo
+# A interface é o Omni36OS (card Armazenamento); o Omni36OS instala este arquivo
 # em /home/ark porque o serviço precisa dele fora de /roms2, que é desmontada.
 #
 #   part [p]  mostra/escolhe a partição entregue ao PC (roms2 ou roms)
