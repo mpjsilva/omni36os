@@ -905,8 +905,8 @@ class App:
                         "Termina de gravar e solta o pendrive montado. Use antes de tirar do console." if mounted else
                         "Lê um pendrive ligado no console (OTG) em /mnt/usbdrive. Aceita FAT, exFAT e NTFS. "
                         "É o contrário do modo pendrive."),
-                    tip(A("Estado da porta USB", "info-circle", lambda: self.run_info("Pendrive USB", "usb_status")),
-                        "Mostra o estado da porta OTG: modo pendrive, partição exposta e o que está montado."),
+                    tip(A("Estado do pendrive", "info-circle", self.pendrive_info),
+                        "Diz se o pendrive ligado na porta OTG foi reconhecido, qual é e se já está montado."),
                     tip(tagged(A("Limpar lixo do Mac", "x", lambda: self.do_action("limpar_mac", "Procurando o lixo do Mac... (até 1 minuto)"),
                                  confirm="Apagar os arquivos ._ e .DS_Store que o Mac cria?\nSeus jogos não são tocados."),
                                "limpar_mac"),
@@ -1201,6 +1201,21 @@ class App:
             return
         omni.write_text(omni.HANDOFF, f"tool:ferramentas:{t['path']}")
         self.running = False          # o launch-direct.sh roda o programa e reabre o Omni36OS
+
+    def pendrive_info(self):
+        def fake():
+            time.sleep(0.6)
+            return ("Reconhecido: SanDisk Cruzer Blade, 29.8 GB, VFAT.\nMontado em /mnt/usbdrive: 21.4 GB livres. "
+                    "Desmonte antes de tirar." if getattr(self, "fake_usb", False) else
+                    "Nenhum pendrive reconhecido.\nConfira se ele está na porta OTG (com adaptador, se precisar) e "
+                    "tente de novo. Pendrives que pedem muita energia podem não ligar no R36S.")
+
+        def done(res):
+            txt = f"Erro: {res}" if isinstance(res, Exception) else str(res)
+            ok = txt.startswith("Reconhecido")
+            self.modal = {"title": "Estado do pendrive", "icon": "check" if ok else "alert-triangle",
+                          "buttons": ["OK"], "sel": 0, "text": txt}
+        self.worker(fake if FAKE else (lambda: omni_tools.run_native("pendrive_status")), done, busy="Procurando...")
 
     def native(self, name, busy="Fazendo..."):
         """Ferramenta reescrita em Python (omni_tools.NATIVE): roda aqui e mostra o resultado."""

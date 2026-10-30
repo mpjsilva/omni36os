@@ -102,7 +102,7 @@ Ligar e desligar reinicia o aparelho. Enquanto estiver ligado, o Wi-Fi não func
 Ao conectar o PC, o Omni36OS fecha para soltar a partição. Ao tirar o cabo ou ejetar no PC, o console monta a partição de novo e o Omni36OS volta. Para sair sem o PC, aperte B ou Select + Start.
 "Restaurar boot" volta o arquivo de boot original se algo der errado.
 "Limpar lixo do Mac" apaga os arquivos ._ e .DS_Store que o macOS cria ao copiar. Eles aparecem como ports fantasmas na biblioteca. A busca leva até um minuto.
-"Montar pendrive" monta um pendrive ligado no OTG em /mnt/usbdrive (FAT, exFAT ou NTFS). Com ele montado, o mesmo botão vira "Desmontar pendrive": use antes de tirar.
+"Montar pendrive" monta um pendrive ligado no OTG em /mnt/usbdrive (FAT, exFAT ou NTFS). Com ele montado, o mesmo botão vira "Desmontar pendrive": use antes de tirar. "Estado do pendrive" diz se o pendrive foi reconhecido, qual é e se já está montado.
 
 # Ferramentas
 "Arquivos": navega pelos cartões (/roms, /roms2) e pelo pendrive. A abre a pasta, B sobe um nível, X abre as opções do item (copiar, mover, renomear, apagar) e START abre as opções da pasta (colar aqui, nova pasta). Para copiar: X > Copiar no item, vá até a pasta de destino e START > Colar aqui.
