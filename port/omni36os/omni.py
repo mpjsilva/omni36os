@@ -410,15 +410,18 @@ def set_preferred_governor(args):
 
 
 def relax_clocks(_args=None):
-    """O ES roda o perfmax ao abrir qualquer port, o Omni36OS inclusive: CPU, GPU e
-    RAM ficam travadas no máximo enquanto ele está aberto, só esquentando. Um
-    menu não precisa disso; o perfnorm volta o modo escolhido quando o Omni36OS fecha."""
-    for path, gov in ((f"{CPUFREQ}/scaling_governor", "ondemand"),
-                      (f"{GPU_DEV}/governor", "simple_ondemand"),
-                      ("/sys/class/devfreq/dmc/governor", "dmc_ondemand")):
+    """Menu = mínimo: CPU, GPU e memória no modo economia (a menor frequência) enquanto o Omni36OS
+    está na tela. Um menu não precisa de mais, e assim o console esfria e a bateria rende. Os limites
+    de Desempenho só valem nos ports: o launch-direct.sh põe tudo em desempenho até eles ao abrir um
+    port, e o Omni36OS volta ao mínimo quando o port fecha. Sem o modo economia, o mais próximo."""
+    for path, govs in ((f"{CPUFREQ}/scaling_governor", ("powersave", "conservative", "ondemand")),
+                       (f"{GPU_DEV}/governor", ("powersave", "simple_ondemand")),
+                       ("/sys/class/devfreq/dmc/governor", ("powersave", "dmc_ondemand", "simple_ondemand"))):
         try:
-            if gov in read_text(path.rsplit("/", 1)[0] + ("/scaling_available_governors" if "cpufreq" in path
-                                                          else "/available_governors"), ""):
+            avail = read_text(path.rsplit("/", 1)[0] + ("/scaling_available_governors" if "cpufreq" in path
+                                                         else "/available_governors"), "").split()
+            gov = next((g for g in govs if g in avail), None)
+            if gov:
                 write_text(path, gov)
         except OSError:
             pass

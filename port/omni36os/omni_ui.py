@@ -198,7 +198,7 @@ def swapped_ab():
 class Data:
     def status(self):
         if FAKE:
-            return {"bat": 87, "carregando": False, "temp": 52, "wifi": True, "gov": "ondemand"}
+            return {"bat": 87, "carregando": False, "temp": 52, "wifi": True, "gov": "ondemand", "cpu_max": 1296}
         t = omni.read_text("/sys/class/thermal/thermal_zone0/temp", "0")
         return {
             "bat": int(omni.read_text("/sys/class/power_supply/battery/capacity", "0")),
@@ -206,6 +206,7 @@ class Data:
             "temp": int(t) // 1000 if t.isdigit() else 0,
             "wifi": os.path.exists("/sys/class/net/wlan0"),
             "gov": omni.get_preferred_governor(),
+            "cpu_max": omni.get_cpu_max(),
         }
 
     def check(self, name):
@@ -340,7 +341,8 @@ D = Data()
 if not FAKE:
     try:
         omni.migrate_cpu_settings()   # modo do processador de versões antigas
-        omni.relax_clocks()           # o perfmax de um port deixou tudo no máximo
+        if os.environ.get("OMNI_HUB") != "jogo":   # por cima de um jogo pausado não: ele voltaria lento
+            omni.relax_clocks()       # menu = mínimo (o port deixou tudo no máximo)
     except OSError:
         pass
 
@@ -693,7 +695,8 @@ class App:
         f = omni_checks.cpu_facts()
         out = []
         omni_checks.check_temp(f, out)
-        out.append(("ok", f"Processador a {f['freq_mhz']} MHz, modo {GOV_NAMES.get(f['governador'], f['governador'])}."))
+        out.append(("ok", f"No menu, processador, GPU e memória ficam no mínimo ({f['freq_mhz']} MHz agora). "
+                          "Os limites abaixo valem quando um port abre."))
         omni_checks.check_overclock(f, out, [])   # tirar o OC é o seletor "Limite do processador" daqui
         acts = []
         z = omni.zram_facts()
@@ -839,13 +842,16 @@ class App:
                     A("Senha do Samba", "device-floppy", self.ask_samba),
                     A("Trava por senha: " + ("ligada" if locked else "desligada"), "lock", self.ask_lock)]
         if cid == "desempenho":
-            return [Choice("Processador no menu", "cpu", "gov", D.get("govs"), GOV_NAMES),
-                    Choice("Limite do processador", "gauge", "cpu_max", D.get("cpu_freqs"),
-                           {f: f"{f} MHz" + (" (OC)" if f > 1296 else "") for f in D.get("cpu_freqs")}),
-                    Choice("Limite da GPU", "device-gamepad-2", "gpu_max", D.get("gpu_freqs"),
-                           {f: f"{f} MHz" + (" (OC)" if f > 520 else "") for f in D.get("gpu_freqs")}),
-                    Choice("Memória extra (zram)", "database", "zram", ZRAM_SIZES,
-                           {m: f"{m} MB" if m else "Desligada" for m in ZRAM_SIZES}),
+            return [tip(Choice("Limite do processador", "gauge", "cpu_max", D.get("cpu_freqs"),
+                               {f: f"{f} MHz" + (" (OC)" if f > 1296 else "") for f in D.get("cpu_freqs")}),
+                        "Até onde o processador vai nos ports. No menu ele fica sempre no mínimo, para esfriar e "
+                        "poupar bateria."),
+                    tip(Choice("Limite da GPU", "device-gamepad-2", "gpu_max", D.get("gpu_freqs"),
+                               {f: f"{f} MHz" + (" (OC)" if f > 520 else "") for f in D.get("gpu_freqs")}),
+                        "Até onde a GPU vai nos ports. No menu ela fica sempre no mínimo."),
+                    tip(Choice("Memória extra (zram)", "database", "zram", ZRAM_SIZES,
+                               {m: f"{m} MB" if m else "Desligada" for m in ZRAM_SIZES}),
+                        "Memória comprimida para ports que pedem mais RAM. Desligada é o normal."),
                     A("Liberar overclock (1512 MHz, GPU 600)", "gauge", self.ask_overclock)]
         if cid == "pendrive":
             on = D.get("pendrive")
@@ -2744,7 +2750,7 @@ class App:
             "checkup": self._home_summary(),
             "bateria": f"{s['bat']}%" + (" · Carregando" if s["carregando"] else ""),
             "tela": "Som, tela e segurança",
-            "desempenho": GOV_NAMES.get(s["gov"], s["gov"]) + f" · {s['temp']}°C",
+            "desempenho": f"Ports até {s.get('cpu_max', '?')} MHz · {s['temp']}°C",
             "pendrive": "Pendrive e rede no cabo",
             "cartoes": "Espaço, marca e velocidade",
             "ferramentas": "Arquivos, testes e PortMaster",

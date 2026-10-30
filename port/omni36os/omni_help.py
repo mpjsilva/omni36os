@@ -76,9 +76,9 @@ Tudo o que é senha fica aqui. B volta para Sistema.
 "Trava por senha": com ela ligada, o console pede a senha ao ligar, antes de mostrar os jogos (o botão de power ainda abre Energia para desligar). A senha fica em texto simples em EASYROMS/senha/senha.txt: esqueceu, abra o cartão no PC e leia. Apagar esse arquivo desliga a trava. Para desligar pelo console, a senha atual é pedida.
 
 # Desempenho
-Modo do processador: Economia, Equilibrado ou Máximo. A escolha fica salva em /etc/cpu-settings.conf, e vale no boot e depois de jogar.
-Limite do processador: 1296 MHz é o padrão. De 1368 a 1512 MHz é overclock (OC).
-Limite da GPU: 520 MHz é o padrão; 600 MHz é overclock.
+No menu, o processador, a GPU e a memória ficam sempre no mínimo: o console esfria e a bateria rende. Ao abrir um port, tudo sobe até os limites abaixo; ao voltar, desce de novo.
+Limite do processador (nos ports): 1296 MHz é o padrão. De 1368 a 1512 MHz é overclock (OC).
+Limite da GPU (nos ports): 520 MHz é o padrão; 600 MHz é overclock.
 O overclock só é liberado com o aparelho abaixo de 70 °C. Se ele esquentar com o OC ligado, o Omni36OS sugere voltar ao padrão.
 Memória extra (zram): desligada por padrão. 256, 512 ou 768 MB de memória comprimida na RAM, que segura ports pesados que fecham por falta de memória. Vale na hora e nos próximos boots; custa um pouco de processador.
 "Liberar overclock" mexe no arquivo de hardware do boot (DTB): libera as frequências de 1368 a 1512 MHz e a GPU de 600 MHz. Tem trava: aviso vermelho com contagem e depois A apertado 5 vezes. Antes de mudar, o Omni36OS guarda uma cópia do DTB. Vale depois de reiniciar; o limite se escolhe em "Limite do processador" e "Limite da GPU".

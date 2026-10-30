@@ -233,11 +233,7 @@ def bateria():
         acts.append("baixar_brilho")
     else:
         out.append(("ok", f"Brilho em {f['brilho_pct']}%."))
-    if f["governador"] == "performance":
-        out.append(("aviso", "O processador está em desempenho máximo, que gasta mais."))
-        acts.append("economizar_bateria")
-    else:
-        out.append(("ok", f"Processador em modo {f['governador']} no menu."))
+    out.append(("ok", "No menu, o processador fica no mínimo para poupar bateria."))
     return finish(out, acts, f)
 
 
