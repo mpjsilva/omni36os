@@ -4,6 +4,9 @@ Linhas que começam com "# " viram títulos no leitor."""
 
 # A versão em uso vem do arquivo VERSION. Aqui fica só ela; o histórico completo está no NOVIDADES.md.
 NOVIDADES = [
+    ("1.11.8", "30/10/2026", [
+        "Overclock com trava de verdade: as velocidades acima de 1296 MHz (processador) e 520 MHz (GPU) só aparecem depois de Desempenho > Desbloquear overclock. Bloquear overclock volta tudo ao padrão.",
+    ]),
     ("1.11.7", "30/10/2026", [
         "Ferramentas > Busca automática: liga e desliga a busca de capas e descrições.",
         "A biblioteca diz o que está buscando: imagem e descrição, só a descrição ou só a imagem. O que não foi encontrado não é buscado de novo, e nada é buscado com um jogo aberto.",

@@ -260,7 +260,7 @@ class Data:
                 return omni_combos.defaults()[what[3:]]
             return {"brilho": 40, "volume": 60, "gov": "ondemand", "govs": ["powersave", "ondemand", "performance"],
                     "part": "roms2", "pendrive": False, "cpu_max": 1296, "cpu_freqs": [1296, 1416, 1512],
-                    "gpu_max": 520, "gpu_freqs": [400, 480, 520, 600], "zram": 0, "fonte": "roms", "gamma": 1.0, "contraste": 50, "led": "verde", "remoto": "desligados", "busca": "ligada" if busca_on() else "desligada",
+                    "gpu_max": 520, "gpu_freqs": [400, 480, 520, 600], "oc": False, "zram": 0, "fonte": "roms", "gamma": 1.0, "contraste": 50, "led": "verde", "remoto": "desligados", "busca": "ligada" if busca_on() else "desligada",
                     "inverter": "ligado" if swapped_ab() else "desligado",
                     "power": "desligar", "tema": THEME}[what]
         if what == "brilho":
@@ -275,6 +275,8 @@ class Data:
             return omni.usb_run("part") or ("roms2" if os.path.ismount("/roms2") else "roms")
         if what == "pendrive":
             return omni.usb_facts()["modo_pendrive_ligado"]
+        if what == "oc":
+            return omni.oc_unlocked()
         if what == "cpu_max":
             return omni.get_cpu_max()
         if what == "cpu_freqs":
@@ -487,8 +489,9 @@ TIPS = {
     "Limite da GPU": "Frequência máxima da GPU. Acima de 520 MHz é overclock: esquenta mais.",
     "Memória extra (zram)": "Usa parte da RAM comprimida como memória extra. Ajuda ports pesados que fecham por "
                             "falta de memória, com um pouco mais de uso do processador.",
-    "Liberar overclock": "Libera 1512 MHz no processador e 600 MHz na GPU. Pode esquentar e travar; o aviso "
-                         "explica como desfazer.",
+    "Desbloquear overclock": "Mostra e permite 1368 a 1512 MHz no processador e 600 MHz na GPU. Pode esquentar e "
+                             "travar; o aviso explica como desfazer.",
+    "Bloquear overclock": "Volta os limites ao padrão (1296 MHz e 520 MHz) e esconde as velocidades de overclock.",
     "Ligar: modo universal": "O console dá o IP ao PC (funciona em qualquer PC). Depois use ssh omni@10.44.44.1.",
     "Ligar: internet pelo PC": "Usa a internet do PC no console. O PC precisa compartilhar a conexão pelo cabo.",
     "Serviços remotos": "Ligados: gerenciador de arquivos pela web e Samba, para mexer no cartão pelo PC. "
@@ -994,7 +997,10 @@ class App:
                     tip(Choice("Memória extra (zram)", "database", "zram", ZRAM_SIZES,
                                {m: f"{m} MB" if m else "Desligada" for m in ZRAM_SIZES}),
                         "Memória comprimida para ports que pedem mais RAM. Desligada é o normal."),
-                    A("Liberar overclock (1512 MHz, GPU 600)", "gauge", self.ask_overclock)]
+                    A("Bloquear overclock", "lock", self.lock_oc,
+                      confirm="Bloquear o overclock?\nOs limites voltam a 1296 MHz no processador e 520 MHz na "
+                              "GPU.") if D.get("oc") else
+                    A("Desbloquear overclock", "gauge", self.ask_overclock)]
         if cid == "cartoes":
             on = D.get("pendrive")
             tog = A("Desligar o modo pendrive" if on else "Ligar o modo pendrive (PC)", "power",
@@ -2647,14 +2653,26 @@ class App:
     # --- aviso com contagem (estilo "opções perigosas" da Xiaomi) ---
 
     def ask_overclock(self):
-        """Único ajuste de DTB que ficou: a trava (aviso + 5 toques em A) protege o boot."""
-        S = omni_sistema if not FAKE else None
-        go = ((lambda: self.worker(S.dtb_overclock, self._sys_done, busy="Mexendo no DTB...")) if S else
+        """A trava de verdade: sem passar por aqui (aviso + 5 toques em A), os limites acima de 1296 MHz
+        e 520 MHz nem aparecem nos seletores e são recusados. Se o DTB ainda não tem as frequências,
+        acrescenta (o resto vale depois de reiniciar)."""
+        def unlock():
+            res = omni_sistema.dtb_overclock()
+            if res.startswith(("Não", "Erro")):
+                return res
+            omni.unlock_oc()
+            return ("Overclock desbloqueado: escolha os limites acima." if res.startswith("O overclock já")
+                    else res + " Reinicie para as frequências novas aparecerem.")
+        go = ((lambda: self.worker(unlock, self._sys_done, busy="Desbloqueando...")) if not FAKE else
               (lambda: setattr(self, "toast", ("Teste: passou", "ok", self.t + 3))))
-        self.warn("Liberar overclock", "Acrescenta frequências de 1368 a 1512 MHz no processador e 600 MHz na GPU, "
-                  "com a tensão do dArkOSen. Depois, escolha o limite em Desempenho.", go, 10, True,
-                  key="Liberar overclock", risk="Um DTB errado deixa a tela preta ou o console sem ligar.",
+        self.warn("Desbloquear overclock", "Libera de 1368 a 1512 MHz no processador e 600 MHz na GPU, com a "
+                  "tensão do dArkOSen. Depois, escolha os limites em Desempenho.", go, 10, True,
+                  key="Desbloquear overclock", risk="Esquenta mais e pode travar. Se o DTB precisar de ajuste, um "
+                  "DTB errado deixa a tela preta ou o console sem ligar.",
                   undo=BOOT_UNDO + " Antes de mudar, o Omni36OS guarda uma cópia do DTB.")
+
+    def lock_oc(self):
+        self._sys_done("Teste: bloqueado" if FAKE else omni.lock_oc())
 
     def warn(self, title, text, fn, secs=10, hold=False, key=None, risk="", undo="", back=None):
         """Continuar só acende depois de `secs` s; Cancelar começa escolhido. Com `hold`, ainda é
@@ -3588,6 +3606,7 @@ class App:
         """Fim do boot: menu na tela e páginas montadas. Tudo volta ao mínimo para o menu."""
         try:
             os.remove(TURBO)
+            omni.apply_limits()           # limites de Desempenho (o boot passou no máximo do hardware)
             omni.relax_clocks()
         except OSError:
             pass

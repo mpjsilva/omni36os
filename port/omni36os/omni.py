@@ -337,6 +337,8 @@ PERFNORM_SAB = ('echo "$(. /etc/cpu-settings.conf 2>/dev/null; echo ${GOV:-ondem
                 "> /sys/devices/system/cpu/cpufreq/policy0/scaling_governor  # Omni36OS")
 GPU_DEV = "/sys/class/devfreq/ff400000.gpu"
 CPU_SAFE_MHZ = 1296      # padrão do Omni36OS; acima disso é overclock
+GPU_SAFE_MHZ = 520
+OC_FLAG = "/etc/omni36os/overclock"   # existe = overclock desbloqueado (aviso + 5 toques em Desempenho)
 OC_MAX_TEMP = 70         # °C: não libera overclock acima disso (1º ponto de corte do kernel)
 
 
@@ -429,8 +431,44 @@ def relax_clocks(_args=None):
 
 # --- Overclock (CPU e GPU) ---
 
+def oc_unlocked(_args=None):
+    return os.path.exists(OC_FLAG)
+
+
+def unlock_oc(_args=None):
+    os.makedirs(os.path.dirname(OC_FLAG), exist_ok=True)
+    write_text(OC_FLAG, time.strftime("%d/%m/%Y %H:%M") + "\n")
+
+
+def lock_oc(_args=None):
+    """Bloqueia de novo: tira a marca e volta os dois limites ao padrão."""
+    try:
+        os.remove(OC_FLAG)
+    except FileNotFoundError:
+        pass
+    set_cpu_max({"mhz": CPU_SAFE_MHZ})
+    set_gpu_max({"mhz": GPU_SAFE_MHZ})
+    return "Overclock bloqueado: processador até 1296 MHz e GPU até 520 MHz."
+
+
+def apply_limits(_args=None):
+    """Limites de Desempenho no hardware (fim do boot: até lá o omni36os-turbo deixa tudo no máximo).
+    Bloqueado, nada passa do padrão, mesmo que a configuração diga outra coisa."""
+    cpu = int(read_conf(CPU_CONF).get("FREQ", CPU_SAFE_MHZ * 1000)) // 1000
+    gpu = int(read_conf(GPU_CONF).get("FREQ", GPU_SAFE_MHZ * 1000000)) // 1000000
+    if not oc_unlocked():
+        cpu, gpu = min(cpu, CPU_SAFE_MHZ), min(gpu, GPU_SAFE_MHZ)
+    for path, val in ((f"{CPUFREQ}/scaling_max_freq", cpu * 1000), (f"{GPU_DEV}/max_freq", gpu * 1000000)):
+        try:
+            write_text(path, val)
+        except OSError:
+            pass
+
+
 def cpu_freqs(_args=None):
     top = int(read_text(f"{CPUFREQ}/cpuinfo_max_freq", "0")) // 1000
+    if not oc_unlocked():
+        top = min(top, CPU_SAFE_MHZ)
     avail = [int(f) // 1000 for f in read_text(f"{CPUFREQ}/scaling_available_frequencies", "").split()]
     return [f for f in sorted(set(avail)) if CPU_SAFE_MHZ <= f <= top] or [CPU_SAFE_MHZ]
 
@@ -441,6 +479,8 @@ def get_cpu_max(_args=None):
 
 def set_cpu_max(args):
     mhz = int(args["mhz"])
+    if mhz > CPU_SAFE_MHZ and not oc_unlocked():
+        return "Overclock bloqueado: desbloqueie em Desempenho."
     if mhz not in cpu_freqs():
         return f"Frequência indisponível: {mhz} MHz."
     if mhz > CPU_SAFE_MHZ and temp_c() >= OC_MAX_TEMP:
@@ -451,7 +491,9 @@ def set_cpu_max(args):
 
 
 def gpu_freqs(_args=None):
-    return sorted(int(f) // 1000000 for f in read_text(f"{GPU_DEV}/available_frequencies", "").split())
+    top = 10 ** 6 if oc_unlocked() else GPU_SAFE_MHZ
+    return sorted(int(f) // 1000000 for f in read_text(f"{GPU_DEV}/available_frequencies", "").split()
+                  if int(f) // 1000000 <= top)
 
 
 def get_gpu_max(_args=None):
@@ -460,13 +502,15 @@ def get_gpu_max(_args=None):
 
 def set_gpu_max(args):
     mhz = int(args["mhz"])
+    if mhz > GPU_SAFE_MHZ and not oc_unlocked():
+        return "Overclock bloqueado: desbloqueie em Desempenho."
     if mhz not in gpu_freqs():
         return f"Frequência indisponível: {mhz} MHz."
-    if mhz > 520 and temp_c() >= OC_MAX_TEMP:
+    if mhz > GPU_SAFE_MHZ and temp_c() >= OC_MAX_TEMP:
         return f"Está quente ({temp_c()} °C): o overclock só é liberado abaixo de {OC_MAX_TEMP} °C."
     write_conf(GPU_CONF, FREQ=mhz * 1000000)
     write_text(f"{GPU_DEV}/max_freq", mhz * 1000000)
-    return f"GPU até {mhz} MHz" + (" (overclock)" if mhz > 520 else "")
+    return f"GPU até {mhz} MHz" + (" (overclock)" if mhz > GPU_SAFE_MHZ else "")
 
 
 def zram_facts(_args=None):
