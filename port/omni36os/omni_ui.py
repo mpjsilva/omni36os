@@ -132,6 +132,10 @@ POWER_FLAG = f"{POWER_SHM}/menu"                 # abrir já no menu de energia
 PANIC_MSG = f"{POWER_SHM}/panic-msg"
 BAT_MSG = f"{POWER_SHM}/bat-msg"                 # omni_atalho.py: título na 1ª linha, texto depois
 RESUME = os.environ.get("OMNI_RESUME", "")   # "testar": o Omni36OS voltou de um teste de port
+# Estado guardado na RAM ao sair para um jogo ou ferramenta: na volta o menu abre na hora com as
+# verificações de antes (que levavam ~10 s no console) e elas se refazem em segundo plano.
+STATE_CACHE = "/dev/shm/omni36os-estado.json"
+STATE_MAX_AGE = 30 * 60
 
 import omni_help
 
@@ -563,7 +567,15 @@ class App:
         self.loading = True
         self.load_done, self.load_total, self.load_label = 0, 1, "Preparando..."
         self.load_shown = 0.0
-        self.worker(self.check_all, self._all_checked, quiet=True)
+        self.t_start = time.monotonic()
+        self.refresh_at = None
+        cached = self.load_state()
+        if cached:
+            self._all_checked(cached)
+            self.refresh_at = time.monotonic() + 4      # refaz as verificações depois que o menu abrir
+            self.warm_later, self.warm = self.warm, []   # as páginas se montam com o menu parado
+        else:
+            self.worker(self.check_all, self._all_checked, quiet=True)
 
     # --- tarefas em segundo plano ---
 
@@ -645,8 +657,9 @@ class App:
         out = {}
         todo = [c for c in CARDS + [card_info(c) for c in SUBPAGES]
                 if c[0] not in ("geral", "sobre") and (RESUME != "testar" or c[0] == "testar")]
-        self.warm.insert(0, "home")
-        self.load_total = len(todo) + len(self.warm)
+        if self.loading:              # na atualização em segundo plano não há tela de carregamento
+            self.warm.insert(0, "home")
+            self.load_total = len(todo) + len(self.warm)
         for k, (cid, title, *_) in enumerate(todo):
             self.load_label = f"Verificando {title.lower()}..."
             self.load_done = k
@@ -656,7 +669,35 @@ class App:
                 out[cid] = {"nivel": "problema", "achados": [("problema", f"Erro: {e}")], "acoes": []}
         return out
 
+    def load_state(self):
+        if not RESUME or RESUME == "testar" or FAKE:
+            return None
+        try:
+            with open(STATE_CACHE) as f:
+                st = json.load(f)
+            os.remove(STATE_CACHE)
+        except (OSError, ValueError):
+            return None
+        if st.get("versao") != omni_version() or not 0 <= time.time() - st.get("t", 0) < STATE_MAX_AGE:
+            return None
+        return st.get("resultados") or None
+
+    def save_state(self):
+        """Só ao sair para um jogo ou ferramenta (o launch-direct.sh reabre o Omni36OS na volta)."""
+        if FAKE or not self.results or not os.path.exists(omni.HANDOFF):
+            return
+        try:
+            res = dict(self.results)
+            if self.home_check:
+                res["checkup"] = self.home_check
+            with open(STATE_CACHE + ".tmp", "w") as f:
+                json.dump({"versao": omni_version(), "t": time.time(), "resultados": res}, f, default=str)
+            os.replace(STATE_CACHE + ".tmp", STATE_CACHE)
+        except (OSError, TypeError, ValueError):
+            pass
+
     def _all_checked(self, res):
+        print(f"verificações prontas em {time.monotonic() - self.t_start:.1f} s", file=sys.stderr, flush=True)
         if isinstance(res, Exception):
             return
         self.home_check = res.get("checkup")
@@ -3374,6 +3415,8 @@ class App:
         g.text("Bold", 24, f"Bem-vindo, {self.player}" if self.player else "Bem-vindo", cx, cy + 82, TEXT, "c", "m")
         if self.results and not self.warm and self.load_shown > 0.98:
             self.loading = False
+            self.warm = getattr(self, "warm_later", None) or self.warm
+            print(f"menu na tela em {time.monotonic() - self.t_start:.1f} s", file=sys.stderr, flush=True)
             if not FAKE:                  # o menu abriu: uma atualização recente está aprovada
                 omni_update.confirm_ok()
                 back = omni_update.rolled_back_message()
@@ -3478,8 +3521,11 @@ class App:
                         self.handle(cmd)
                 self.frame(dt)
                 self.g.present()
-                if self.loading:
-                    self.prewarm()
+                if self.loading or (self.warm and now - self.last_input > 0.6):
+                    self.prewarm()             # com o menu aberto, só quando ninguém está apertando nada
+                if self.refresh_at and now >= self.refresh_at and not self.busy:
+                    self.refresh_at = None
+                    self.worker(self.check_all, self._all_checked, quiet=True)
                 # Ritmo: 30 quadros/s em uso e 10 parado. A 60 quadros/s sem parar a
                 # Omni36OS ocupava 70% de um núcleo e deixava o aparelho perto de 80 °C.
                 moving = (self.loading or self.busy or getattr(self, "danger", None) or self.toast or 0.01 < self.page_anim < 0.99
@@ -3504,6 +3550,7 @@ class App:
                 self.danger = self.busy = None
                 self.toast = ("Algo deu errado, mas o Omni36OS continuou", "aviso", self.t + 4)
                 last = time.monotonic()
+        self.save_state()
         gfx.SDL_Quit()
 
 
