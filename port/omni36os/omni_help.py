@@ -4,6 +4,9 @@ Linhas que começam com "# " viram títulos no leitor."""
 
 # A versão em uso vem do arquivo VERSION. Aqui fica só ela; o histórico completo está no NOVIDADES.md.
 NOVIDADES = [
+    ("1.12.6", "30/10/2026", [
+        "O card Tela e som volta a ter esse título (o texto saía do card); a legenda continua com brilho, som e bateria.",
+    ]),
     ("1.12.5", "30/10/2026", [
         "Aplicativos mostra só a lista de apps; as opções do Músicas (visualização, apagar a tela e subpastas) ficam dentro do app, no START.",
     ]),
@@ -80,7 +83,7 @@ Ele não usa internet nem inteligência artificial: são verificações e script
 Direcional ou analógico: andar pelos cards e opções.
 A: abrir ou confirmar. B: voltar. O botão de power abre Energia (suspender, reiniciar, desligar).
 L1/R1: rolam o diagnóstico (painel da esquerda) quando ele não cabe; "L1: N acima" e "R1: mais N" mostram o que está escondido. No manual e nas listas, L1/R1 pulam de bloco em bloco.
-Nas opções de valor (modo do processador, limites), use esquerda e direita. Em Tela, som e bateria, as barras (volume, brilho, contraste) e as escolhas mudam com o analógico esquerdo, e o direcional só navega.
+Nas opções de valor (modo do processador, limites), use esquerda e direita. Em Tela e som, as barras (volume, brilho, contraste) e as escolhas mudam com o analógico esquerdo, e o direcional só navega.
 Cada página explica a opção escolhida no topo do painel da esquerda (lâmpada roxa).
 Se os botões A e B estiverem trocados no sistema, o Omni36OS segue a mesma troca.
 
@@ -95,7 +98,7 @@ O console liga nos cards e entrega o destaque no Ports, no centro: A abre a bibl
 B volta para os cards. O botão de power abre Energia: suspender, reiniciar ou desligar.
 A capa e a descrição vêm da pasta info do port (info.json, imagem e .txt) e, com o Wi-Fi conectado, do PortMaster, da Steam, da Wikipédia e do DuckDuckGo, buscados uma vez e guardados no cartão. Ferramentas > Busca automática liga e desliga a busca.
 
-# Tela, som e bateria
+# Tela e som
 "Brilho, contraste e volume" abre um painel com as três barras: cima/baixo escolhe, esquerda/direita ajusta na hora, A confirma e B desfaz o que mudou.
 "Tema": escuro ou claro, vale na hora e fica salvo.
 Brilho: a luz da tela.
@@ -133,7 +136,7 @@ Pelo botão de power, com um jogo aberto: o jogo congela e o menu Energia abre p
 O sistema (ogage) já usa: FN + cima/baixo e FN + volume para o brilho; FN com L1/R1, esquerda/direita, A, L3 e R3 para ajustes do sistema; SELECT + FN fala a bateria; FN + power desliga gravando tudo.
 O contador, o limite e a captura funcionam em ports que desenham com OpenGL ES (a maioria). Ports em 32 bits ou que trocam o LD_PRELOAD não mostram o contador.
 
-# Bateria (dentro de Tela, som e bateria)
+# Bateria (dentro de Tela e som)
 O painel mostra a carga, se está carregando, o brilho e o modo do processador. Com o brilho alto ou o processador no máximo, aparece a dica de economia com um botão. O processador se ajusta em Desempenho.
 Bateria no fim (a porcentagem do R36S não é confiável, por isso os limites são altos): em 30% o Omni36OS sugere conectar o carregador; em 15%, sugere salvar o progresso (num jogo, o contador surge com a bateria em vermelho). Em 10%, sem o carregador, o Omni36OS fecha o jogo dando tempo de ele salvar, grava tudo e desliga, em vez de o console apagar de repente.
 "Calibrar a bateria" abre a página da calibração. Calibre quando a porcentagem pular ou o aparelho desligar com carga sobrando:
@@ -227,7 +230,7 @@ O reparo apaga entradas corrompidas: se o cartão já estava com erros, algum ar
 
 # Restaurar e atualizar
 "Restaurar de fábrica" do RetroArch apaga os seus ajustes (uma cópia fica guardada).
-Antes de atualizar o Omni36OS, copie a partição BOOT do cartão para o PC e veja em Tela, som e bateria > "Detalhes da tela" qual modelo escolher.
+Antes de atualizar o Omni36OS, copie a partição BOOT do cartão para o PC e veja em Tela e som > "Detalhes da tela" qual modelo escolher.
 
 # Primeiro boot
 Na primeira vez que liga, o Omni36OS acerta a tela sozinho: se aparecer "Está vendo esta tela?", aperte qualquer botão. Se a tela ficar apagada, não desligue: ele testa a próxima tela e reinicia sozinho (cada tentativa leva menos de um minuto). Se nenhuma for confirmada, volta tudo como estava.

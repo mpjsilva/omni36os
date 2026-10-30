@@ -85,7 +85,7 @@ LEVEL_ICON = {"ok": "check", "aviso": "alert-triangle", "problema": "x", "info":
 
 CARDS = [
     # id, título, ícone, cor 1, cor 2 (3 x 3: Ports no centro, a abertura entrega o destaque nele)
-    ("tela", "Tela, som e bateria", "device-tv", "fbbf24", "f97316"),
+    ("tela", "Tela e som", "device-tv", "fbbf24", "f97316"),
     ("rede", "Rede", "wifi", "38bdf8", "0ea5e9"),
     ("controles", "Controles", "keyboard", "818cf8", "4f46e5"),
     ("desempenho", "Desempenho", "gauge", "fb7185", "e11d48"),
@@ -1611,7 +1611,7 @@ class App:
                   "GPU (520 MHz), atalhos (FN + X, FN + B, FN + Y, todos ligados) ao padrão.", go, secs=5,
                   risk="O nome e a senha da trava somem; o Omni36OS pergunta o nome de novo. Ports, jogos, testes e as "
                        "senhas do sistema e do Samba não mudam.",
-                  undo="Não tem volta automática: ajuste de novo em Tela, som e bateria e em Controles. Se exportou um backup antes, Backup > "
+                  undo="Não tem volta automática: ajuste de novo em Tela e som e em Controles. Se exportou um backup antes, Backup > "
                        "Importar devolve nome, tema, atalhos, processador e GPU.")
 
     def lock_screen(self, then):

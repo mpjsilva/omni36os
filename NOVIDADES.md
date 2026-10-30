@@ -2,6 +2,10 @@
 
 Histórico completo. Dentro do console (Geral > Sobre > Novidades) aparece só a versão em uso.
 
+## 1.12.6 (30/10/2026)
+
+- O card Tela e som volta a ter esse título (o texto saía do card); a legenda continua com brilho, som e bateria.
+
 ## 1.12.5 (30/10/2026)
 
 - Aplicativos mostra só a lista de apps; as opções do Músicas (visualização, apagar a tela e subpastas) ficam dentro do app, no START.
