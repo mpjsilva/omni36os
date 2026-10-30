@@ -68,8 +68,23 @@ def check():
     cur = current()
     found = latest()
     if found and version_tuple(found[0]) > version_tuple(cur):
-        return {"atual": cur, "nova": found[0], "tag": found[1]}
+        return {"atual": cur, "nova": found[0], "tag": found[1], "novidades": news(found[1], cur)}
     return {"atual": cur, "nova": None, "tag": None}
+
+
+def news(tag, cur):
+    """[(versão, data, [itens])] do NOVIDADES.md da tag, só as versões depois da atual. [] se falhar."""
+    try:
+        text = _get(f"https://raw.githubusercontent.com/{REPO}/{tag}/NOVIDADES.md", timeout=10).decode("utf-8", "replace")
+    except (OSError, ValueError):
+        return []
+    out = []
+    for m in re.finditer(r"^## (\d+\.\d+\.\d+) \(([^)]*)\)\n(.*?)(?=^## |\Z)", text, re.M | re.S):
+        if version_tuple(m.group(1)) <= version_tuple(cur):
+            continue
+        items = [ln[2:].strip() for ln in m.group(3).splitlines() if ln.startswith("- ")]
+        out.append((m.group(1), m.group(2), items))
+    return out
 
 
 def validate(path, version):

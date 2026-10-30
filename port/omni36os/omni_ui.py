@@ -15,6 +15,7 @@ import glob
 import json
 import math
 import os
+import re
 import signal
 import struct
 import sys
@@ -153,6 +154,19 @@ def omni_version():
             return f.read().strip() or "?"
     except OSError:
         return "?"
+
+
+SEEN_FILE = "/home/ark/.config/omni36os/versao-vista"   # versão cujas novidades já apareceram
+
+
+def vtuple(v):
+    m = re.match(r"^(\d+)\.(\d+)\.(\d+)", (v or "").strip())
+    return tuple(int(x) for x in m.groups()) if m else (0, 0, 0)
+
+
+def news_text(news):
+    """[(versão, data, [itens])] no formato do leitor."""
+    return "\n".join(f"# {v} ({d})\n" + "".join(f"• {x}\n" for x in items) for v, d, items in news).strip()
 
 
 def about_findings():
@@ -406,8 +420,9 @@ if not FAKE:
 # --- controles de uma página ---
 
 class Action:
-    def __init__(self, label, icon, fn, confirm=None, danger=False):
+    def __init__(self, label, icon, fn, confirm=None, danger=False, cancel=False):
         self.label, self.icon, self.fn, self.confirm, self.danger = label, icon, fn, confirm, danger
+        self.cancel = cancel          # a confirmação abre com "Cancelar" escolhido (evita um toque a mais)
 
 
 class Slider:
@@ -1073,7 +1088,7 @@ class App:
                         "conferida inteira; se não abrir depois, a versão de agora volta sozinha."),
                     *([tip(A("Voltar à versão anterior", "rotate", self.update_back,
                              confirm="Voltar à versão anterior do Omni36OS?\nA de agora fica guardada e dá para voltar "
-                                     "a ela do mesmo jeito."),
+                                     "a ela do mesmo jeito.", cancel=True),
                            "Troca pela versão guardada da última atualização.")]
                       if not FAKE and omni_update.can_go_back() else []),
                     subpage(A("Verificar tudo", "stethoscope", lambda: self.open_page("checkup")), "checkup"),
@@ -1243,16 +1258,28 @@ class App:
             elif not r["nova"]:
                 self.toast = (f"Você já está na versão mais nova ({r['atual']})", "ok", self.t + 3.5)
             else:
-                self.modal = {"title": f"Omni36OS {r['nova']}", "icon": "refresh", "sel": 0,
-                              "buttons": ["Atualizar", "Agora não"],
-                              "text": f"Versão nova disponível (você tem a {r['atual']}).\nO Omni36OS baixa, confere e "
-                                      "abre de novo. Se a nova não abrir, a de agora volta sozinha. Deixe o "
-                                      "carregador ligado.",
-                              "fn": lambda: self.worker((lambda: "Teste: instalaria") if FAKE else
-                                                        (lambda: omni_update.install(r["tag"], r["nova"])),
-                                                        self._sys_done, busy="Baixando e conferindo... (até 2 minutos)")}
-        fake = {"atual": omni_version(), "nova": "9.9.9", "tag": "omni-v9.9.9"}
+                self.update_offer(r)
+        fake = {"atual": omni_version(), "nova": "9.9.9", "tag": "omni-v9.9.9", "novidades": omni_help.NOVIDADES[:2]}
         self.worker((lambda: fake) if FAKE else omni_update.check, done, busy="Procurando atualização...")
+
+    def update_offer(self, r):
+        """Janela da versão nova: "Agora não" vem escolhido; "Novidades" mostra o que muda e volta aqui."""
+        install = lambda: self.worker((lambda: "Teste: instalaria") if FAKE else
+                                      (lambda: omni_update.install(r["tag"], r["nova"])),
+                                      self._sys_done, busy="Baixando e conferindo... (até 2 minutos)")
+        news = r.get("novidades") or []
+        first = news[0][2][0] if news and news[0][2] else ""
+        self.modal = {"title": f"Omni36OS {r['nova']}", "icon": "refresh", "sel": 2,
+                      "buttons": ["Atualizar", "Novidades", "Agora não"],
+                      "text": f"Versão nova disponível (você tem a {r['atual']}).\n"
+                              + (f"{first}\n" if first else "")
+                              + "O Omni36OS baixa, confere e abre de novo. Se a nova não abrir, a de agora volta "
+                                "sozinha. Deixe o carregador ligado.",
+                      "fns": [install,
+                              lambda: self.read(f"Novidades até a {r['nova']}", "refresh",
+                                                news_text(news) or "Não consegui ler as novidades desta versão.",
+                                                on_close=lambda: self.update_offer(r)),
+                              lambda: None]}
 
     def update_back(self):
         self.worker(omni_update.go_back, self._sys_done, busy="Voltando...")
@@ -1674,13 +1701,30 @@ class App:
     def first_screens(self):
         """No boot: a trava (se ligada) e depois o nome do jogador (só na primeira vez)."""
         def after_lock():
-            if not self.player and HUB in ("boot", ""):
+            if HUB not in ("boot", ""):
+                return
+            news = self.unseen_news()
+            if not self.player:
                 self.ask_name(first=True)
+            elif news:
+                self.read(f"Bem-vindo ao Omni36OS {omni_version()}", "refresh", news_text(news))
         locked = (os.environ.get("OMNI_TRAVA") == "1") if FAKE else omni_sistema.lock_on()
         if locked and RESUME == "":
             self.lock_screen(after_lock)
         else:
             after_lock()
+
+    def unseen_news(self):
+        """Primeiro boot de uma versão nova: as novidades dela (só dela). Guarda a versão como vista."""
+        cur = omni_version()
+        if FAKE:
+            seen = os.environ.get("OMNI_VISTA", cur)
+        else:
+            seen = omni.read_text(SEEN_FILE, "").strip()
+            omni.save_file(SEEN_FILE, cur)
+        if seen == cur:
+            return []
+        return [n for n in omni_help.NOVIDADES if n[0] == cur]      # só a versão recém-instalada
 
     def ask_reset(self):
         def go():
@@ -3469,9 +3513,11 @@ class App:
         g.text("Medium", 12, f"Sem tecla em {left:.0f} s, cancela." if left is not None else "",
                W / 2, my + mh - 30, FAINT, "c")
 
-    def read(self, title, icon, text, link=None):
-        """link: (palavra, função) — a palavra aparece como link e A abre a função."""
-        self.reader = {"title": title, "icon": icon, "text": text, "scroll": 0.0, "top": 0, "link": link}
+    def read(self, title, icon, text, link=None, on_close=None):
+        """link: (palavra, função) — a palavra aparece como link e A abre a função.
+        on_close: chamada quando o leitor fecha (ex.: voltar à janela que o abriu)."""
+        self.reader = {"title": title, "icon": icon, "text": text, "scroll": 0.0, "top": 0, "link": link,
+                       "on_close": on_close}
 
     def open_credits(self):
         self.read("Créditos", "users", omni_help.CREDITOS, link=("mpjsilva", self.repo_qr))
@@ -3483,11 +3529,11 @@ class App:
                       "image": "qr-repo", "url": "github.com/mpjsilva/omni36os",
                       "fns": [self.open_credits], "on_back": self.open_credits}
 
-    def ask(self, text, fn, danger=False):
+    def ask(self, text, fn, danger=False, cancel=False):
         if danger:
             return self.warn("Atenção", text, fn, secs=5)
         self.modal = {"title": "Confirmar", "text": text, "icon": "alert-triangle" if danger else "info-circle",
-                      "buttons": ["Sim, fazer", "Cancelar"], "sel": 1 if danger else 0, "fn": fn}
+                      "buttons": ["Sim, fazer", "Cancelar"], "sel": 1 if danger or cancel else 0, "fn": fn}
 
     # --- aviso com contagem (estilo "opções perigosas" da Xiaomi) ---
 
@@ -3663,6 +3709,8 @@ class App:
                 r["link"][1]()
             elif cmd in ("back", "ok"):
                 self.reader = None
+                if r.get("on_close"):
+                    r["on_close"]()
             return
         if self.modal:
             m = self.modal
@@ -3773,7 +3821,7 @@ class App:
                 self.toast = (res, "ok", self.t + 4)
         elif isinstance(it, Action) and cmd == "ok":
             if it.confirm:
-                self.ask(it.confirm, it.fn, it.danger)
+                self.ask(it.confirm, it.fn, it.danger, it.cancel)
             else:
                 it.fn()
 

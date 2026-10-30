@@ -2,6 +2,11 @@
 
 Histórico completo. Dentro do console (Geral > Sobre > Novidades) aparece só a versão em uso.
 
+## 1.15.7 (30/10/2026)
+
+- Procurar atualização mostra as novidades da versão nova antes de instalar (botão Novidades), lidas do GitHub.
+- Atualizar e Voltar à versão anterior abrem com "Agora não"/"Cancelar" escolhido, para um toque a mais não instalar nada sem querer.
+
 ## 1.15.6 (30/10/2026)
 
 - Rede pelo cabo USB: a página mostra qual modo está ligado ("Modo universal: ligado") e quando a rede está desligada.
