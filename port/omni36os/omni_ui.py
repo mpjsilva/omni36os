@@ -255,7 +255,7 @@ class Data:
                 return omni_combos.defaults()[what[3:]]
             return {"brilho": 40, "volume": 60, "gov": "ondemand", "govs": ["powersave", "ondemand", "performance"],
                     "part": "roms2", "pendrive": False, "cpu_max": 1296, "cpu_freqs": [1296, 1416, 1512],
-                    "gpu_max": 520, "gpu_freqs": [400, 480, 520, 600], "zram": 0, "fonte": "roms", "gamma": 1.0, "contraste": 50, "led": "verde",
+                    "gpu_max": 520, "gpu_freqs": [400, 480, 520, 600], "zram": 0, "fonte": "roms", "gamma": 1.0, "contraste": 50, "led": "verde", "remoto": "desligados",
                     "power": "desligar", "tema": THEME}[what]
         if what == "brilho":
             return omni.get_brightness()
@@ -287,6 +287,8 @@ class Data:
             return int(round((self.get("gamma") - 0.5) * 100))
         if what == "led":
             return omni.get_led()
+        if what == "remoto":
+            return "ligados" if omni_sistema.remote_on() else "desligados"
         if what == "tema":
             return THEME
         if what.startswith("at_"):          # Controles > Atalhos
@@ -323,6 +325,8 @@ class Data:
             return self.set("gamma", 0.5 + value / 100)
         if what == "led":
             return omni.set_led({"color": value})
+        if what == "remoto":
+            return "ok" if FAKE else omni_sistema.usbnet_services(value == "ligados")
         if what.startswith("at_"):
             return omni.set_atalho({"key": what[3:], "value": value})
 
@@ -444,8 +448,8 @@ TIPS = {
                          "explica como desfazer.",
     "Ligar: modo universal": "O console dá o IP ao PC (funciona em qualquer PC). Depois use ssh omni@10.44.44.1.",
     "Ligar: internet pelo PC": "Usa a internet do PC no console. O PC precisa compartilhar a conexão pelo cabo.",
-    "Serviços remotos: ligar": "Liga o gerenciador de arquivos pela web e o Samba, para mexer no cartão pelo PC.",
-    "Serviços remotos: desligar": "Desliga a web e o Samba. O SSH continua.",
+    "Serviços remotos": "Ligados: gerenciador de arquivos pela web e Samba, para mexer no cartão pelo PC. "
+                        "Desligados: só o SSH continua.",
     "Desligar a rede USB": "Desliga a rede e devolve a porta OTG ao modo normal.",
     "Compatibilidade": "Confere se o kernel, a porta e os programas deste sistema suportam a rede USB.",
     "Origem dos jogos": "Onde o Omni36OS procura os jogos e ports: ROMS, ROMS2 ou ROMS e ROMS2.",
@@ -942,9 +946,8 @@ class App:
                     A("Ligar: internet pelo PC", "wifi", run(S and S.usbnet_internet, "Pedindo IP ao PC... (até 30 s)"),
                       confirm="Ligar a rede USB usando a internet do PC?\nO PC precisa já estar compartilhando a "
                               "conexão pelo cabo."),
-                    A("Serviços remotos: ligar", "device-floppy", run(S and (lambda: S.usbnet_services(True)),
-                                                                     "Ligando web e Samba...")),
-                    A("Serviços remotos: desligar", "x", run(S and (lambda: S.usbnet_services(False)), "Desligando...")),
+                    Choice("Serviços remotos", "device-floppy", "remoto", ["desligados", "ligados"],
+                           {"desligados": "Desligados", "ligados": "Ligados"}),
                     A("Desligar a rede USB", "power", run(S and S.usbnet_stop, "Desligando...")),
                     A("Compatibilidade", "info-circle", lambda: self.worker(
                         (S and S.usbnet_compat) or (lambda: "teste"),
@@ -2655,7 +2658,7 @@ class App:
         elif isinstance(it, Choice) and cmd in ("left", "right", "vleft", "vright", "ok"):
             it.index = (it.index + (-1 if cmd in ("left", "vleft") else 1)) % len(it.options)
             res = D.set(it.key, it.options[it.index])
-            if isinstance(res, str) and res.startswith(("Está quente", "Frequência", "Este sistema")):
+            if isinstance(res, str) and res.startswith(("Está quente", "Frequência", "Este sistema", "Ligue a rede")):
                 cur = D.get(it.key)     # recusado: volta ao valor que está valendo
                 it.index = it.options.index(cur) if cur in it.options else 0
                 self.toast = (res, "aviso", self.t + 4)
@@ -2667,7 +2670,7 @@ class App:
                 self.g.flush()
             if it.key == "fonte":         # a busca espera o jogador sair da página: trocar várias
                 self.source_dirty = res   # vezes seguidas não relê os cartões a cada toque
-            if (it.key == "power" or it.key.startswith("at_")) and isinstance(res, str) and res != "ok":
+            if (it.key == "remoto" or it.key.startswith("at_")) and isinstance(res, str) and res != "ok":
                 self.toast = (res, "ok", self.t + 4)
         elif isinstance(it, Action) and cmd == "ok":
             if it.confirm:

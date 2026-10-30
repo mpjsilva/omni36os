@@ -51,7 +51,7 @@ Cor do LED: verde ou vermelho, também no boot. Com a bateria em 10% ou menos, o
 "Rede pelo cabo USB": o console vira uma placa de rede no cabo.
 - Modo universal: o console dá o IP ao PC. No PC: ssh omni@10.44.44.1.
 - Internet pelo PC: o PC compartilha a internet pelo cabo e o console recebe o IP dele.
-- Serviços remotos: liga o Samba e o navegador web de arquivos (usuário e senha: omni).
+- Serviços remotos: Ligados ou Desligados (esquerda/direita). Ligados, sobem o Samba e o navegador web de arquivos (usuário e senha: omni); o SSH fica sempre.
 A página mostra o IP e os comandos para o PC, e se atualiza sozinha. A rede USB e o modo pendrive usam a mesma porta: desligue um antes de ligar o outro.
 
 # Controles
