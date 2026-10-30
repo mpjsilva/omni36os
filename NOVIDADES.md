@@ -2,6 +2,12 @@
 
 Histórico completo. Dentro do console (Geral > Sobre > Novidades) aparece só a versão em uso.
 
+## 1.11.7 (30/10/2026)
+
+- Ferramentas > Busca automática (Ligada/Desligada, `~/.config/omni36os/busca`).
+- Biblioteca: "Buscando imagem e descrição...", "Buscando a descrição..." (já tem capa) ou "Buscando imagem..." na capa (já tem descrição). Busca feita sem resultado não se repete ("Descrição não encontrada."); com a busca desligada, o texto diz onde religar.
+- Nada é buscado no menu por cima de um jogo pausado (`OMNI_HUB=jogo`); a capa é gravada inteira ou nada (o launcher fecha ao abrir um port).
+
 ## 1.11.6 (30/10/2026)
 
 - Biblioteca: a busca de capas e descrições só dispara com o Wi-Fi conectado (`operstate` up), não apenas com o adaptador presente. Sem conexão, mostra "Sem descrição: ligue o Wi-Fi para buscar." e não marca o jogo como tentado.

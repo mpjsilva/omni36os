@@ -4,6 +4,10 @@ Linhas que começam com "# " viram títulos no leitor."""
 
 # A versão em uso vem do arquivo VERSION. Aqui fica só ela; o histórico completo está no NOVIDADES.md.
 NOVIDADES = [
+    ("1.11.7", "30/10/2026", [
+        "Ferramentas > Busca automática: liga e desliga a busca de capas e descrições.",
+        "A biblioteca diz o que está buscando: imagem e descrição, só a descrição ou só a imagem. O que não foi encontrado não é buscado de novo, e nada é buscado com um jogo aberto.",
+    ]),
     ("1.11.6", "30/10/2026", [
         "A busca de capas e descrições só acontece com o Wi-Fi conectado.",
     ]),

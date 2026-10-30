@@ -260,7 +260,7 @@ class Data:
                 return omni_combos.defaults()[what[3:]]
             return {"brilho": 40, "volume": 60, "gov": "ondemand", "govs": ["powersave", "ondemand", "performance"],
                     "part": "roms2", "pendrive": False, "cpu_max": 1296, "cpu_freqs": [1296, 1416, 1512],
-                    "gpu_max": 520, "gpu_freqs": [400, 480, 520, 600], "zram": 0, "fonte": "roms", "gamma": 1.0, "contraste": 50, "led": "verde", "remoto": "desligados",
+                    "gpu_max": 520, "gpu_freqs": [400, 480, 520, 600], "zram": 0, "fonte": "roms", "gamma": 1.0, "contraste": 50, "led": "verde", "remoto": "desligados", "busca": "ligada" if busca_on() else "desligada",
                     "inverter": "ligado" if swapped_ab() else "desligado",
                     "power": "desligar", "tema": THEME}[what]
         if what == "brilho":
@@ -295,6 +295,8 @@ class Data:
             return omni.get_led()
         if what == "remoto":
             return "ligados" if omni_sistema.remote_on() else "desligados"
+        if what == "busca":
+            return "ligada" if busca_on() else "desligada"
         if what == "inverter":
             return "ligado" if omni.get_swap_ab() or omni.get_swap_xy() else "desligado"
         if what == "tema":
@@ -333,6 +335,9 @@ class Data:
             return self.set("gamma", 0.5 + value / 100)
         if what == "led":
             return omni.set_led({"color": value})
+        if what == "busca":
+            put_flag(BUSCA, value)
+            return "ok"
         if what == "remoto":
             return "ok" if FAKE else omni_sistema.usbnet_services(value == "ligados")
         if what == "inverter":            # A com B e X com Y, sempre juntos
@@ -409,6 +414,13 @@ def put_flag(path, value):
         os.chmod(path, 0o666)
     except OSError:
         pass
+BUSCA = "/tmp/omni36os-busca" if FAKE else "/home/ark/.config/omni36os/busca"   # "desligada": sem busca automática
+
+
+def busca_on():
+    return flag(BUSCA) != "desligada"
+
+
 PAD_DEV = "/dev/input/by-path/platform-odroidgo3-joypad-event-joystick"   # a gravação de atalho lê direto daqui
 # simulador: comandos do teclado -> botões do controle (KP8 = FN), só na gravação de atalho
 SIM_BUTTONS = {"ok": 305, "back": 304, "x": 307, "y": 308, "l1": 310, "r1": 311, "start": 705, "select": 704,
@@ -1021,7 +1033,11 @@ class App:
                         "antes da primeira vez e reinicia.")]
         if cid == "ferramentas":
             out = [A("Arquivos", "folder", self.open_files),
-                   subpage(A("Testar ports", "player-play", lambda: self.open_page("testar")), "testar")]
+                   subpage(A("Testar ports", "player-play", lambda: self.open_page("testar")), "testar"),
+                   tip(Choice("Busca automática", "photo-search", "busca", ["ligada", "desligada"],
+                              {"ligada": "Ligada", "desligada": "Desligada"}),
+                       "Com o Wi-Fi conectado, busca uma vez a capa e a descrição de cada port na biblioteca. "
+                       "Nunca durante um jogo.")]
             out += [tip(A(t["name"], "device-gamepad-2" if "PortMaster" in t["name"] else "folder",
                           lambda t=t: self.ask_tool(t)),
                         f"{t.get('desc', '')} Abre em tela cheia e o Omni36OS volta ao fechar.".strip())
@@ -1952,10 +1968,16 @@ class App:
             loc = omni_meta.local(path)
             cache[name] = (net, dict(net or {}, **loc) if loc else net)
         net, info = cache[name]
-        if net is None and self.status.get("conectado") and name not in self.__dict__.setdefault("meta_tried", set()):
+        if self.searching(name) and name not in self.__dict__.setdefault("meta_tried", set()):
             self.meta_tried.add(name)
             omni_meta.want(name, path, lambda n: cache.pop(n, None))   # ao terminar, relê do disco
         return info
+
+    def searching(self, name):
+        """A capa e a descrição deste port ainda vão ser buscadas agora? Nunca por cima de um jogo
+        pausado (o jogo fica com todo o processador), sem Wi-Fi ou com a busca desligada."""
+        net = self.__dict__.get("meta_cache", {}).get(name, (None,))[0]
+        return net is None and HUB != "jogo" and self.status.get("conectado") and busca_on()
 
     def draw_library(self, dt, fade):
         g, lb = self.g, self.lib
@@ -2010,7 +2032,9 @@ class App:
         cover = info and info.get("capa")
         g.rrect(px + 12, py + 12, cw_, ch_, 12, ink(12))
         if not (cover and g.picture(cover, px + 12, py + 12, cw_, ch_, 255 * fade)):
-            g.icon("device-gamepad-2", px + 12 + cw_ / 2 - 24, py + 12 + ch_ / 2 - 24, 48, FAINT)
+            g.icon("device-gamepad-2", px + 12 + cw_ / 2 - 24, py + 12 + ch_ / 2 - 30, 48, FAINT)
+            if self.searching(game["name"]) and ((info or {}).get("descricao") or game.get("desc")):
+                g.text("Regular", 11, "Buscando imagem...", px + 12 + cw_ / 2, py + 12 + ch_ / 2 + 30, MUTED, "c")
         y = py + ch_ + 22
         name = (info or {}).get("nome") or game["name"]
         for ln in g.wrap("Bold", 17, name, pw - 28)[:2]:
@@ -2024,8 +2048,11 @@ class App:
             g.text("Regular", 11, info["generos"], px + 14, y + 2, MUTED)
             y += 18
         desc = (info or {}).get("descricao") or game.get("desc") or (
-            "Buscando a descrição..." if info is None and self.status.get("conectado") else
-            "Sem descrição: ligue o Wi-Fi para buscar." if info is None else "Descrição não encontrada.")
+            ("Buscando a descrição..." if cover else "Buscando imagem e descrição...")
+            if self.searching(game["name"]) else
+            "Descrição não encontrada." if self.meta_cache.get(game["name"], (None,))[0] is not None else
+            "Busca automática desligada (Ferramentas)." if not busca_on() else
+            "Sem descrição: ligue o Wi-Fi para buscar.")
         local = []
         if (info or {}).get("porter"):
             local.append("Port: " + info["porter"][:28])

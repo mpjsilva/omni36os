@@ -363,8 +363,10 @@ def fetch(name, path=""):
     prio = {"Steam": 0, "PortMaster": 1, "Wikipédia": 2, "DuckDuckGo": 3}
     for _, url in sorted(imgs, key=lambda i: prio[i[0]]):   # capa: Steam (larga), PortMaster, DuckDuckGo
         try:
-            with open(jpg, "wb") as f:
-                f.write(_get(url, headers=DDG_UA))   # sites de imagem recusam quem não parece navegador
+            data = _get(url, headers=DDG_UA)   # sites de imagem recusam quem não parece navegador
+            with open(jpg + ".tmp", "wb") as f:  # inteira ou nada: o launcher fecha ao abrir um jogo
+                f.write(data)
+            os.replace(jpg + ".tmp", jpg)
             info["capa"] = jpg
             break
         except OSError:
