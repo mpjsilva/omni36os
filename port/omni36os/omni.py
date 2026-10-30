@@ -511,7 +511,8 @@ def disk_facts(_args=None):
         if path != "/" and not os.path.ismount(path):
             continue
         u = shutil.disk_usage(path)
-        out[name] = {"livre_gb": round(u.free / 1e9, 1), "uso_pct": round(100 * u.used / u.total)}
+        out[name] = {"livre_gb": round(u.free / 1e9, 1), "usado_gb": round(u.used / 1e9, 1),
+                     "uso_pct": round(100 * u.used / u.total)}
     return out
 
 

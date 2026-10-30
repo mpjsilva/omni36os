@@ -96,6 +96,7 @@ def sd_facts():
 def detalhes():
     """Detalhe do(s) cartão(ões) (Armazenamento): marca, tamanho e um teste de escrita e leitura em cada um."""
     out = []
+    disks = omni.disk_facts()
     for c in sd_facts()["cartoes"]:
         card = c["cartao"]
         nome = "do sistema" if card == "sistema" else "de jogos"
@@ -113,6 +114,13 @@ def detalhes():
             out.append(("problema", f"{head}. Lento: {f['w']} MB/s de escrita. Vale trocar por um melhor."))
         else:
             out.append(("ok", f"{head}. {f['w']} MB/s escrita, {f.get('r', 0)} MB/s leitura."))
+        parts = (("sistema", "Sistema"), ("roms", "Jogos (/roms)")) if card == "sistema" else (("jogos", "Jogos (/roms2)"),)
+        for key, label in parts:
+            d = disks.get(key)
+            if d:
+                full = d["uso_pct"] >= ESPACO_POUCO_PCT or d["livre_gb"] < ESPACO_POUCO_GB
+                out.append(("aviso" if full else "ok", f"{label}: {d['livre_gb']} GB livres, {d['usado_gb']} GB "
+                                                       f"ocupados ({d['uso_pct']}% usado)."))
         if c["fabricante"] == "desconhecido":
             out.append(("info", f"Cartão {nome} sem marca identificada (código {c['codigo']}), comum em "
                                 "cartões genéricos. Se ele travar ou perder arquivos, vale trocar."))
