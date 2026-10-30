@@ -9,6 +9,7 @@ Com "Ler subpastas" ligado, a lista de uma pasta inclui as subpastas, nível por
 abrir o tocador não varre o cartão inteiro, e a lista de reprodução guarda só caminhos e títulos.
 """
 import ctypes as C
+import hashlib
 import json
 import math
 import os
@@ -18,6 +19,9 @@ import threading
 ROOTS = [("/roms/musicas", "Cartão 1"), ("/roms2/musicas", "Cartão 2")]
 INDEX = os.environ.get("OMNI_MUSICA_INDEX") or "/home/ark/.config/omni36os/musicas.json"
 EXT = (".mp3", ".ogg", ".flac", ".wav")
+COVERS = os.path.join(os.path.dirname(INDEX), "capas")     # capas tiradas das tags (uma por imagem)
+COVER_NAMES = ("cover", "folder", "front", "album", "capa")
+IMG = (".jpg", ".jpeg", ".png")
 INDEX_VER = 1
 
 
@@ -160,6 +164,83 @@ class Library:
             os.replace(INDEX + ".tmp", INDEX)
         except OSError:
             pass
+
+
+# --- capa do álbum ---
+
+_covers = {}
+
+
+def _apic(path):
+    """Imagem embutida na tag ID3 (APIC na 2.3/2.4, PIC na 2.2): (bytes, extensão) ou None."""
+    try:
+        with open(path, "rb") as f:
+            head = f.read(10)
+            if head[:3] != b"ID3" or len(head) < 10:
+                return None
+            ver = head[3]
+            size = (head[6] << 21) | (head[7] << 14) | (head[8] << 7) | head[9]
+            data = f.read(min(size, 8 * 1024 * 1024))
+    except OSError:
+        return None
+    i, hl = 0, 6 if ver == 2 else 10
+    while i + hl <= len(data):
+        if ver == 2:
+            fid, n = data[i:i + 3], int.from_bytes(data[i + 3:i + 6], "big")
+        else:
+            fid, n = data[i:i + 4], struct.unpack(">I", data[i + 4:i + 8])[0]
+            if ver == 4:
+                n = (n & 0x7f) | ((n >> 8) & 0x7f) << 7 | ((n >> 16) & 0x7f) << 14 | ((n >> 24) & 0x7f) << 21
+        if not fid.strip(b"\x00"):
+            return None
+        body = data[i + hl:i + hl + n]
+        if fid in (b"APIC", b"PIC") and len(body) > 4:
+            enc = body[0]
+            if fid == b"PIC":
+                j = 4                                       # formato de 3 letras + tipo
+            else:
+                j = body.index(b"\x00", 1) + 2              # mime + tipo da imagem
+            term = b"\x00\x00" if enc in (1, 2) else b"\x00"
+            k = body.find(term, j)
+            while enc in (1, 2) and k != -1 and (k - j) % 2:  # UTF-16 termina em par de bytes
+                k = body.find(term, k + 1)
+            img = body[k + len(term):] if k != -1 else b""
+            if img[:3] == b"\xff\xd8\xff":
+                return img, ".jpg"
+            if img[:8] == b"\x89PNG\r\n\x1a\n":
+                return img, ".png"
+        i += hl + n
+    return None
+
+
+def cover(song):
+    """Capa da música: imagem da pasta (cover, folder, front...) ou a embutida no mp3, guardada uma
+    vez em ~/.config/omni36os/capas. "" se não houver. Lenta na primeira vez: chame fora da tela."""
+    if song in _covers:
+        return _covers[song]
+    folder, found = os.path.dirname(song), ""
+    try:
+        pics = sorted(n for n in os.listdir(folder) if n.lower().endswith(IMG))
+    except OSError:
+        pics = []
+    named = [n for n in pics if os.path.splitext(n)[0].lower() in COVER_NAMES]
+    if named or pics:
+        found = os.path.join(folder, (named or pics)[0])
+    else:
+        art = _apic(song)
+        if art:
+            name = os.path.join(COVERS, hashlib.md5(art[0]).hexdigest() + art[1])   # mesmo álbum: um arquivo só
+            if not os.path.exists(name):
+                try:
+                    os.makedirs(COVERS, exist_ok=True)
+                    with open(name + ".tmp", "wb") as f:
+                        f.write(art[0])
+                    os.replace(name + ".tmp", name)
+                except OSError:
+                    name = ""
+            found = name
+    _covers[song] = found
+    return found
 
 
 # --- tocador ---

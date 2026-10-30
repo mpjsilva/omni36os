@@ -457,18 +457,21 @@ SHOT_DIR = "/roms/imagens"
 
 
 SWAP_NAMES = {"desligado": "Desligado", "ligado": "Ligado"}
-VIS_NAMES = {"barras": "Barras", "ondas": "Ondas", "anel": "Anel", "aurora": "Aurora", "nenhuma": "Nenhuma"}
+VIS_NAMES = {"capa": "Capa do álbum", "barras": "Barras", "ondas": "Ondas", "anel": "Anel", "aurora": "Aurora"}
 BLANK_NAMES = {30: "Em 30 s", 60: "Em 1 min", 120: "Em 2 min", 300: "Em 5 min", 0: "Manter ligada"}
 MUSIC_CFG = "/tmp/omni36os-musica.json" if FAKE else "/home/ark/.config/omni36os/musica.json"
-MUSIC_DEF = {"vis": "barras", "tela": 60, "sub": False}
+MUSIC_DEF = {"vis": "capa", "tela": 60, "sub": False}
 
 
 def music_cfg():
     try:
         with open(MUSIC_CFG) as f:
-            return {**MUSIC_DEF, **json.load(f)}
+            cfg = {**MUSIC_DEF, **json.load(f)}
     except (OSError, ValueError):
-        return dict(MUSIC_DEF)
+        cfg = dict(MUSIC_DEF)
+    if cfg["vis"] not in VIS_NAMES:   # "nenhuma" (1.12.0) virou a capa do álbum
+        cfg["vis"] = "capa"
+    return cfg
 
 
 def music_save(**kw):
@@ -2113,9 +2116,11 @@ class App:
         g.clip()
         if cur:                               # o que está tocando, embaixo
             g.rrect(16, 380, W - 32, 46, 16, alpha(a1, 40), alpha(a2, 40))
-            g.icon("player-pause" if not pl.paused else "player-play", 30, 391, 22, TEXT)
-            g.text("SemiBold", 13, cur[1][:48], 62, 392, TEXT)
-            g.text("Regular", 11, (cur[2] or "Tocando")[:48], 62, 409, MUTED)
+            art = self.music_cover(cur[0])
+            if not (art and g.picture(art, 24, 386, 34, 34)):
+                g.icon("player-pause" if not pl.paused else "player-play", 30, 391, 22, TEXT)
+            g.text("SemiBold", 13, cur[1][:48], 66, 392, TEXT)
+            g.text("Regular", 11, (cur[2] or "Tocando")[:48], 66, 409, MUTED)
             self.draw_spectrum_mini(W - 120, 388, 90, 30, a1)
         hints = [("A", "Abrir" if rows and "dir" in rows[m["sel"]] else "Tocar"), ("B", "Voltar")]
         if m["stack"]:
@@ -2133,6 +2138,14 @@ class App:
         m["spec"] = [max(n, o * 0.82) for n, o in zip(new, m["spec"])]
         m["peaks"] = [max(s, p - 0.012) for s, p in zip(m["spec"], m["peaks"])]
         return m["spec"]
+
+    def music_cover(self, song):
+        """Caminho da capa da música ("" sem capa; None enquanto procura, fora da tela)."""
+        covers = self.music.setdefault("covers", {})
+        if song not in covers:
+            covers[song] = None
+            threading.Thread(target=lambda: covers.__setitem__(song, omni_musica.cover(song)), daemon=True).start()
+        return covers[song]
 
     def draw_spectrum_mini(self, x, y, w, h, c):
         spec = self.music_spectrum()
@@ -2203,9 +2216,12 @@ class App:
                 x = W / 2 + math.sin(t * (0.5 + k * 0.17) + k * 2) * 200
                 y = top + vh / 2 + math.cos(t * (0.4 + k * 0.13) + k) * 80
                 g.blob(x, y, 110 + 170 * e, alpha(c, 70 + 120 * e))
-        else:
-            g.rrect(W / 2 - 80, top + vh / 2 - 80, 160, 160, 32, a1, a2)
-            g.icon("music", W / 2 - 36, top + vh / 2 - 36, 72, ON_TEXT)
+        else:                                # capa do álbum (a da pasta ou a embutida no mp3)
+            art = self.music_cover(cur[0])
+            g.blob(W / 2, top + vh / 2, 190 + 60 * bass, alpha(a1, 90))
+            if not (art and g.picture(art, 40, top + 4, W - 80, vh - 8)):
+                g.rrect(W / 2 - 80, top + vh / 2 - 80, 160, 160, 32, a1, a2)
+                g.icon("music", W / 2 - 36, top + vh / 2 - 36, 72, ON_TEXT)
         if self.t - m["vis_t"] < 1.6:          # nome da visualização ao trocar
             k = min(1.0, (1.6 - (self.t - m["vis_t"])) / 0.4)
             label = VIS_NAMES[m["vis"]]

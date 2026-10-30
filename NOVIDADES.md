@@ -2,6 +2,10 @@
 
 Histórico completo. Dentro do console (Geral > Sobre > Novidades) aparece só a versão em uso.
 
+## 1.12.2 (30/10/2026)
+
+- Músicas: capa do álbum (`omni_musica.cover`). Vale a imagem da pasta (cover, folder, front, album, capa ou a primeira jpg/png); sem ela, a capa embutida no mp3 (APIC/PIC das tags ID3 2.2 a 2.4), gravada uma vez por imagem em `~/.config/omni36os/capas`. Procurada fora da tela. A visualização "Nenhuma" virou "Capa do álbum" (o padrão); a barra da lista mostra a miniatura.
+
 ## 1.12.1 (30/10/2026)
 
 - Samba (`/etc/samba/smb.conf`, original guardado em `smb.conf.omni36os-orig`): sem acesso anônimo (`map to guest = never`, `restrict anonymous = 2`, `valid users = omni`). Saem da rede root, boot, opt, ark e Tools (que qualquer um na mesma rede abria sem senha); ficam `roms` (Cartão 1) e `roms2` (Cartão 2). Usuário omni com a senha do sistema.
