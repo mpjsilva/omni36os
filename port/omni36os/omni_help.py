@@ -4,6 +4,9 @@ Linhas que começam com "# " viram títulos no leitor."""
 
 # A versão em uso vem do arquivo VERSION. Aqui fica só ela; o histórico completo está no NOVIDADES.md.
 NOVIDADES = [
+    ("1.15.4", "30/10/2026", [
+        "O Omni36OS agora tem licença aberta: GNU GPL v3.0.",
+    ]),
     ("1.15.3", "30/10/2026", [
         "Créditos completos em Geral > Sobre: sistemas base, PortMaster, gptokeyb, ogage, 351Files, File Browser, BatteryPlus, SDL2, FFmpeg, fontes, ícones, fontes de dados e a comunidade do R36S, com os links.",
     ]),
@@ -292,7 +295,7 @@ Desligue pelo menu Energia (botão de power), nunca segurando o power: pelo menu
 Para fechar um port travado, use SELECT + START (segure 1 s) antes de pensar em desligar à força."""
 
 CREDITOS = """# Omni36OS
-Sistema só de ports para o R36S, feito por mpjsilva, com a ajuda do Claude (Anthropic) no desenvolvimento. github.com/mpjsilva/omni36os
+Sistema só de ports para o R36S, feito por mpjsilva, com a ajuda do Claude (Anthropic) no desenvolvimento. Licença GNU GPL v3.0. github.com/mpjsilva/omni36os
 
 # Sistemas usados como base
 ArkOS, de christianhaitian: o sistema original do R36S e de vários portáteis RK3326, com o kernel, o ogage e os scripts de sistema. github.com/christianhaitian/arkos

@@ -2,6 +2,10 @@
 
 Histórico completo. Dentro do console (Geral > Sobre > Novidades) aparece só a versão em uso.
 
+## 1.15.4 (30/10/2026)
+
+- O Omni36OS agora tem licença aberta: GNU GPL v3.0.
+
 ## 1.15.3 (30/10/2026)
 
 - Créditos completos em Geral > Sobre: sistemas base, PortMaster, gptokeyb, ogage, 351Files, File Browser, BatteryPlus, SDL2, FFmpeg, fontes, ícones, fontes de dados e a comunidade do R36S, com os links.
