@@ -260,6 +260,7 @@ class Data:
             return {"brilho": 40, "volume": 60, "gov": "ondemand", "govs": ["powersave", "ondemand", "performance"],
                     "part": "roms2", "pendrive": False, "cpu_max": 1296, "cpu_freqs": [1296, 1416, 1512],
                     "gpu_max": 520, "gpu_freqs": [400, 480, 520, 600], "zram": 0, "fonte": "roms", "gamma": 1.0, "contraste": 50, "led": "verde", "remoto": "desligados",
+                    "ab": "trocados" if swapped_ab() else "padrao", "xy": "padrao",
                     "power": "desligar", "tema": THEME}[what]
         if what == "brilho":
             return omni.get_brightness()
@@ -293,6 +294,10 @@ class Data:
             return omni.get_led()
         if what == "remoto":
             return "ligados" if omni_sistema.remote_on() else "desligados"
+        if what == "ab":
+            return "trocados" if omni.get_swap_ab() else "padrao"
+        if what == "xy":
+            return "trocados" if omni.get_swap_xy() else "padrao"
         if what == "tema":
             return THEME
         if what.startswith("at_"):          # Controles > Atalhos
@@ -331,6 +336,11 @@ class Data:
             return omni.set_led({"color": value})
         if what == "remoto":
             return "ok" if FAKE else omni_sistema.usbnet_services(value == "ligados")
+        if what in ("ab", "xy"):
+            if FAKE:
+                return "ok"
+            fn = omni.set_swap_ab if what == "ab" else omni.set_swap_xy
+            return fn({"on": value == "trocados"})
         if what.startswith("at_"):
             return omni.set_atalho({"key": what[3:], "value": value})
 
@@ -412,6 +422,19 @@ class Choice:
         self.names = names or {}
         cur = D.get(key)
         self.index = options.index(cur) if cur in options else 0
+
+
+IMAGE_EXT = (".png", ".jpg", ".jpeg", ".bmp", ".gif", ".webp")
+# FN + Y fora de um jogo: o serviço de atalhos cria este arquivo e o Omni36OS grava a própria tela
+UI_SHOT = "/dev/shm/omni36os-power/shot"
+SHOT_DIR = "/roms/imagens"
+
+
+SWAP_NAMES = {"padrao": "Padrão", "trocados": "Trocados"}
+
+
+def is_image(name):
+    return name.lower().endswith(IMAGE_EXT)
 
 
 def subpage(action, cid):
@@ -507,6 +530,7 @@ class App:
             os.environ.setdefault("SDL_GAMECONTROLLERCONFIG_FILE", "/opt/inttools/gamecontrollerdb.txt")
         self.g = gfx.Gfx()
         self.swap = swapped_ab()
+        self.swap_xy = os.path.exists("/var/cache/Switch_XY") and not FAKE
         self.running = True
         self.last_input = time.monotonic()
         self.t = 0.0
@@ -524,6 +548,8 @@ class App:
         self.home_check = None
         self.modal = None             # {"title","text","icon","buttons":[...], "sel"}
         self.levels = None            # painel de brilho, contraste e volume (Tela e som)
+        self.viewer = None            # imagem em tela cheia (Arquivos)
+        self.want_shot = False        # FN + Y no menu: grava a tela no próximo quadro
         self.reader = None            # texto longo com rolagem (Ajuda)
         self.find_top = self.find_max = 0   # rolagem do diagnóstico (L1/R1)
         self.find_scroll = 0.0
@@ -668,6 +694,22 @@ class App:
             except Exception as e:
                 out[cid] = {"nivel": "problema", "achados": [("problema", f"Erro: {e}")], "acoes": []}
         return out
+
+    def save_shot(self):
+        """Grava a tela de agora em <cartão 1>/imagens (PNG, com data e hora no nome)."""
+        folder = os.path.join(os.path.dirname(os.path.abspath(__file__)), "imagens", "capturas") if FAKE else SHOT_DIR
+        name = time.strftime("Omni36OS %Y-%m-%d %H-%M-%S.png")
+        try:
+            os.makedirs(folder, exist_ok=True)
+            path = os.path.join(folder, name)
+            if not self.g.screenshot_png(path):
+                raise OSError("falhou ao gravar")
+            if not FAKE:
+                os.chown(folder, 1000, 1000)
+                os.chown(path, 1000, 1000)
+            self.toast = ("Captura salva em imagens", "ok", self.t + 2.5)
+        except OSError as e:
+            self.toast = (f"Captura não salva: {e}", "aviso", self.t + 3)
 
     def load_state(self):
         if not RESUME or RESUME == "testar" or FAKE:
@@ -860,6 +902,10 @@ class App:
             return [recheck]
         if cid == "controles":
             return [A("Testar o controle", "device-gamepad-2", self.open_pad),
+                    tip(Choice("Botões A e B", "rotate", "ab", ["padrao", "trocados"], SWAP_NAMES),
+                        "Trocados: A volta e B confirma, no Omni36OS, no PortMaster e nos ports."),
+                    tip(Choice("Botões X e Y", "rotate", "xy", ["padrao", "trocados"], SWAP_NAMES),
+                        "Troca X e Y no Omni36OS e nos ports do PortMaster."),
                     subpage(A("Atalhos", "keyboard", lambda: self.open_page("atalhos")), "atalhos"),
                     A("Consertar atalhos", "rotate", lambda: self.native("fix_hotkeys", "Reiniciando os atalhos..."),
                       confirm="Reiniciar o serviço de atalhos (brilho e volume pelos botões)?"),
@@ -1682,7 +1728,7 @@ class App:
         self.files_at = path
         items = ([("ports", True, 0), ("Daytona USA.sh", False, 2400)] if FAKE else omni_sistema.listdir(path))
         rows = [{"name": "..", "icon": "arrow-up", "up": True}]
-        rows += [{"name": n, "icon": "folder" if d else "file", "dir": d, "path": os.path.join(path, n),
+        rows += [{"name": n, "icon": "folder" if d else "file", "dir": d, "path": os.path.join(path, n), "img": is_image(n) and not d,
                   "right": None if d else (omni_sistema.human(sz) if not FAKE else f"{sz} B", MUTED)}
                  for n, d, sz in items]
         clip = getattr(self, "clip", None)
@@ -1692,6 +1738,8 @@ class App:
         pk["on_x"] = self.file_menu
         pk["on_start"] = self.folder_menu
         pk["hint"] = ("START: colar " + ("e mais" if clip else "") if clip else "X: opções  ·  START: pasta")
+        if any(r.get("img") for r in rows):
+            pk["hint"] += "  ·  A na imagem: ver"
 
     def file_up(self):
         path = self.files_at
@@ -1708,8 +1756,59 @@ class App:
             self.file_up()
         elif r.get("dir"):
             self.open_files(r["path"])
+        elif r.get("img"):
+            self.open_viewer(r["path"])
         else:
             self.file_menu(r)
+
+    # --- ver imagens (Arquivos) ---
+
+    def open_viewer(self, path):
+        """Imagem em tela cheia. Esquerda/direita: as outras imagens da pasta; A: mostra/esconde o nome;
+        B: volta à pasta, na imagem que estava aberta."""
+        folder = os.path.dirname(path)
+        try:
+            pics = sorted((n for n in os.listdir(folder) if is_image(n)), key=str.lower)
+        except OSError:
+            pics = [os.path.basename(path)]
+        name = os.path.basename(path)
+        self.viewer = {"dir": folder, "pics": pics, "i": pics.index(name) if name in pics else 0,
+                       "info": True, "info_t": self.t, "sel": self.picker["sel"] if self.picker else 0}
+        self.picker = None
+
+    def viewer_input(self, cmd):
+        v = self.viewer
+        if cmd in ("left", "right", "l1", "r1") and len(v["pics"]) > 1:
+            v["i"] = (v["i"] + (1 if cmd in ("right", "r1") else -1)) % len(v["pics"])
+            v["info"], v["info_t"] = True, self.t
+        elif cmd == "ok":
+            v["info"], v["info_t"] = not v["info"], self.t
+        elif cmd == "back":
+            cur = os.path.join(v["dir"], v["pics"][v["i"]])
+            self.viewer = None
+            self.open_files(v["dir"], v["sel"])
+            rows = self.picker["rows"] if self.picker else []
+            k = next((i for i, r in enumerate(rows) if r.get("path") == cur), None)
+            if k is not None:
+                self.picker["sel"] = k
+
+    def draw_viewer(self, dt):
+        g, v = self.g, self.viewer
+        g.rrect(0, 0, W, H, 0, (0, 0, 0, 255), feather=0)
+        path = os.path.join(v["dir"], v["pics"][v["i"]])
+        if not g.picture(path, 0, 0, W, H):
+            g.icon("file", W / 2 - 24, H / 2 - 40, 48, MUTED)
+            g.text("Medium", 14, "Não consegui abrir esta imagem.", W / 2, H / 2 + 24, TEXT, "c", "m")
+        k = 1.0 if v["info"] else 0.0
+        if v["info"] and self.t - v["info_t"] > 3:          # a legenda some sozinha; A traz de volta
+            k = max(0.0, 1 - (self.t - v["info_t"] - 3) / 0.4)
+        if k > 0:
+            g.rrect(0, 0, W, 46, 0, (0, 0, 0, int(150 * k)), feather=0)
+            g.text("SemiBold", 13, v["pics"][v["i"]], 16, 23, alpha(TEXT, 255 * k), "l", "m")
+            g.text("Medium", 12, f"{v['i'] + 1} de {len(v['pics'])}", W - 16, 23, alpha(MUTED, 255 * k), "r", "m")
+            g.rrect(0, H - 40, W, 40, 0, (0, 0, 0, int(150 * k)), feather=0)
+            g.text("Regular", 12, "Esquerda/direita: outra imagem  ·  A: mostrar/esconder  ·  B: voltar",
+                   W / 2, H - 20, alpha(MUTED, 255 * k), "c", "m")
 
     def _fs(self, fn, busy="Fazendo..."):
         here = self.files_at
@@ -1730,10 +1829,11 @@ class App:
             self.keyboard(f"Novo nome para {name}", lambda new: self._fs(lambda: omni_sistema.fs_rename(path, new)),
                           value=name)
 
-        def delete():
-            self.ask(f"Apagar {name}?\n" + ("A pasta e tudo dentro dela somem." if r.get("dir") else
-                                            "O arquivo some de vez."),
-                     lambda: self._fs(lambda: omni_sistema.fs_delete(path), "Apagando..."), danger=True)
+        def delete():                     # confirma sem contagem; Cancelar vem escolhido
+            self.modal = {"title": f"Apagar {name}?", "icon": "trash", "sel": 1, "buttons": ["Apagar", "Cancelar"],
+                          "text": "A pasta e tudo dentro dela somem." if r.get("dir") else "O arquivo some de vez.",
+                          "fn": lambda: self._fs(lambda: omni_sistema.fs_delete(path), "Apagando..."),
+                          "on_back": back}
 
         def mark(move):
             self.clip = (path, move)
@@ -2043,7 +2143,14 @@ class App:
                W / 2, my + mh - 24, MUTED, "c", "m")
 
     def power_check(self):
-        """Sinais do power_button.py: USR1 abre o menu de energia, USR2 mostra o aviso do pânico."""
+        """Sinais do power_button.py: USR1 abre o menu de energia, USR2 mostra o aviso do pânico.
+        Também o pedido de captura de tela (FN + Y) do serviço de atalhos."""
+        if os.path.exists(UI_SHOT):
+            try:
+                os.remove(UI_SHOT)
+                self.want_shot = True
+            except OSError:
+                pass
         if self.loading:
             return                    # depois da tela de abertura, para o aviso não sumir nela
         if self.want_power:
@@ -2593,7 +2700,7 @@ class App:
     def handle(self, cmd):
         if cmd in ("vleft", "vright"):   # analógico para os lados: fora de uma barra/escolha, navega
             over = (getattr(self, "kbd", None) or getattr(self, "danger", None) or self.reader or self.modal
-                    or getattr(self, "levels", None)
+                    or getattr(self, "levels", None) or getattr(self, "viewer", None)
                     or getattr(self, "sheet", None) or self.picker)
             it = self.items[self.item_sel] if self.page and self.items and not over else None
             if self.page and not over:
@@ -2638,6 +2745,9 @@ class App:
                 self.modal = None
                 if m.get("on_back"):
                     m["on_back"]()
+            return
+        if getattr(self, "viewer", None):
+            self.viewer_input(cmd)
             return
         if getattr(self, "levels", None):
             self.levels_input(cmd)
@@ -2715,6 +2825,12 @@ class App:
                 self.g.flush()
             if it.key == "fonte":         # a busca espera o jogador sair da página: trocar várias
                 self.source_dirty = res   # vezes seguidas não relê os cartões a cada toque
+            if it.key in ("ab", "xy"):        # o próprio Omni36OS passa a usar a troca na hora
+                on = it.options[it.index] == "trocados"
+                if it.key == "ab":
+                    self.swap = on
+                else:
+                    self.swap_xy = on
             if (it.key == "remoto" or it.key.startswith("at_")) and isinstance(res, str) and res != "ok":
                 self.toast = (res, "ok", self.t + 4)
         elif isinstance(it, Action) and cmd == "ok":
@@ -2762,6 +2878,9 @@ class App:
             elif typ in (0x300, 0x301):  # teclado (para testar no PC)
                 sym = int.from_bytes(bytes(ev[20:24]), "little")
                 down, rep = typ == 0x300, ev[13]
+                if FAKE and down and sym == 0x40000045:   # simulador: F12 = FN + Y (captura de tela)
+                    self.want_shot = True
+                    continue
                 if FAKE and down and sym in (0x40000057, 0x40000056):   # simulador: KP+ / KP- = botões de volume
                     v = D.get("volume")                                   # (no console quem muda é o ogage)
                     D.set("volume", max(0, min(100, v + (10 if sym == 0x40000057 else -10))))
@@ -2822,7 +2941,7 @@ class App:
         if not down:
             return
         if b in (2, 3):
-            self.handle("x" if b == 2 else "y")
+            self.handle("x" if (b == 2) != self.swap_xy else "y")
         elif b in (9, 10):
             self.handle("l1" if b == 9 else "r1")
         elif b == ok_b:
@@ -2907,7 +3026,7 @@ class App:
         return {
             "checkup": self._home_summary(),
             "rede": "Wi-Fi e rede pelo cabo",
-            "controles": "Teste, atalhos e power",
+            "controles": "Teste, botões e atalhos",
             "geral": f"Nome, backup · versão {omni_version()}",
             "sobre": "Manual, cuidados e créditos",
             "bateria": f"{s['bat']}%" + (" · Carregando" if s["carregando"] else ""),
@@ -3214,6 +3333,8 @@ class App:
             self.draw_sheet(dt)
         if getattr(self, "levels", None):
             self.draw_levels(dt)
+        if getattr(self, "viewer", None):
+            self.draw_viewer(dt)
         if getattr(self, "danger", None):
             self.draw_danger(dt)
         if getattr(self, "capture", None):
@@ -3520,6 +3641,9 @@ class App:
                     else:
                         self.handle(cmd)
                 self.frame(dt)
+                if self.want_shot:
+                    self.want_shot = False
+                    self.save_shot()
                 self.g.present()
                 if self.loading or (self.warm and now - self.last_input > 0.6):
                     self.prewarm()             # com o menu aberto, só quando ninguém está apertando nada

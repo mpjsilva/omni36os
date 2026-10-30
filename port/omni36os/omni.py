@@ -862,6 +862,72 @@ def set_power_button(args):
     return "Power: como no Omni36OS"
 
 
+# --- Troca de botões (Controles) ---
+
+# A e B: o b_swap.sh do dArkOSen (alterna a cada chamada; marca /var/cache/Switch_AB) muda PortMaster,
+# teclado virtual, ES e companhia; o Omni36OS lê a mesma marca. X e Y não existiam no dArkOSen: o
+# Omni36OS troca X e Y no mapa do controle do PortMaster (é o que os ports usam) e marca
+# /var/cache/Switch_XY. ensure_swap_xy() refaz a troca se uma atualização do PortMaster trouxer o
+# mapa original de volta.
+AB_FLAG, XY_FLAG = "/var/cache/Switch_AB", "/var/cache/Switch_XY"
+B_SWAP = "/usr/local/bin/b_swap.sh"
+PAD_GUID = "190000004b4800000011000000010000,"
+PM_DBS = ("/roms/tools/PortMaster/gamecontrollerdb.txt", "/roms2/tools/PortMaster/gamecontrollerdb.txt")
+
+
+def get_swap_ab(_args=None):
+    return os.path.exists(AB_FLAG)
+
+
+def set_swap_ab(args):
+    on = bool(args["on"])
+    if on != get_swap_ab():
+        if not os.path.exists(B_SWAP):
+            return "Este sistema não tem a troca de A e B do dArkOSen."
+        subprocess.run(["bash", B_SWAP], capture_output=True, timeout=30)
+    return "A e B trocados" if get_swap_ab() else "A e B no padrão"
+
+
+def get_swap_xy(_args=None):
+    return os.path.exists(XY_FLAG)
+
+
+def _pm_xy(swapped):
+    """No mapa do PortMaster, X e Y do R36S ficam b2/b3 (padrão) ou b3/b2 (trocados)."""
+    want = {"x": "b3", "y": "b2"} if swapped else {"x": "b2", "y": "b3"}
+    for db in PM_DBS:
+        text = read_text(db, "")
+        if PAD_GUID not in text:
+            continue
+        lines = text.splitlines(keepends=True)
+        for k, ln in enumerate(lines):
+            if ln.startswith(PAD_GUID):
+                parts = ln.rstrip("\n").split(",")
+                for j, p in enumerate(parts):
+                    key, _, _val = p.partition(":")
+                    if key in want and _:
+                        parts[j] = f"{key}:{want[key]}"
+                lines[k] = ",".join(parts) + ("\n" if ln.endswith("\n") else "")
+        new = "".join(lines)
+        if new != text:
+            write_text(db + ".tmp", new)
+            os.replace(db + ".tmp", db)
+
+
+def set_swap_xy(args):
+    on = bool(args["on"])
+    _pm_xy(on)
+    if on:
+        write_text(XY_FLAG, "1\n")
+    elif os.path.exists(XY_FLAG):
+        os.remove(XY_FLAG)
+    return "X e Y trocados" if on else "X e Y no padrão"
+
+
+def ensure_swap_xy(_args=None):
+    _pm_xy(get_swap_xy())
+
+
 # --- Conflitos com outros scripts ---
 
 def usb_net_active(_args=None):

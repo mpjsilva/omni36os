@@ -78,6 +78,9 @@ TTF_OpenFont = _f(ttf, "TTF_OpenFont", P, C.c_char_p, C.c_int)
 TTF_RenderUTF8_Blended = _f(ttf, "TTF_RenderUTF8_Blended", P, P, C.c_char_p, Color)
 TTF_SizeUTF8 = _f(ttf, "TTF_SizeUTF8", C.c_int, P, C.c_char_p, C.POINTER(C.c_int), C.POINTER(C.c_int))
 IMG_Load = _f(img, "IMG_Load", P, C.c_char_p)
+IMG_SavePNG = _f(img, "IMG_SavePNG", C.c_int, P, C.c_char_p)
+SDL_CreateRGBSurfaceWithFormatFrom = _f(sdl, "SDL_CreateRGBSurfaceWithFormatFrom", P, P, C.c_int, C.c_int,
+                                        C.c_int, C.c_int, C.c_uint32)
 
 INIT_VIDEO, INIT_GAMECONTROLLER = 0x20, 0x2000
 WINDOW_FULLSCREEN, WINDOW_SHOWN = 0x1, 0x4
@@ -500,3 +503,16 @@ class Gfx:
         SDL_RenderReadPixels(self.r, None, PIXELFORMAT_RGB24, buf, W * 3)
         with open(path, "wb") as f:
             f.write(b"P6\n%d %d\n255\n" % (W, H) + buf.raw)
+
+    def screenshot_png(self, path):
+        """A tela de agora (antes do present) em PNG. True se gravou."""
+        buf = C.create_string_buffer(W * H * 3)
+        if SDL_RenderReadPixels(self.r, None, PIXELFORMAT_RGB24, buf, W * 3):
+            return False
+        surf = SDL_CreateRGBSurfaceWithFormatFrom(buf, W, H, 24, W * 3, PIXELFORMAT_RGB24)
+        if not surf:
+            return False
+        try:
+            return IMG_SavePNG(surf, path.encode()) == 0
+        finally:
+            SDL_FreeSurface(surf)

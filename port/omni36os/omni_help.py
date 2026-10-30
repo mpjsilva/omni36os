@@ -56,6 +56,8 @@ A página mostra o IP e os comandos para o PC, e se atualiza sozinha. A rede USB
 
 # Controles
 "Testar o controle" mostra o R36S com cada botão aceso ao apertar, os gatilhos L2/R2 e a posição dos analógicos. Para sair, segure SELECT + START por 1 segundo (B também é testado).
+"Botões A e B": Trocados faz A voltar e B confirmar, no Omni36OS, no PortMaster e nos ports (usa a troca do próprio dArkOSen).
+"Botões X e Y": Trocados troca X e Y no Omni36OS e nos ports do PortMaster. Se o PortMaster se atualizar, a troca é refeita no próximo boot.
 "Atalhos": combinações com o botão FN que valem dentro dos jogos (veja Atalhos abaixo).
 Botão de power: um toque abre Energia (Cancelar, Suspender, Reiniciar e Desligar); outro toque com o menu aberto desliga com segurança. FN + power desliga na hora, fechando o jogo e gravando tudo antes. Segurar o power por uns 8 s sempre desliga à força: isso é do chip de energia, não do Omni36OS. O botão de reset reinicia por hardware e não pode ser mudado.
 "Consertar atalhos" reinicia o serviço que cuida do brilho e do volume pelos botões.
@@ -65,7 +67,7 @@ Serviços que falham no boot aparecem aqui. A falha do dmc-governor (ajuste da R
 Valem com um port aberto. Cada atalho tem Ligado ou Desligado na página, e os botões abaixo são os que estão valendo agora:
 «fps»: mostra ou esconde o contador. Ele fica no canto de cima e mostra quadros por segundo, temperatura e bateria. O FPS fica verde de 50 para cima, amarelo de 28 a 49 e vermelho abaixo disso. A temperatura fica amarela a partir de 65 °C e vermelha a partir de 75 °C. A bateria fica amarela até 30% e vermelha até 15%; carregando, aparece um raio verde.
 «limite»: liga ou desliga o limite de 30 FPS. Em jogo leve, economiza bateria e esquenta menos. Um traço roxo no contador mostra que o limite está ligado.
-«captura»: captura de tela na pasta imagens dentro da pasta do jogo (ex.: ports/daytona/imagens), em .bmp com o nome do port e a hora, sem o contador. Vale em qualquer cartão. Aparece "CAPTURA SALVA" no canto.
+«captura»: captura de tela na pasta imagens dentro da pasta do jogo (ex.: ports/daytona/imagens), em .bmp com o nome do port e a hora, sem o contador. Vale em qualquer cartão. Aparece "CAPTURA SALVA" no canto. Fora de um jogo, FN + Y grava a tela do Omni36OS em PNG na pasta imagens do cartão 1 (EASYROMS/imagens); dá para ver em Arquivos.
 «fechar» (segure 1 s): fecha o jogo e volta ao Omni36OS. Serve para port travado ou sem opção de sair. Este é fixo.
 "Personalizar um atalho": escolha o atalho e aperte a tecla nova; ele vira FN + essa tecla. O Omni36OS recusa o que já é do sistema ou de outro atalho. "Voltar aos botões padrão" desfaz (FN + X, FN + B e FN + Y).
 Pelo botão de power, com um jogo aberto: o jogo congela e o menu Energia abre por cima com as mesmas opções (mostrar o contador, limitar a 30 FPS, captura de tela e fechar o jogo), além de suspender, reiniciar e desligar. Captura e contador valem quando o jogo volta.
@@ -105,7 +107,7 @@ Ao conectar o PC, o Omni36OS fecha para soltar a partição. Ao tirar o cabo ou 
 "Montar pendrive" monta um pendrive ligado no OTG em /mnt/usbdrive (FAT, exFAT ou NTFS). Com ele montado, o mesmo botão vira "Desmontar pendrive": use antes de tirar. Com essa opção escolhida, o painel da esquerda diz se o pendrive foi reconhecido, qual é e se já está montado.
 
 # Ferramentas
-"Arquivos": navega pelos cartões (/roms, /roms2) e pelo pendrive. A abre a pasta, B sobe um nível, X abre as opções do item (copiar, mover, renomear, apagar) e START abre as opções da pasta (colar aqui, nova pasta). Para copiar: X > Copiar no item, vá até a pasta de destino e START > Colar aqui.
+"Arquivos": navega pelos cartões (/roms, /roms2) e pelo pendrive. A abre a pasta (ou a imagem, em tela cheia: esquerda/direita passa para a próxima, A mostra ou esconde o nome, B volta), B sobe um nível, X abre as opções do item (copiar, mover, renomear, apagar) e START abre as opções da pasta (colar aqui, nova pasta). Para copiar: X > Copiar no item, vá até a pasta de destino e START > Colar aqui. Apagar pede confirmação, com Cancelar já escolhido.
 "PortMaster" abre em tela cheia; o Omni36OS volta quando ele fecha. Para copiar, mover, renomear e apagar, use "Arquivos", aqui mesmo no Omni36OS.
 As outras ferramentas do sistema ficam nos cards: Testar o controle (Controles), Trocar a senha (Geral > Segurança), Wi-Fi e rede pelo cabo (Rede), pendrive (Armazenamento), Calibrar a bateria (Bateria), Liberar overclock (Desempenho). Tudo o que mexe no boot abre um aviso vermelho com contagem; Cancelar fica escolhido desde o início.
 

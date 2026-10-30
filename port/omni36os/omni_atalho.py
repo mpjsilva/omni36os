@@ -7,7 +7,7 @@ omni_combos.py; o jogador liga, desliga e troca os botões em Controles > Atalho
 
 - FN + X: mostra ou esconde o contador de FPS (com temperatura e bateria).
 - FN + B: liga ou desliga o limite de 30 FPS.
-- FN + Y: captura de tela em <pasta do jogo>/imagens.
+- FN + Y: captura de tela em <pasta do jogo>/imagens; fora de um jogo, a do menu em /roms/imagens.
 - SELECT + START (segurar 1 s): fecha o jogo e volta ao Omni36OS.
 
 O contador, a captura e o limite são desenhados pelo hud/omni_hud.so, carregado nos
@@ -37,6 +37,7 @@ CONF = os.path.join(USER.pw_dir, ".config/omni36os/atalhos.json")
 HUD_FLAG = "/dev/shm/omni36os-hud"
 CAP_FLAG = "/dev/shm/omni36os-fpscap"
 SHOT_FLAG = "/dev/shm/omni36os-shot"
+UI_SHOT = "/dev/shm/omni36os-power/shot"   # fora de um jogo (o omni_ui.py lê e apaga)
 HUD_LIB = os.path.join(HERE, "hud", "omni_hud.so")
 BAT = "/sys/class/power_supply/battery"
 POWER_SHM = "/dev/shm/omni36os-power"           # o mesmo do power_button.py: o aviso aparece no Omni36OS
@@ -174,6 +175,9 @@ def active(kind):
 
 def tap(key):
     if not game_pids():
+        if key == "captura":             # no menu: o próprio Omni36OS grava a tela (em /roms/imagens)
+            os.makedirs(os.path.dirname(UI_SHOT), exist_ok=True)
+            put(UI_SHOT, int(time.time() * 1000))
         return
     if key == "fps":
         put(HUD_FLAG, "0" if read_flag(HUD_FLAG) == "1" else "1")
@@ -293,6 +297,7 @@ def main():
     try:                                 # o power sempre abre o menu de energia (pause.sh com o desvio)
         import omni
         omni.set_power_button({"mode": "menu"})
+        omni.ensure_swap_xy()            # X e Y trocados continuam trocados depois de atualizar o PortMaster
     except Exception as e:
         print(f"power: {e}", file=sys.stderr, flush=True)
     try:                                 # apelido omni/omni para o SSH e o SFTP
