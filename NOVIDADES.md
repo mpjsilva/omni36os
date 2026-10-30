@@ -2,6 +2,15 @@
 
 Histórico completo. Dentro do console (Geral > Sobre > Novidades) aparece só a versão em uso.
 
+## 1.11.0 (30/10/2026)
+
+- Boot: `omni36os-turbo` põe CPU, GPU e memória no máximo do início do boot até o menu ficar pronto (~27,4 s → ~24,3 s) e também ao desligar/reiniciar; o launcher volta ao mínimo quando termina de montar as páginas.
+- Boot sem tela preta: logo redesenhado no começo do initramfs (`imagem/initrd-logo.sh`), boas-vindas sem esperar o cartão 2 (`omni36os-boas-vindas.service`) e o primeiro quadro do launcher já é a boas-vindas. Abertura igual à tela do boot, com pílula do tamanho do nome; telas sem barra falsa, reticências ou raio.
+- Wi-Fi USB Realtek no boot (`omni36os-wifi-boot`, `usbcore.old_scheme_first=1`). Data, hora e fuso automáticos com a internet (`omni36os-hora`). Volume salvo entre reinícios.
+- Tela e som com painel de brilho, contraste e volume. Troca de A/B e X/Y. FN + Y no menu grava em `/roms/imagens`; visualizador de imagens no Arquivos (sai o 351Files). Cartão 2 montado em `/roms2`.
+- Power sempre com o menu de energia; FN + power desliga com segurança. Apelido omni/omni (SSH, SFTP e navegador de arquivos). Serviços remotos só com rede; Serviços remotos vira Ligados/Desligados.
+- Volta rápida dos ports (estado na RAM). Legendas com arte dos botões, alinhamento ao pixel, ícones distintos, MUTED/FAINT mais claros. Rede refeita quando o Wi-Fi conecta (sem alerta fantasma).
+
 ## 1.10.0 (30/10/2026)
 
 - Tela certa no primeiro boot (`omni_painel.py`, serviço `omni36os-painel`): antes da expansão da imagem, o Omni36OS testa as telas do catálogo do dArkOSen, uma por boot. O hardware (RAM, memória interna) escolhe a ordem (original ou clone, as mais comuns primeiro); a tela que acender pergunta "Está vendo esta tela?" e qualquer botão confirma. Sem toque em 20 s, instala a próxima e reinicia; acabou a lista, volta os originais. Refazer: arquivo `omni36os-tela/testar` na BOOT.

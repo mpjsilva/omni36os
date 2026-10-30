@@ -4,12 +4,17 @@ Linhas que começam com "# " viram títulos no leitor."""
 
 # A versão em uso vem do arquivo VERSION. Aqui fica só ela; o histórico completo está no NOVIDADES.md.
 NOVIDADES = [
-    ("1.10.0", "30/10/2026", [
-        "Tela certa no primeiro boot: o Omni36OS testa sozinho as telas possíveis e pergunta \"Está vendo esta "
-        "tela?\". Um toque em qualquer botão confirma; sem toque, ele tenta a próxima. Sem PC e sem escolher DTB.",
-        "Armazenamento: Detalhe do cartão com marca, espaço livre e ocupado e teste de velocidade numa opção só. "
-        "Cartões chamados de Cartão 1 e Cartão 2; o estado do pendrive aparece ao escolher Montar.",
-        "Créditos com o QR do repositório. Cartão sem marca deixa de ser alerta.",
+    ("1.11.0", "30/10/2026", [
+        "Boot mais rápido e sem tela preta: tudo no máximo até o menu ficar pronto (cerca de 3 s a menos) e "
+        "depois no mínimo. O logo e a boas-vindas seguem direto até o Omni36OS abrir.",
+        "Wi-Fi USB sobe sozinho no boot, data, hora e fuso se ajustam quando a internet chega, e o volume "
+        "fica como você deixou.",
+        "Tela e som com painel próprio de brilho, contraste e volume. Troca de A/B e de X/Y em Controles.",
+        "FN + Y grava a tela também no menu, na pasta imagens. O Arquivos mostra imagens em tela cheia.",
+        "Cartão 2 aparece sozinho. Power sempre abre o menu de energia; FN + power desliga gravando tudo.",
+        "Acesso por SSH e pelo navegador com omni/omni. Serviços remotos só ligam com rede.",
+        "Visual: ícones próprios, textos com mais contraste, legendas com a arte dos botões e alinhamento ao "
+        "pixel. O card Rede não fica mais com alerta depois que o Wi-Fi conecta.",
     ]),
 ]
 
