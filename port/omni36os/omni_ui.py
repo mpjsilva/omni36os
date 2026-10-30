@@ -212,13 +212,13 @@ class Data:
         if FAKE:
             time.sleep(0.4)
             sd = ("aviso", "Cartão de jogos sem marca identificada (código 0xfe), comum em cartões genéricos.")
-            som = ("problema", "O som está saindo no alto-falante, mas deveria sair no fone. Restaurar áudio corrige.")
+            som = ("ok", "Som saindo no alto-falante (automático).")
             fake = {
-                "checkup": (["restaurar_audio"], [("problema", "Sistema: " + som[1]), ("aviso", "Cartões SD: " + sd[1]),
+                "checkup": ([], [("aviso", "Cartões SD: " + sd[1]),
                                                   ("info", "Cada card mostra o detalhe do seu assunto.")]),
                 "bateria": ([], [("ok", "Bateria em 87%, descarregando."), ("ok", "Brilho em 40%."),
                                  ("ok", "Processador em modo ondemand no menu.")]),
-                "atualizar": (["restaurar_audio"], [("ok", "Volume em 60%."), som]),
+                "atualizar": ([], [("ok", "Volume em 60%."), som]),
                 "desempenho": ([], [("ok", "Temperatura normal: 52 °C."),
                                     ("ok", "Processador a 1008 MHz, modo Equilibrado."),
                                     ("info", "Limites: processador 1296 MHz, GPU 520 MHz. ZRAM 0 MB (0 MB em uso).")]),

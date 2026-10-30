@@ -185,12 +185,9 @@ def check_audio(f, out):
         out.append(("aviso", f"O volume está baixo ({f['volume_pct']}%)."))
     else:
         out.append(("ok", f"Volume em {f['volume_pct']}%."))
+    # A saída (fone ou alto-falante) não vira alerta: o omni36os-atalho a corrige sozinho em 1 s.
     nome = {"HP": "no fone", "SPK": "no alto-falante", "SPK_HP": "no alto-falante e no fone"}
-    if f["saida_audio"] and f["saida_audio"] != f["saida_esperada"]:
-        out.append(("problema", f"O som está saindo {nome.get(f['saida_audio'], 'em ' + f['saida_audio'])}, mas "
-                                f"deveria sair {nome.get(f['saida_esperada'], 'em ' + f['saida_esperada'])}. "
-                                "Restaurar áudio corrige."))
-    elif f["saida_audio"]:
+    if f["saida_audio"]:
         out.append(("ok", f"Som saindo {nome.get(f['saida_audio'], 'em ' + f['saida_audio'])} (automático)."))
     if not f["asoundrc_padrao"]:
         out.append(("aviso", "A configuração de som foi alterada por algum jogo ou app."))
@@ -248,7 +245,7 @@ def sem_som():
     f = audio_facts()
     out, acts = [], []
     check_audio(f, out)
-    if f["saida_audio"] != f["saida_esperada"] or not f["asoundrc_padrao"]:
+    if not f["asoundrc_padrao"]:
         acts.append("restaurar_audio")
     return finish(out, acts, f)
 

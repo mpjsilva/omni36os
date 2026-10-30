@@ -113,7 +113,7 @@ OMNI_FAKE=1 OMNI_WINDOWED=1 python3 omni_ui.py
 - `OMNI_TRAVA=1`
 - `OMNI_TRAVA_SENHA` (padrão `1234`)
 - `OMNI_RESUME=testar` + `OMNI_FAKE_TESTE=falhou|ok`: mostra o resultado de um teste de port
-- Cada card tem dados de teste próprios (o Verificar mostra 2 alertas de exemplo)
+- Cada card tem dados de teste próprios (o Verificar mostra 1 alerta de exemplo, do cartão SD)
 
 **Teclas do simulador** (Num Lock ligado): setas = direcional, 2 = A, 1 = B, Enter = START, Shift direito = SELECT, 5/4 = X/Y, 6/3 = L1/R1, 0 = botão de power, 7/9 = analógico esquerdo para os lados, 8 = FN (só ao gravar atalho). `OMNI_JOGO=1` simula o menu Energia por cima de um jogo. Mouse: clique esquerdo = A, direito = B, roda = cima/baixo. + / - do teclado numérico = botões de volume.
 
