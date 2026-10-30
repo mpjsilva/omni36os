@@ -4,6 +4,9 @@ Linhas que começam com "# " viram títulos no leitor."""
 
 # A versão em uso vem do arquivo VERSION. Aqui fica só ela; o histórico completo está no NOVIDADES.md.
 NOVIDADES = [
+    ("1.11.2", "30/10/2026", [
+        "Biblioteca só de ports: lê apenas as pastas ports dos cartões. Pastas de emuladores não aparecem, e a leitura ficou quase instantânea.",
+    ]),
     ("1.11.1", "30/10/2026", [
         "Controles: uma opção só, Inverter botões (Ligado/Desligado), troca A com B e X com Y juntos.",
     ]),

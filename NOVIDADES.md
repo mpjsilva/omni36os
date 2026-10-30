@@ -2,6 +2,10 @@
 
 Histórico completo. Dentro do console (Geral > Sobre > Novidades) aparece só a versão em uso.
 
+## 1.11.2 (30/10/2026)
+
+- Biblioteca só de ports (`omni_games.py`): lê apenas `/roms/ports` e `/roms2/ports` (conforme Origem dos jogos), só os `.sh` da raiz. Os outros sistemas do es_systems não são mais varridos; o cache antigo (versão 2) é descartado e refeito.
+
 ## 1.11.1 (30/10/2026)
 
 - Controles: "Botões A e B" e "Botões X e Y" viram uma opção só, Inverter botões (Ligado/Desligado), que troca os dois pares juntos.

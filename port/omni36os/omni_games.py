@@ -17,11 +17,12 @@ import omni
 ES_SYSTEMS = omni.ES_SYSTEMS
 ES_SETTINGS = f"{omni.HOME}/.emulationstation/es_settings.cfg"
 CACHE = f"{omni.HOME}/.config/omni36os/jogos.json"
-CACHE_VER = 2
-# sistemas que não são jogos (ou têm card próprio)
-SKIP = {"ports", "omni36os", "sab", "tools", "options", "retropie", "settings", "kodi", "imageviewer"}
-if omni.SHELL:          # Omni36OS como sistema de ports: os ports são os jogos
-    SKIP.discard("ports")
+CACHE_VER = 3              # 3: só ports (antes lia todos os sistemas do ES)
+# O Omni36OS é só de ports: a biblioteca lê apenas /roms/ports e /roms2/ports (Origem dos jogos).
+# Pastas de emuladores que sobraram no cartão não são varridas nem listadas.
+ONLY = "ports"
+PORTS_DEFAULT = {"name": "ports", "fullname": "Ports", "ext": ".sh .SH",
+                 "command": "sudo perfmax %GOVERNOR% %ROM%; nice -n -19 %ROM%; sudo perfnorm"}
 # pastas e arquivos que moram nas pastas de jogos e não são jogos
 NOT_GAMES = {"gamelist.xml", "gamelist.xml.old", "neogeo.zip", "systeminfo.txt", "readme.txt", "_info.txt"}
 MEDIA_DIRS = {"images", "videos", "media", "manuals", "snap", "snaps", "boxart", "box2d", "wheel",
@@ -45,13 +46,19 @@ def settings():
 def systems():
     root = _xml(ES_SYSTEMS)
     out = []
-    if root is None:
-        return out
+    found = [s for s in (root.findall("system") if root is not None else [])
+             if (s.findtext("name") or "").strip().lower() == ONLY]
+    if not found:                 # sem o es_systems do dArkOSen: a entrada padrão dos ports
+        s = ET.Element("system")
+        for k, v in PORTS_DEFAULT.items():
+            ET.SubElement(s, "extension" if k == "ext" else k).text = v
+        ET.SubElement(s, "path").text = "/roms/ports"
+        found = [s]
     seen = set()
-    for s in root.findall("system"):
+    for s in found:
         name = (s.findtext("name") or "").strip()
         path = (s.findtext("path") or "").strip().rstrip("/")
-        if not name or not path or name.lower() in SKIP or path.startswith("/opt"):
+        if not path.startswith(("/roms/", "/roms2/")):
             continue
         if path in seen:        # dois sistemas na mesma pasta: conta uma vez
             continue
@@ -95,6 +102,8 @@ def _scan(sysd):
     games, unknown = {}, []
     exts = set(sysd["ext"])
     base = sysd["path"]
+    # ports: só os .sh da raiz (as subpastas são os dados de cada port, cheias de scripts internos)
+    max_depth = 0 if sysd["name"] == "ports" else 2
 
     def walk(d, depth):
         try:
@@ -111,7 +120,7 @@ def _scan(sysd):
                 ext = os.path.splitext(n)[1].lower()
                 if ext in exts:              # jogo em pasta (ex.: .ps3, .daphne)
                     games[e.path] = 0
-                elif depth < 2:
+                elif depth < max_depth:
                     walk(e.path, depth + 1)
                 continue
             if n.lower() in NOT_GAMES:
