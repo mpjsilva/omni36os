@@ -2,6 +2,11 @@
 
 Histórico completo. Dentro do console (Geral > Sobre > Novidades) aparece só a versão em uso.
 
+## 1.15.17 (31/10/2026)
+
+- Ports pedem o que falta: antes de abrir, o Omni36OS acha os runtimes do PortMaster que o jogo usa (Mono, Godot, Java...) e copia do cartão 2 ou baixa da internet, com barra de progresso. Resolve jogos como TMNT que pediam o Mono mesmo com ele no cartão.
+- Jogos no cartão 2: a troca de pasta feita durante o jogo é sempre desfeita ao fechar, mesmo se algo do jogo continuar aberto. Antes, os ports do cartão 1 podiam sumir da lista e os do cartão 2 aparecer duas vezes.
+
 ## 1.15.16 (30/10/2026)
 
 - Biblioteca de ports: o A abre o jogo direto. A segunda tela (ficha com Jogar e Voltar) saiu, já que a lista mostra a capa e a descrição.
