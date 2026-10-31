@@ -157,6 +157,14 @@ ports_card2_end() {
 }
 mountpoint -q /roms/ports && sudo umount /roms/ports 2>/dev/null
 
+# Runtimes do PortMaster que o port pede (Mono, Godot, Java...): copia do cartão 2 ou baixa
+# antes de abrir. Ports antigos e independentes só montam o arquivo, sem o runtime_check.
+port_deps() {
+    case "$1" in
+        *.sh|*.SH) sudo python3 -B "$OMNI_DIR/port_deps.py" "$1" > /tmp/omni36os-deps.log 2>&1 ;;
+    esac
+}
+
 # Loop principal: launcher → port → launcher → ...
 RESUME=""
 CRASHES=0
@@ -193,6 +201,7 @@ while true; do
         # Mesmos comandos do launch.sh (é o que o omni_ui.py grava em /tmp/omni36os-next)
         # Card "Testar ports": o port tem a tela e o launcher volta com o resultado
         test:/roms/ports/*.sh|test:/roms2/ports/*.sh)
+            port_deps "${next#test:}"
             port_begin
             ports_card2_begin "${next#test:}"
             bash "$OMNI_DIR/port_test.sh" "${next#test:}"
@@ -206,6 +215,7 @@ while true; do
             IFS=$'\t' read -r _ sys rom <<< "$next"
             cmd="$(python3 -c 'import sys, omni_games; print(omni_games.command(sys.argv[1], sys.argv[2]) or "")' "$sys" "$rom")"
             if [ -n "$cmd" ] && [ -e "$rom" ]; then
+                port_deps "$rom"
                 sudo chmod 666 /dev/tty1
                 port_begin
                 ports_card2_begin "$rom"

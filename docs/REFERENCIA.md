@@ -114,6 +114,9 @@ sudo imagem/gerar-imagem.sh        # -> ~/Apps/Omni36OS/output/Omni36OS-<VERSION
 
 - PortMaster: o `control.txt` usa `/roms2` só se o `/etc/fstab` citar `roms2`; o Omni36OS monta o cartão 2 sozinho,
   por isso o bind de `/roms2/ports` em `/roms/ports` durante um port do cartão 2.
+- Runtimes do PortMaster: ports antigos/independentes (ex.: TMNT/Mono) só montam `/roms/tools/PortMaster/libs/<runtime>.squashfs`
+  sem `runtime_check`. O `port_deps.py` roda antes de cada port (launch-direct.sh: Jogos e Testar ports), acha os
+  runtimes citados no `.sh` e copia do cartão 2 (`/roms2/tools/PortMaster/libs`) ou baixa (URL/md5 do `config/runtimes.json`).
 - Adaptador Realtek liga como disco (`0bda:1a2b`) e o udev troca para Wi-Fi (`0bda:c820`); a troca às vezes se perde
   → `omni_sistema.wifi_dongle_fix()` ao abrir o menu. O driver deixa a interface "up" sem rede: conectado = carrier + IPv4.
 - Bluetooth do adaptador (hci0) não funciona: firmware não carrega (btusb e rtk_btusb disputam); serviço desligado.
