@@ -41,6 +41,7 @@ UI_SHOT = "/dev/shm/omni36os-power/shot"   # fora de um jogo (o omni_ui.py lê e
 HUD_LIB = os.path.join(HERE, "hud", "omni_hud.so")
 BAT = "/sys/class/power_supply/battery"
 POWER_SHM = "/dev/shm/omni36os-power"           # o mesmo do power_button.py: o aviso aparece no Omni36OS
+BAT_FLAG = f"{POWER_SHM}/bateria"                # o Omni36OS aberto por cima de uma ferramenta, só para o aviso
 # A % da bateria do R36S não é confiável (pula e cai de repente): os limites ficam altos de propósito.
 BAT_WARN, BAT_CLOSE, BAT_OFF, BAT_OFF_MV = 30, 15, 10, 3350   # aviso, pedido para fechar, desligar (% e mV)
 BAT_EVERY = 30                                  # segundos entre leituras
@@ -228,8 +229,19 @@ def notify(title, msg):
             os.kill(ui, signal.SIGUSR2)
     except (ValueError, OSError):
         pass
-    if game_pids():
+    front = game_pids()
+    if front and any("run_tool.sh" in cmdline(p) for p in front) and not ui_running():
+        # ferramenta do sistema na tela (sem contador de FPS): ela congela e o Omni36OS abre por cima
+        # só com o aviso; o OK fecha o aviso e a ferramenta continua de onde estava
+        put(BAT_FLAG, str(time.time()))
+        subprocess.run(["systemd-run", "--no-block", "--collect", "--unit", f"omni36os-bat-aviso-{int(time.time())}",
+                        sys.executable, os.path.join(HERE, "power_button.py"), "--freeze"])
+    elif front:
         put(HUD_FLAG, "1")
+
+
+def ui_running():
+    return any("omni_ui.py" in cmdline(p) for p in pgrep("-f", "omni_ui.py"))
 
 
 def safe_poweroff():

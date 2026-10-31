@@ -134,6 +134,7 @@ POWER_PENDING = f"{POWER_SHM}/pending"
 POWER_FLAG = f"{POWER_SHM}/menu"                 # abrir já no menu de energia
 PANIC_MSG = f"{POWER_SHM}/panic-msg"
 BAT_MSG = f"{POWER_SHM}/bat-msg"                 # omni_atalho.py: título na 1ª linha, texto depois
+BAT_FLAG = f"{POWER_SHM}/bateria"                # aberto por cima de uma ferramenta só para o aviso de bateria
 RESUME = os.environ.get("OMNI_RESUME", "")   # "testar": o Omni36OS voltou de um teste de port
 # Estado guardado na RAM ao sair para um jogo ou ferramenta: na volta o menu abre na hora com as
 # verificações de antes (que levavam ~10 s no console) e elas se refazem em segundo plano.
@@ -727,6 +728,13 @@ class App:
         if not FAKE and self.player and not os.path.exists(omni_sistema.TELA):   # nome de antes da tela com nome
             threading.Thread(target=omni_sistema.set_player_name, args=(self.player,), daemon=True).start()
         self.want_power = self.want_msg = False
+        self.bat_return = False
+        if HUB == "jogo" and not FAKE:
+            try:
+                self.bat_return = time.time() - os.path.getmtime(BAT_FLAG) < 60
+                os.remove(BAT_FLAG)
+            except OSError:
+                pass
         self.msg_t = -9.0
         signal.signal(signal.SIGUSR1, lambda *_: setattr(self, "want_power", True))
         try:
@@ -3146,6 +3154,8 @@ class App:
             if self.modal and self.modal.get("bat") and charging_now():
                 self.modal = None
                 self.toast = ("Carregando", "ok", self.t + 2.5)
+                if self.bat_return:
+                    self.quit()
             try:
                 with open(PANIC_MSG) as f:
                     msg = f.read().strip()
@@ -3161,6 +3171,8 @@ class App:
                 if title:
                     self.modal = {"title": title, "icon": "battery-2", "sel": 0, "buttons": ["OK"], "text": text,
                                   "bat": title != "Desligando"}
+                    if self.bat_return:   # por cima de uma ferramenta: o OK devolve a tela para ela
+                        self.modal.update(fns=[self.quit], on_back=self.quit)
             except OSError:
                 pass
 
