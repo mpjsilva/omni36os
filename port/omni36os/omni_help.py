@@ -4,6 +4,10 @@ Linhas que começam com "# " viram títulos no leitor."""
 
 # A versão em uso vem do arquivo VERSION. Aqui fica só ela; o histórico completo está no NOVIDADES.md.
 NOVIDADES = [
+    ("1.15.18", "31/10/2026", [
+        'Runtimes do PortMaster que faltam são baixados da internet antes de abrir o port (não são mais copiados do cartão 2). Sem internet, copie o arquivo pelo PC para tools/PortMaster/libs no cartão do sistema.',
+        'Resultado do teste de port: textos longos, como o caminho do relatório, não passam mais da caixa.',
+    ]),
     ("1.15.17", "31/10/2026", [
         'Ports pedem o que falta: antes de abrir, o Omni36OS acha os runtimes do PortMaster que o jogo usa (Mono, Godot, Java...) e copia do cartão 2 ou baixa da internet, com barra de progresso. Resolve jogos como TMNT que pediam o Mono mesmo com ele no cartão.',
         'Jogos no cartão 2: a troca de pasta feita durante o jogo é sempre desfeita ao fechar, mesmo se algo do jogo continuar aberto. Antes, os ports do cartão 1 podiam sumir da lista e os do cartão 2 aparecer duas vezes.',
