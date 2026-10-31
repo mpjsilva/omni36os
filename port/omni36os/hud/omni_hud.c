@@ -428,6 +428,13 @@ static void build(int W, int Hh)
                   text_w(H.charging ? "~" : "]", px) + px * 2 + text_w(c, px) + pad;
         if (H.cap > 0)
             w += gap + text_w("-", px) + px;
+        char d[16], e[16];                          /* 2º estágio: CPU e GPU (MHz) na mesma pílula */
+        if (H.clk) {
+            snprintf(d, sizeof d, "%d", H.cpu);
+            snprintf(e, sizeof e, "%d", H.gpu);
+            w += (gap * 2 + px) * 2 + text_w("CPU", px) + px * 3 + text_w(d, px) +
+                 text_w("GPU", px) + px * 3 + text_w(e, px);
+        }
         quad(x, y, w, h, BG);                       /* desenhado à parte, com cantos redondos */
         float cx = x + pad, ty = y + pad;
         cx = text(a, cx, ty, px, fc) + px * 2;
@@ -442,20 +449,16 @@ static void build(int W, int Hh)
         quad(cx, y + pad - px, px, h - 2 * pad + 2 * px, LINE);
         cx += px + gap;
         cx = text(H.charging ? "~" : "]", cx, ty, px, bc) + px * 2;
-        text(c, cx, ty, px, bc);
-        if (H.clk) {                                /* segunda pílula: CPU e GPU em MHz */
-            snprintf(a, sizeof a, "%d", H.cpu);
-            snprintf(b, sizeof b, "%d", H.gpu);
-            float y2 = y + h + gap;
-            w = pad + text_w("CPU", px) + px * 3 + text_w(a, px) + gap * 2 + px +
-                text_w("GPU", px) + px * 3 + text_w(b, px) + pad;
-            quad(x, y2, w, h, BG);
-            cx = text("CPU", x + pad, y2 + pad, px, DIM) + px * 2;
-            cx = text(a, cx, y2 + pad, px, WHITE) - px + gap;
-            quad(cx, y2 + pad - px, px, h - 2 * pad + 2 * px, LINE);
+        cx = text(c, cx, ty, px, bc) - px + gap;
+        if (H.clk) {
+            quad(cx, y + pad - px, px, h - 2 * pad + 2 * px, LINE);
             cx += px + gap;
-            cx = text("GPU", cx, y2 + pad, px, DIM) + px * 2;
-            text(b, cx, y2 + pad, px, WHITE);
+            cx = text("CPU", cx, ty, px, DIM) + px * 2;
+            cx = text(d, cx, ty, px, WHITE) - px + gap;
+            quad(cx, y + pad - px, px, h - 2 * pad + 2 * px, LINE);
+            cx += px + gap;
+            cx = text("GPU", cx, ty, px, DIM) + px * 2;
+            text(e, cx, ty, px, WHITE);
         }
     }
     if (now() < H.toast_until) {
