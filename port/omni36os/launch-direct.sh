@@ -89,7 +89,7 @@ hud_preload() {
     [ -f "$lib" ] || return
     [ -f "$OMNI_DIR/hud/omni_hud32.so" ] && lib="$lib:$OMNI_DIR/hud/omni_hud32.so"
     python3 -c 'import sys; sys.path.insert(0, sys.argv[1]); import omni; c = omni.get_atalhos()
-sys.exit(0 if c["fps"] or c["captura"] or c["limite"] or omni.cpu_auto() else 1)' "$OMNI_DIR" 2>/dev/null || return
+sys.exit(0 if c["fps"] or c["captura"] or c["limite"] or omni.cpu_auto() or omni.gpu_auto() else 1)' "$OMNI_DIR" 2>/dev/null || return
     echo "$lib${LD_PRELOAD:+:$LD_PRELOAD}"
 }
 

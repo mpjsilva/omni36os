@@ -103,6 +103,11 @@ for f in "${SIS[@]}"; do
   cp -a "$CARD/$f" "$R/$(dirname "$f")/"
 done
 rm -f "$R/etc/systemd/system/multi-user.target.wants/emulationstation.service"
+# padrão de fábrica: processador e GPU em Automático (omni_cpuauto.py), overclock bloqueado
+mkdir -p "$R/etc/omni36os"
+echo 1 > "$R/etc/omni36os/cpu_auto"
+echo 1 > "$R/etc/omni36os/gpu_auto"
+rm -f "$R/etc/omni36os/overclock"
 # botão de power com o menu de energia já ligado (como o set_power_button faz no console)
 P="$R/usr/local/bin/pause.sh"
 grep -q "Omni36OS: botão de power" "$P" || cp -a "$P" "$P.omni36os-orig"

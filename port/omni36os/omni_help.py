@@ -294,10 +294,10 @@ Tudo o que é senha fica aqui. B volta para Geral.
 
 # Backup
 Geral > Backup > Exportar ou Importar.
-Omni36OS: resultados dos testes de ports e os ajustes de processador, GPU, RAM e gamma. Os atalhos e o tema não entram.
+O backup é um snapshot do sistema: a versão do Omni36OS, todas as configurações (atalhos, Desempenho, overclock, zram, tela, gamma, som, brilho, troca de botões, músicas), as redes Wi-Fi, o nome do console e as chaves SSH. Jogos, ports e saves ficam de fora (estão nos cartões).
 Exportar pergunta onde salvar: cartão do sistema (/roms/backup/omni36os), segundo cartão (/roms2/backup/omni36os) ou pendrive (/mnt/usbdrive/backup/omni36os). Só aparece o que está no console agora, e o último lugar escolhido vem marcado. O caminho completo aparece ao terminar.
 Importar abre a pasta dos backups; navegue pelas pastas com A ("..": voltar). Cada arquivo mostra de qual módulo é, e só o backup do módulo certo pode ser importado.
-Antes de importar, o Omni36OS salva o que está valendo agora como "...-antes-de-importar.tar.gz".
+Importar volta o console exatamente ao ponto do backup: o que mudou ou surgiu depois é desfeito, inclusive a versão. No fim, o Omni36OS pede para reiniciar. Antes de importar, ele salva o que está valendo agora como "...-antes-de-importar.tar.gz".
 Só configurações: saves, estados, cores, shaders, temas e bancos de dados ficam de fora."""
 
 CUIDADOS = """# Antes de qualquer coisa
@@ -338,7 +338,7 @@ Durante o teste não aperte botões: o port recebe os comandos.
 Se o port travar a tela, segure o botão de ligar para reiniciar; o resultado não é gravado nesse caso.
 
 # Backup e importação
-Importar substitui as configurações do módulo pelas do arquivo. Use backups da mesma versão do Omni36OS: configurações de outra versão podem não funcionar.
+Importar volta também a versão do Omni36OS à do backup. Depois, "Procurar atualização" traz a versão nova de novo, se quiser.
 Guarde cópias dos backups fora do console (no PC, pelo pendrive).
 
 # Ao desligar

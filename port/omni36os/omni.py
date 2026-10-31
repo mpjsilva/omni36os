@@ -341,6 +341,7 @@ GPU_SAFE_MHZ = 520
 OC_FLAG = "/etc/omni36os/overclock"   # existe = overclock desbloqueado (aviso + 5 toques em Desempenho)
 OC_MAX_TEMP = 70         # °C: não libera overclock acima disso (1º ponto de corte do kernel)
 CPU_AUTO_FLAG = "/etc/omni36os/cpu_auto"   # existe = "Limite do processador" em Automático (omni_cpuauto.py)
+GPU_AUTO_FLAG = "/etc/omni36os/gpu_auto"   # o mesmo para o "Limite da GPU"
 
 
 def read_conf(path):
@@ -461,7 +462,8 @@ def lock_oc(_args=None):
         pass
     if not cpu_auto():                   # no Automático o teto já desce sozinho para o padrão
         set_cpu_max({"mhz": CPU_SAFE_MHZ})
-    set_gpu_max({"mhz": GPU_SAFE_MHZ})
+    if not gpu_auto():
+        set_gpu_max({"mhz": GPU_SAFE_MHZ})
     return "Overclock bloqueado: processador até 1296 MHz e GPU até 520 MHz."
 
 
@@ -469,7 +471,7 @@ def apply_limits(_args=None):
     """Limites de Desempenho no hardware (fim do boot: até lá o omni36os-turbo deixa tudo no máximo).
     Bloqueado, nada passa do padrão, mesmo que a configuração diga outra coisa."""
     cpu = auto_ceiling() if cpu_auto() else int(read_conf(CPU_CONF).get("FREQ", CPU_SAFE_MHZ * 1000)) // 1000
-    gpu = int(read_conf(GPU_CONF).get("FREQ", GPU_SAFE_MHZ * 1000000)) // 1000000
+    gpu = gpu_auto_ceiling() if gpu_auto() else int(read_conf(GPU_CONF).get("FREQ", GPU_SAFE_MHZ * 1000000)) // 1000000
     if not oc_unlocked():
         cpu, gpu = min(cpu, CPU_SAFE_MHZ), min(gpu, GPU_SAFE_MHZ)
     for path, val in ((f"{CPUFREQ}/scaling_max_freq", cpu * 1000), (f"{GPU_DEV}/max_freq", gpu * 1000000)):
@@ -537,23 +539,62 @@ def set_cpu_max(args):
 
 
 def gpu_freqs(_args=None):
+    """Opções do "Limite da GPU": 0 é Automático, depois os limites fixos."""
     top = 10 ** 6 if oc_unlocked() else GPU_SAFE_MHZ
-    return sorted(int(f) // 1000000 for f in read_text(f"{GPU_DEV}/available_frequencies", "").split()
-                  if int(f) // 1000000 <= top)
+    return [0] + sorted(int(f) // 1000000 for f in read_text(f"{GPU_DEV}/available_frequencies", "").split()
+                        if int(f) // 1000000 <= top)
+
+
+def gpu_auto(_args=None):
+    return os.path.exists(GPU_AUTO_FLAG)
+
+
+def gpu_auto_ceiling():
+    """Teto do Automático da GPU: 520 MHz bloqueado (ou quente demais), tudo desbloqueado."""
+    top = max((int(f) // 1000000 for f in read_text(f"{GPU_DEV}/available_frequencies", "").split()),
+              default=GPU_SAFE_MHZ)
+    if not oc_unlocked() or temp_c() >= OC_MAX_TEMP:
+        top = min(top, GPU_SAFE_MHZ)
+    return top
+
+
+def gpu_auto_steps():
+    top = gpu_auto_ceiling()
+    avail = sorted({int(f) // 1000000 for f in read_text(f"{GPU_DEV}/available_frequencies", "").split()})
+    return [f for f in avail if f <= top] or [top]
+
+
+def gpu_load():
+    """Ocupação da GPU em % ("37@400000000Hz" no devfreq), -1 se não der para ler."""
+    try:
+        return int(read_text(f"{GPU_DEV}/load", "").split("@")[0])
+    except ValueError:
+        return -1
 
 
 def get_gpu_max(_args=None):
+    if gpu_auto():
+        return 0
     return int(read_text(f"{GPU_DEV}/max_freq", "0")) // 1000000
 
 
 def set_gpu_max(args):
     mhz = int(args["mhz"])
+    if mhz == 0:
+        os.makedirs(os.path.dirname(GPU_AUTO_FLAG), exist_ok=True)
+        write_text(GPU_AUTO_FLAG, "1\n")
+        write_text(f"{GPU_DEV}/max_freq", gpu_auto_ceiling() * 1000000)
+        return "GPU automática: sobe só o necessário para o jogo chegar no FPS"
     if mhz > GPU_SAFE_MHZ and not oc_unlocked():
         return "Overclock bloqueado: desbloqueie em Desempenho."
     if mhz not in gpu_freqs():
         return f"Frequência indisponível: {mhz} MHz."
     if mhz > GPU_SAFE_MHZ and temp_c() >= OC_MAX_TEMP:
         return f"Está quente ({temp_c()} °C): o overclock só é liberado abaixo de {OC_MAX_TEMP} °C."
+    try:
+        os.remove(GPU_AUTO_FLAG)
+    except FileNotFoundError:
+        pass
     write_conf(GPU_CONF, FREQ=mhz * 1000000)
     write_text(f"{GPU_DEV}/max_freq", mhz * 1000000)
     return f"GPU até {mhz} MHz" + (" (overclock)" if mhz > GPU_SAFE_MHZ else "")

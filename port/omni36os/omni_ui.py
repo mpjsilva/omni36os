@@ -330,7 +330,7 @@ class Data:
                 return omni_combos.defaults()[what[3:]]
             return {"brilho": 40, "volume": 60, "gov": "ondemand", "govs": ["powersave", "ondemand", "performance"],
                     "part": "roms2", "pendrive": False, "cpu_max": 1296, "cpu_freqs": [0, 1296, 1416, 1512],
-                    "gpu_max": 520, "gpu_freqs": [400, 480, 520, 600], "oc": False, "zram": 0, "fonte": "roms", "gamma": 1.0, "contraste": 50, "led": "verde", "remoto": "desligados", "busca": "ligada" if busca_on() else "desligada",
+                    "gpu_max": 520, "gpu_freqs": [0, 400, 480, 520, 600], "oc": False, "zram": 0, "fonte": "roms", "gamma": 1.0, "contraste": 50, "led": "verde", "remoto": "desligados", "busca": "ligada" if busca_on() else "desligada",
                     "inverter": "ligado" if swapped_ab() else "desligado",
                     "power": "desligar", "tema": THEME}[what]
         if what == "brilho":
@@ -598,7 +598,8 @@ TIPS = {
     "Trava por senha": "Pede a senha ao ligar o console, antes de abrir o menu.",
     "Limite do processador": "Frequência máxima do processador. Acima de 1296 MHz é overclock: esquenta mais. "
                              "Automático sobe só o necessário para o jogo chegar no FPS.",
-    "Limite da GPU": "Frequência máxima da GPU. Acima de 520 MHz é overclock: esquenta mais.",
+    "Limite da GPU": "Frequência máxima da GPU. Acima de 520 MHz é overclock: esquenta mais. "
+                     "Automático sobe só o necessário para o jogo chegar no FPS.",
     "Memória extra (zram)": "Usa parte da RAM comprimida como memória extra. Ajuda ports pesados que fecham por "
                             "falta de memória, com um pouco mais de uso do processador.",
     "Desbloquear overclock": "Mostra e permite 1368 a 1512 MHz no processador e 600 MHz na GPU. Pode esquentar e "
@@ -989,7 +990,8 @@ class App:
         acts = []
         z = omni.zram_facts()
         cpu = f"automático (até {omni.auto_ceiling()} MHz)" if not f["cpu_max_mhz"] else f"{f['cpu_max_mhz']} MHz"
-        out.append(("info", f"Limites: processador {cpu}, GPU {f['gpu_max_mhz']} MHz. "
+        gpu = f"automática (até {omni.gpu_auto_ceiling()} MHz)" if not f["gpu_max_mhz"] else f"{f['gpu_max_mhz']} MHz"
+        out.append(("info", f"Limites: processador {cpu}, GPU {gpu}. "
                             f"ZRAM {z['zram_mb']} MB ({z['zram_usado_mb']} MB em uso)."))
         return omni_checks.finish(out, acts, f)
 
@@ -1156,8 +1158,12 @@ class App:
                         "FPS (com o limite de FN + B) ou 60; o teto é 1296 MHz, ou tudo com o overclock "
                         "desbloqueado."),
                     tip(Choice("Limite da GPU", "device-gamepad-2", "gpu_max", D.get("gpu_freqs"),
-                               {f: f"{f} MHz" + (" (OC)" if f > 520 else "") for f in D.get("gpu_freqs")}),
-                        "Até onde a GPU vai nos ports. No menu ela fica sempre no mínimo."),
+                               {f: "Automático" if not f else f"{f} MHz" + (" (OC)" if f > 520 else "")
+                                for f in D.get("gpu_freqs")}),
+                        "Até onde a GPU vai nos ports. No menu ela fica sempre no mínimo. Automático: no jogo "
+                        "começa no mínimo e sobe só até o jogo chegar no FPS; o teto é 520 MHz, ou 600 MHz com o "
+                        "overclock desbloqueado. Com o processador também em Automático, sobe primeiro quem está "
+                        "segurando o jogo."),
                     tip(Choice("Memória extra (zram)", "database", "zram", ZRAM_SIZES,
                                {m: f"{m} MB" if m else "Desligada" for m in ZRAM_SIZES}),
                         "Memória comprimida para ports que pedem mais RAM. Desligada é o normal."),
@@ -3449,8 +3455,9 @@ class App:
                 self.toast = (f"Este arquivo não é um backup de {omni_backup.MODULES[module][0]}", "aviso",
                               self.t + 3.5)
             else:
-                self.ask(f"Importar {row['name']}?\nAs configurações atuais do Omni36OS "
-                         "são salvas antes, como \"antes-de-importar\".",
+                self.ask(f"Importar {row['name']}?\nO console volta ao ponto em que o backup foi feito "
+                         "(versão, configurações, Wi-Fi). O estado atual é salvo antes, como "
+                         "\"antes-de-importar\".",
                          lambda: self.backup_import(module, row["path"]), danger=True)
         start = next((i for i, r in enumerate(rows) if r.get("ok")), None)   # o backup compatível
         if not self.show_list(f"Importar · {path}", "folder", rows, pick, "Abrir / importar", start):
@@ -3465,6 +3472,14 @@ class App:
             text = str(res)
             self.modal = {"title": "Importação", "icon": "device-floppy", "buttons": ["OK"], "sel": 0,
                           "text": text}
+            if "Reinicie" in text:        # snapshot: a versão e os serviços só valem depois de reiniciar
+                def reboot():
+                    self.goodbye = "reiniciando"
+                    self.frame(0)
+                    self.g.present()
+                    if not FAKE:
+                        omni.power({"what": "reboot"})
+                self.modal.update(buttons=["Reiniciar agora", "Depois"], fns=[reboot, lambda: None])
             self.reload_findings()
         self.worker(lambda: "Teste: nada importado" if FAKE else omni_backup.import_(module, path), done,
                     busy="Importando...")

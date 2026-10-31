@@ -128,6 +128,11 @@ sudo imagem/gerar-imagem.sh        # -> ~/Apps/Omni36OS/output/Omni36OS-<VERSION
 - FN como chave (`FnGate` em `omni_atalho.py`): FN apertado → EVIOCGRAB no controle (event2), a tecla do atalho não
   chega ao jogo. Outra tecla (atalhos do ogage) ou FN solto → solta e devolve escrevendo no evdev. O kernel descarta
   tecla repetida: devolve como "vai e volta" (oposto + real) e pula os próprios ecos. Teste: um leitor de event2 + eventos escritos.
+- GPU também em Automático (`/etc/omni36os/gpu_auto`, mesmo `omni_cpuauto.py`): GPU ocupada (`load` do devfreq ≥ 80%)
+  sobe antes do processador; folgada (< 50%) desce antes. Imagem nova vem com os dois em Automático (gerar-imagem.sh).
+- Backup = snapshot (`omni_backup.py`, manifesto `snapshot=1`): /opt/omni36os inteiro, configs, /etc/omni36os, Wi-Fi,
+  hostname, authorized_keys, ALSA, brilho. Importar apaga o que surgiu depois nas mesmas pastas e pede reinício.
+  Backups antigos (sem snapshot=1) só mesclam.
 - Adaptador Realtek liga como disco (`0bda:1a2b`) e o udev troca para Wi-Fi (`0bda:c820`); a troca às vezes se perde
   → `omni_sistema.wifi_dongle_fix()` ao abrir o menu. O driver deixa a interface "up" sem rede: conectado = carrier + IPv4.
 - Bluetooth do adaptador (hci0) não funciona: firmware não carrega (btusb e rtk_btusb disputam); serviço desligado.

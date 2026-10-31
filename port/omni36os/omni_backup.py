@@ -1,8 +1,14 @@
-"""Backup do Omni36OS: exporta e importa as configurações de cada módulo como .tar.gz.
+"""Backup do Omni36OS: exporta e importa um snapshot do sistema como .tar.gz.
 
-Só configuração: saves, estados, cores, shaders, temas e bancos de dados ficam
-de fora (são grandes e não são "opções"). Cada arquivo leva um manifesto
-(omni36os-backup.txt) com o módulo, e a importação só extrai caminhos desse módulo.
+O snapshot leva tudo o que define o estado do console: a versão do Omni36OS (/opt/omni36os),
+as configurações (pasta do Omni36OS, Desempenho, overclock, Automático, zram, tela, gamma,
+som, brilho, troca de botões), as redes Wi-Fi, o nome do console, as chaves SSH e o banco do
+gerenciador de arquivos. Jogos, ports, saves e caches ficam de fora (estão nos cartões e são
+grandes). A importação volta o console exatamente a esse ponto: extrai o que o snapshot tem e
+apaga, nas mesmas pastas, o que surgiu depois; no fim pede para reiniciar.
+
+Cada arquivo leva um manifesto (omni36os-backup.txt); a importação só mexe em caminhos do
+módulo. Backups antigos (sem "snapshot=1") são só mesclados, como antes.
 """
 import fnmatch
 import glob
@@ -18,10 +24,17 @@ HOME = omni.HOME
 # módulo -> (nome na tela, caminhos/globs incluídos, pedaços de caminho excluídos)
 MODULES = {
     "omni36os": ("Omni36OS", [
-        f"{HOME}/.config/omni36os", f"{omni.OMNI_DIR}/logs/resultados.txt", f"{omni.OMNI_DIR}/logs/avisos_limpos.txt",
-        "/etc/cpu-settings.conf", "/etc/gpu-settings.conf", "/etc/dmc-settings.conf", "/etc/gamma-settings.conf",
-    ], ["/.config/omni36os/modo"]),   # o modo depende do es_systems.cfg deste console: não se importa
+        omni.OMNI_DIR, f"{HOME}/.config/omni36os", f"{HOME}/.config/filebrowser.db", f"{HOME}/.asoundrc",
+        f"{HOME}/.ssh/authorized_keys",
+        "/etc/omni36os", "/etc/cpu-settings.conf", "/etc/gpu-settings.conf", "/etc/dmc-settings.conf",
+        "/etc/gamma-settings.conf", "/etc/zram.conf", "/etc/hostname", "/etc/NetworkManager/system-connections",
+        "/var/lib/alsa/asound.state", "/var/lib/systemd/backlight", "/var/cache/Switch_AB", "/var/cache/Switch_XY",
+    ], ["/.config/omni36os/modo",      # o modo depende do es_systems.cfg deste console: não se importa
+        "/.config/omni36os/steam", "/__pycache__/",       # cache de fichas e bytecode: refeitos sozinhos
+        f"{omni.OMNI_DIR}/logs/", f"{omni.OMNI_DIR}/imagens/"]),
 }
+# os relatórios de teste ficam fora (logs/), menos os resultados e os avisos limpos
+KEEP = (f"{omni.OMNI_DIR}/logs/resultados.txt", f"{omni.OMNI_DIR}/logs/avisos_limpos.txt")
 MANIFEST = "omni36os-backup.txt"
 
 
@@ -58,7 +71,8 @@ def _files(module):
                     out += [os.path.join(dirpath, f) for f in files]
             elif os.path.isfile(p):
                 out.append(p)
-    return [f for f in out if not any(x in f for x in excl)]
+    return [f for f in out if f in KEEP or not any(x in f for x in excl)] + \
+        [f for f in KEEP if os.path.isfile(f) and f not in out]
 
 
 def allowed(module, member):
@@ -67,6 +81,8 @@ def allowed(module, member):
     if ".." in path.split("/"):
         return False
     _name, paths, excl = MODULES[module]
+    if path in KEEP:
+        return True
     if any(x in path for x in excl):
         return False
     for pat in paths:
@@ -89,7 +105,8 @@ def export(module, tag="", dest=None):
     os.makedirs(dest, exist_ok=True)
     name = f"{module}-{time.strftime('%Y%m%d-%H%M%S')}{tag}.tar.gz"
     path = os.path.join(dest, name)
-    info = f"module={module}\nsab={read_version()}\ndate={time.strftime('%d/%m/%Y %H:%M')}\nfiles={len(files)}\n"
+    info = (f"module={module}\nsab={read_version()}\ndate={time.strftime('%d/%m/%Y %H:%M')}\nfiles={len(files)}\n"
+            "snapshot=1\n")
     with tarfile.open(path, "w:gz") as tar:
         data = info.encode()
         ti = tarfile.TarInfo(MANIFEST)
@@ -126,12 +143,23 @@ def import_(module, path):
     export(module, "-antes-de-importar")
     n = 0
     with tarfile.open(path, "r:gz") as tar:
-        for mem in tar.getmembers():
-            if mem.name == MANIFEST or not (mem.isfile() or mem.isdir()) or not allowed(module, mem.name):
-                continue
+        members = [mem for mem in tar.getmembers() if mem.name != MANIFEST and (mem.isfile() or mem.isdir())
+                   and allowed(module, mem.name)]
+        if m.get("snapshot") == "1":     # snapshot: o que surgiu depois dele sai
+            keep = {"/" + mem.name.lstrip("/") for mem in members if mem.isfile()}
+            gone = [f for f in _files(module) if f not in keep]
+            for f in gone:
+                try:
+                    os.remove(f)
+                except OSError:
+                    pass
+        for mem in members:
             tar.extract(mem, "/", filter="fully_trusted")   # mantém dono e permissões
             n += mem.isfile()
     os.sync()
+    if m.get("snapshot") == "1":
+        return (f"Console de volta a {m.get('date', '?')} (Omni36OS {m.get('sab', '?').strip()}): "
+                f"{n} arquivo(s). Reinicie para tudo valer.")
     return f"{n} arquivo(s) restaurado(s) de {os.path.basename(path)}"
 
 
