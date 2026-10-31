@@ -541,6 +541,23 @@ static void draw(int W, int Hh)
         ;
 }
 
+/* FPS do jogo para o modo automático do processador (omni_cpuauto.py): o arquivo novo
+ * diz que há um jogo desenhando; parado há mais de 2 s, não há. */
+static void publish_fps(void)
+{
+    char b[16];
+    int n = snprintf(b, sizeof b, "%d\n", H.fps);
+    /* sem O_CREAT primeiro: o serviço de atalhos já cria o arquivo 0666, e o protected_regular
+     * do /dev/shm recusa O_CREAT em arquivo de outro dono */
+    int fd = open("/dev/shm/omni36os-fps", O_WRONLY | O_TRUNC);
+    if (fd < 0)
+        fd = open("/dev/shm/omni36os-fps", O_WRONLY | O_CREAT | O_TRUNC, 0666);
+    if (fd >= 0) {
+        write(fd, b, n);
+        close(fd);
+    }
+}
+
 static void frame(void *dpy, void *surf)
 {
     double t = now();
@@ -550,6 +567,7 @@ static void frame(void *dpy, void *surf)
     if (t - H.t0 >= 0.5) {
         H.fps = (int)(H.frames / (t - H.t0) + 0.5);
         H.frames = 0, H.t0 = t;
+        publish_fps();
     }
     poll_flags(t);
     int shot = want_shot();

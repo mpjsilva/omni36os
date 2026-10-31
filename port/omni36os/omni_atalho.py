@@ -26,6 +26,7 @@ import time
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import omni_audio          # noqa: E402
 import omni_combos as oc   # noqa: E402
+import omni_cpuauto        # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 PAD = "/dev/input/by-path/platform-odroidgo3-joypad-event-joystick"
@@ -37,6 +38,7 @@ CONF = os.path.join(USER.pw_dir, ".config/omni36os/atalhos.json")
 HUD_FLAG = "/dev/shm/omni36os-hud"
 CAP_FLAG = "/dev/shm/omni36os-fpscap"
 SHOT_FLAG = "/dev/shm/omni36os-shot"
+FPS_FLAG = omni_cpuauto.FPS_FILE   # o HUD escreve o FPS do jogo (usado pelo processador automático)
 UI_SHOT = "/dev/shm/omni36os-power/shot"   # fora de um jogo (o omni_ui.py lê e apaga)
 HUD_LIB = os.path.join(HERE, "hud", "omni_hud.so")
 BAT = "/sys/class/power_supply/battery"
@@ -74,6 +76,7 @@ def apply_flags(c=None):
     """Estado inicial do HUD: contador escondido e limite desligado (o atalho liga no jogo)."""
     put(HUD_FLAG, "0")
     put(CAP_FLAG, "0")
+    put(FPS_FLAG, "")      # criado aqui 0666: o jogo (ark ou root) só reescreve
 
 
 def pgrep(*args):
@@ -320,8 +323,12 @@ def main():
     signal.signal(signal.SIGHUP, lambda *_: apply_flags())
     fd = open_pad()
     down, since, waiting = set(), None, None
-    guard, route = BatteryGuard(), omni_audio.AutoRoute()
+    guard, route, cpu = BatteryGuard(), omni_audio.AutoRoute(), omni_cpuauto.AutoCpu()
     while True:
+        try:
+            cpu.tick()                   # "Limite do processador" em Automático
+        except Exception as e:
+            print(f"cpu automático: {e}", file=sys.stderr, flush=True)
         try:
             guard.tick()
         except Exception as e:           # a leitura da bateria nunca derruba os atalhos

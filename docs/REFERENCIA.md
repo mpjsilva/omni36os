@@ -121,6 +121,10 @@ sudo imagem/gerar-imagem.sh        # -> ~/Apps/Omni36OS/output/Omni36OS-<VERSION
 - HUD (FPS/captura/limite) tem duas versões, as duas no LD_PRELOAD: `hud/omni_hud.so` (aarch64) e `hud/omni_hud32.so`
   (armhf: Asphalt e outros jogos 32 bits). armhf: `podman run --rm -v "$PWD":/w:Z debian:trixie` + `gcc-arm-linux-gnueabihf`,
   `arm-linux-gnueabihf-gcc -O2 -fPIC -shared -nostdlib -o omni_hud32.so omni_hud.c`.
+- "Limite do processador" em Automático (`/etc/omni36os/cpu_auto`, valor 0 no seletor): `omni_cpuauto.py` roda no
+  laço do `omni_atalho.py` e mexe no `scaling_max_freq` (no jogo o governador é performance). Alvo = limite de FPS (FN + B)
+  ou 60; FPS lido de `/dev/shm/omni36os-fps`, que o HUD reescreve a cada 0,5 s (arquivo parado = sem jogo → teto).
+  Teto = 1296 MHz bloqueado / máximo do chip com overclock (e abaixo de 70 °C). Por isso o HUD entra no port também só pelo Automático.
 - Adaptador Realtek liga como disco (`0bda:1a2b`) e o udev troca para Wi-Fi (`0bda:c820`); a troca às vezes se perde
   → `omni_sistema.wifi_dongle_fix()` ao abrir o menu. O driver deixa a interface "up" sem rede: conectado = carrier + IPv4.
 - Bluetooth do adaptador (hci0) não funciona: firmware não carrega (btusb e rtk_btusb disputam); serviço desligado.

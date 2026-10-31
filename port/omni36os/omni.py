@@ -340,6 +340,7 @@ CPU_SAFE_MHZ = 1296      # padrão do Omni36OS; acima disso é overclock
 GPU_SAFE_MHZ = 520
 OC_FLAG = "/etc/omni36os/overclock"   # existe = overclock desbloqueado (aviso + 5 toques em Desempenho)
 OC_MAX_TEMP = 70         # °C: não libera overclock acima disso (1º ponto de corte do kernel)
+CPU_AUTO_FLAG = "/etc/omni36os/cpu_auto"   # existe = "Limite do processador" em Automático (omni_cpuauto.py)
 
 
 def read_conf(path):
@@ -458,7 +459,8 @@ def lock_oc(_args=None):
         os.remove(OC_FLAG)
     except FileNotFoundError:
         pass
-    set_cpu_max({"mhz": CPU_SAFE_MHZ})
+    if not cpu_auto():                   # no Automático o teto já desce sozinho para o padrão
+        set_cpu_max({"mhz": CPU_SAFE_MHZ})
     set_gpu_max({"mhz": GPU_SAFE_MHZ})
     return "Overclock bloqueado: processador até 1296 MHz e GPU até 520 MHz."
 
@@ -466,7 +468,7 @@ def lock_oc(_args=None):
 def apply_limits(_args=None):
     """Limites de Desempenho no hardware (fim do boot: até lá o omni36os-turbo deixa tudo no máximo).
     Bloqueado, nada passa do padrão, mesmo que a configuração diga outra coisa."""
-    cpu = int(read_conf(CPU_CONF).get("FREQ", CPU_SAFE_MHZ * 1000)) // 1000
+    cpu = auto_ceiling() if cpu_auto() else int(read_conf(CPU_CONF).get("FREQ", CPU_SAFE_MHZ * 1000)) // 1000
     gpu = int(read_conf(GPU_CONF).get("FREQ", GPU_SAFE_MHZ * 1000000)) // 1000000
     if not oc_unlocked():
         cpu, gpu = min(cpu, CPU_SAFE_MHZ), min(gpu, GPU_SAFE_MHZ)
@@ -478,25 +480,57 @@ def apply_limits(_args=None):
 
 
 def cpu_freqs(_args=None):
+    """Opções do "Limite do processador": 0 é Automático, depois os limites fixos."""
     top = int(read_text(f"{CPUFREQ}/cpuinfo_max_freq", "0")) // 1000
     if not oc_unlocked():
         top = min(top, CPU_SAFE_MHZ)
     avail = [int(f) // 1000 for f in read_text(f"{CPUFREQ}/scaling_available_frequencies", "").split()]
-    return [f for f in sorted(set(avail)) if CPU_SAFE_MHZ <= f <= top] or [CPU_SAFE_MHZ]
+    return [0] + ([f for f in sorted(set(avail)) if CPU_SAFE_MHZ <= f <= top] or [CPU_SAFE_MHZ])
+
+
+def cpu_auto(_args=None):
+    return os.path.exists(CPU_AUTO_FLAG)
+
+
+def auto_ceiling():
+    """Teto do Automático: com overclock desbloqueado, tudo o que o processador tem; bloqueado
+    (ou quente demais para overclock), o padrão."""
+    top = int(read_text(f"{CPUFREQ}/cpuinfo_max_freq", "0")) // 1000 or CPU_SAFE_MHZ
+    if not oc_unlocked() or temp_c() >= OC_MAX_TEMP:
+        top = min(top, CPU_SAFE_MHZ)
+    return top
+
+
+def auto_steps():
+    """Degraus do Automático: do mínimo do processador até o teto."""
+    top = auto_ceiling()
+    avail = sorted({int(f) // 1000 for f in read_text(f"{CPUFREQ}/scaling_available_frequencies", "").split()})
+    return [f for f in avail if f <= top] or [top]
 
 
 def get_cpu_max(_args=None):
+    if cpu_auto():
+        return 0
     return int(read_text(f"{CPUFREQ}/scaling_max_freq", "0")) // 1000
 
 
 def set_cpu_max(args):
     mhz = int(args["mhz"])
+    if mhz == 0:
+        os.makedirs(os.path.dirname(CPU_AUTO_FLAG), exist_ok=True)
+        write_text(CPU_AUTO_FLAG, "1\n")
+        write_text(f"{CPUFREQ}/scaling_max_freq", auto_ceiling() * 1000)
+        return "Processador automático: sobe só o necessário para o jogo chegar no FPS"
     if mhz > CPU_SAFE_MHZ and not oc_unlocked():
         return "Overclock bloqueado: desbloqueie em Desempenho."
     if mhz not in cpu_freqs():
         return f"Frequência indisponível: {mhz} MHz."
     if mhz > CPU_SAFE_MHZ and temp_c() >= OC_MAX_TEMP:
         return f"Está quente ({temp_c()} °C): o overclock só é liberado abaixo de {OC_MAX_TEMP} °C."
+    try:
+        os.remove(CPU_AUTO_FLAG)
+    except FileNotFoundError:
+        pass
     write_conf(CPU_CONF, FREQ=mhz * 1000)
     write_text(f"{CPUFREQ}/scaling_max_freq", mhz * 1000)
     return f"Processador até {mhz} MHz" + (" (overclock)" if mhz > CPU_SAFE_MHZ else "")

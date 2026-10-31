@@ -329,7 +329,7 @@ class Data:
             if what.startswith("at_"):
                 return omni_combos.defaults()[what[3:]]
             return {"brilho": 40, "volume": 60, "gov": "ondemand", "govs": ["powersave", "ondemand", "performance"],
-                    "part": "roms2", "pendrive": False, "cpu_max": 1296, "cpu_freqs": [1296, 1416, 1512],
+                    "part": "roms2", "pendrive": False, "cpu_max": 1296, "cpu_freqs": [0, 1296, 1416, 1512],
                     "gpu_max": 520, "gpu_freqs": [400, 480, 520, 600], "oc": False, "zram": 0, "fonte": "roms", "gamma": 1.0, "contraste": 50, "led": "verde", "remoto": "desligados", "busca": "ligada" if busca_on() else "desligada",
                     "inverter": "ligado" if swapped_ab() else "desligado",
                     "power": "desligar", "tema": THEME}[what]
@@ -596,7 +596,8 @@ TIPS = {
     "Trocar a senha": "Troca a senha do usuário omni, usada no SSH e no SFTP.",
     "Senha do Samba": "Troca a senha das pastas compartilhadas na rede (Samba).",
     "Trava por senha": "Pede a senha ao ligar o console, antes de abrir o menu.",
-    "Limite do processador": "Frequência máxima do processador. Acima de 1296 MHz é overclock: esquenta mais.",
+    "Limite do processador": "Frequência máxima do processador. Acima de 1296 MHz é overclock: esquenta mais. "
+                             "Automático sobe só o necessário para o jogo chegar no FPS.",
     "Limite da GPU": "Frequência máxima da GPU. Acima de 520 MHz é overclock: esquenta mais.",
     "Memória extra (zram)": "Usa parte da RAM comprimida como memória extra. Ajuda ports pesados que fecham por "
                             "falta de memória, com um pouco mais de uso do processador.",
@@ -987,7 +988,8 @@ class App:
         omni_checks.check_overclock(f, out, [])   # tirar o OC é o seletor "Limite do processador" daqui
         acts = []
         z = omni.zram_facts()
-        out.append(("info", f"Limites: processador {f['cpu_max_mhz']} MHz, GPU {f['gpu_max_mhz']} MHz. "
+        cpu = f"automático (até {omni.auto_ceiling()} MHz)" if not f["cpu_max_mhz"] else f"{f['cpu_max_mhz']} MHz"
+        out.append(("info", f"Limites: processador {cpu}, GPU {f['gpu_max_mhz']} MHz. "
                             f"ZRAM {z['zram_mb']} MB ({z['zram_usado_mb']} MB em uso)."))
         return omni_checks.finish(out, acts, f)
 
@@ -1147,9 +1149,12 @@ class App:
                     A("Trava por senha: " + ("ligada" if locked else "desligada"), "lock", self.ask_lock)]
         if cid == "desempenho":
             return [tip(Choice("Limite do processador", "gauge", "cpu_max", D.get("cpu_freqs"),
-                               {f: f"{f} MHz" + (" (OC)" if f > 1296 else "") for f in D.get("cpu_freqs")}),
+                               {f: "Automático" if not f else f"{f} MHz" + (" (OC)" if f > 1296 else "")
+                                for f in D.get("cpu_freqs")}),
                         "Até onde o processador vai nos ports. No menu ele fica sempre no mínimo, para esfriar e "
-                        "poupar bateria."),
+                        "poupar bateria. Automático: no jogo começa no mínimo e sobe só até o jogo chegar em 30 "
+                        "FPS (com o limite de FN + B) ou 60; o teto é 1296 MHz, ou tudo com o overclock "
+                        "desbloqueado."),
                     tip(Choice("Limite da GPU", "device-gamepad-2", "gpu_max", D.get("gpu_freqs"),
                                {f: f"{f} MHz" + (" (OC)" if f > 520 else "") for f in D.get("gpu_freqs")}),
                         "Até onde a GPU vai nos ports. No menu ela fica sempre no mínimo."),
