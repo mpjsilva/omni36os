@@ -5,7 +5,8 @@ sem bibliotecas (struct input_event). O que existe, os botões padrão e os nome
 omni_combos.py; o jogador liga, desliga e troca os botões em Controles > Atalhos
 (~/.config/omni36os/atalhos.json). Padrão:
 
-- FN + X: mostra ou esconde o contador de FPS (com temperatura e bateria).
+- FN + X: contador de FPS (com temperatura e bateria); de novo, junto a frequência do processador e
+  da GPU; de novo, esconde.
 - FN + B: liga ou desliga o limite de 30 FPS.
 - FN + Y: captura de tela em <pasta do jogo>/imagens; fora de um jogo, a do menu em /roms/imagens.
 - SELECT + START (segurar 1 s): fecha o jogo e volta ao Omni36OS.
@@ -186,7 +187,8 @@ def tap(key):
             put(UI_SHOT, int(time.time() * 1000))
         return
     if key == "fps":
-        put(HUD_FLAG, "0" if read_flag(HUD_FLAG) == "1" else "1")
+        # ciclo: desligado -> FPS -> FPS + frequência do processador e da GPU -> desligado
+        put(HUD_FLAG, {"0": "1", "1": "2"}.get(read_flag(HUD_FLAG), "0"))
     elif key == "captura":
         put(SHOT_FLAG, int(time.time() * 1000))
     elif key == "limite":

@@ -3012,9 +3012,9 @@ class App:
                 {"name": "Reiniciar o console", "icon": "refresh", "do": "reboot"},
                 {"name": "Desligar o console", "icon": "power", "do": "poweroff"}]
         if HUB == "jogo" or os.environ.get("OMNI_JOGO") == "1":   # aberto por cima de um jogo
-            hud, cap = flag(HUD_FLAG) == "1", flag(CAP_FLAG) not in ("", "0")
-            rows = [{"name": "Esconder o contador de FPS" if hud else "Mostrar o contador de FPS", "icon": "gauge",
-                     "do": "hud"},
+            hud, cap = flag(HUD_FLAG), flag(CAP_FLAG) not in ("", "0")
+            rows = [{"name": {"1": "Contador: mostrar também CPU e GPU", "2": "Esconder o contador de FPS"}.get(
+                         hud, "Mostrar o contador de FPS"), "icon": "gauge", "do": "hud"},
                     {"name": "Tirar o limite de 30 FPS" if cap else "Limitar a 30 FPS", "icon": "battery-2",
                      "do": "cap"},
                     {"name": "Captura de tela", "icon": "device-tv", "do": "shot"},
@@ -3066,7 +3066,7 @@ class App:
             self.toast = (f"Teste: {what}", "ok", self.t + 3)
             return
         if what == "hud":
-            put_flag(HUD_FLAG, "0" if flag(HUD_FLAG) == "1" else "1")
+            put_flag(HUD_FLAG, {"0": "1", "1": "2"}.get(flag(HUD_FLAG), "0"))   # mesmo ciclo do FN + X
         elif what == "cap":
             put_flag(CAP_FLAG, "0" if flag(CAP_FLAG) not in ("", "0") else omni_combos.CAP_FPS)
         elif what == "shot":

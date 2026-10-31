@@ -5,7 +5,7 @@
  * o estado do GL que mexe, então o jogo não percebe.
  *
  * Controlado por arquivos em /dev/shm (escritos pelo omni_atalho.py):
- *   omni36os-hud     "1" mostra o contador
+ *   omni36os-hud     "1" mostra o contador; "2" também a frequência do processador e da GPU
  *   omni36os-fpscap  N > 0 limita o jogo a N quadros/s (economiza bateria)
  *   omni36os-shot    um número; quando muda, salva a tela em <pasta do jogo>/imagens
  *
@@ -243,7 +243,7 @@ static const unsigned char *glyph(char c)
         {14, 17, 17, 15, 1, 2, 12}};
     static const struct { char c; unsigned char b[7]; } X[] = {
         {'A', {14, 17, 17, 31, 17, 17, 17}}, {'C', {14, 17, 16, 16, 16, 17, 14}},
-        {'F', {31, 16, 16, 30, 16, 16, 16}}, {'L', {16, 16, 16, 16, 16, 16, 31}},
+        {'F', {31, 16, 16, 30, 16, 16, 16}}, {'G', {14, 17, 16, 23, 17, 17, 15}}, {'L', {16, 16, 16, 16, 16, 16, 31}},
         {'P', {30, 17, 17, 30, 16, 16, 16}}, {'R', {30, 17, 17, 30, 20, 18, 17}},
         {'S', {15, 16, 16, 14, 1, 1, 30}}, {'T', {31, 4, 4, 4, 4, 4, 4}},
         {'U', {17, 17, 17, 17, 17, 17, 14}}, {'V', {17, 17, 17, 17, 17, 10, 4}},
@@ -301,7 +301,8 @@ static float text(const char *s, float x, float y, float px, const float *c)
 
 static struct {
     double t0, last_frame, flags_at, sens_at, toast_until;
-    int frames, fps, temp, bat, charging, show, cap;
+    int frames, fps, temp, bat, charging, show, clk, cpu, gpu, cap;
+    double clk_at;
     long shot_seen;
     int shot_init;
 } H = {.fps = -1};
@@ -317,7 +318,13 @@ static void poll_flags(double t)
     if (t - H.flags_at < 0.5)
         return;
     H.flags_at = t;
-    H.show = read_small("/dev/shm/omni36os-hud", b, sizeof b) > 0 && b[0] == '1';
+    H.show = read_small("/dev/shm/omni36os-hud", b, sizeof b) > 0 && (b[0] == '1' || b[0] == '2');
+    H.clk = H.show && b[0] == '2';
+    if (H.clk && t - H.clk_at >= 1.0) {          /* MHz atuais (o processador Automático muda) */
+        H.clk_at = t;
+        H.cpu = (int)(read_num("/sys/devices/system/cpu/cpufreq/policy0/scaling_cur_freq", 0) / 1000);
+        H.gpu = (int)(read_num("/sys/class/devfreq/ff400000.gpu/cur_freq", 0) / 1000000);
+    }
     H.cap = (int)read_num("/dev/shm/omni36os-fpscap", 0);
     if (t - H.sens_at >= 2.0 || H.sens_at == 0) {
         H.sens_at = t;
@@ -436,6 +443,20 @@ static void build(int W, int Hh)
         cx += px + gap;
         cx = text(H.charging ? "~" : "]", cx, ty, px, bc) + px * 2;
         text(c, cx, ty, px, bc);
+        if (H.clk) {                                /* segunda pílula: CPU e GPU em MHz */
+            snprintf(a, sizeof a, "%d", H.cpu);
+            snprintf(b, sizeof b, "%d", H.gpu);
+            float y2 = y + h + gap;
+            w = pad + text_w("CPU", px) + px * 3 + text_w(a, px) + gap * 2 + px +
+                text_w("GPU", px) + px * 3 + text_w(b, px) + pad;
+            quad(x, y2, w, h, BG);
+            cx = text("CPU", x + pad, y2 + pad, px, DIM) + px * 2;
+            cx = text(a, cx, y2 + pad, px, WHITE) - px + gap;
+            quad(cx, y2 + pad - px, px, h - 2 * pad + 2 * px, LINE);
+            cx += px + gap;
+            cx = text("GPU", cx, y2 + pad, px, DIM) + px * 2;
+            text(b, cx, y2 + pad, px, WHITE);
+        }
     }
     if (now() < H.toast_until) {
         const char *msg = "CAPTURA SALVA";

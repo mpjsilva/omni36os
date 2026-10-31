@@ -78,8 +78,9 @@ def problem(key, codes, combos):
 def tip(key, combos):
     t = text(combos[key])
     return {
-        "fps": f"{t} mostra e esconde, no jogo, uma pílula com quadros por segundo, temperatura e bateria. As "
-               "cores avisam: FPS baixo, console quente, bateria no fim.",
+        "fps": f"{t} mostra, no jogo, uma pílula com quadros por segundo, temperatura e bateria. De novo, "
+               "aparece também a frequência do processador e da GPU (MHz); de novo, esconde. As cores avisam: "
+               "FPS baixo, console quente, bateria no fim.",
         "limite": f"{t} trava o jogo em {CAP_FPS} FPS e solta de novo. Em jogo leve economiza bateria e esquenta "
                   "menos. Um traço roxo no contador mostra que está ligado.",
         "captura": f"{t} salva a tela do jogo (sem o contador) na pasta imagens dentro da pasta do jogo.",
