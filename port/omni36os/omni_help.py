@@ -4,6 +4,10 @@ Linhas que começam com "# " viram títulos no leitor."""
 
 # A versão em uso vem do arquivo VERSION. Aqui fica só ela; o histórico completo está no NOVIDADES.md.
 NOVIDADES = [
+    ("1.15.14", "30/10/2026", [
+        'Aviso de bateria fraca some sozinho quando o carregador é conectado, e aparece "Carregando".',
+        'LED: com o carregador ligado, a bateria fraca não faz mais o LED piscar (vale para cartões novos e imagens novas).',
+    ]),
     ("1.15.13", "30/10/2026", [
         'Busca de capas e descrições volta a funcionar em redes cujo roteador não responde às consultas IPv6: o Omni36OS resolve os nomes só em IPv4 (cada site levava uns 6 s só para achar o endereço, e a busca estourava o tempo).',
     ]),

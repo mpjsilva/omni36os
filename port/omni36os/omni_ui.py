@@ -224,6 +224,12 @@ def swapped_ab():
 
 # --- dados (reais ou de mentira) ---
 
+def charging_now():
+    if FAKE:
+        return os.path.exists("/tmp/omni36os-carregando")    # simulador: crie o arquivo para "ligar" o carregador
+    return omni.read_text("/sys/class/power_supply/battery/status", "") in ("Charging", "Full")
+
+
 def ipv4(iface):
     """IPv4 da interface (ou "") sem chamar programa: um ioctl SIOCGIFADDR."""
     import fcntl
@@ -3136,6 +3142,10 @@ class App:
             self.power_menu(button=True)
         if self.want_msg or self.t - self.msg_t > 1.5:
             self.want_msg, self.msg_t = False, self.t
+            # aviso de bateria fraca na tela e o carregador entrou: o aviso some sozinho
+            if self.modal and self.modal.get("bat") and charging_now():
+                self.modal = None
+                self.toast = ("Carregando", "ok", self.t + 2.5)
             try:
                 with open(PANIC_MSG) as f:
                     msg = f.read().strip()
@@ -3149,7 +3159,8 @@ class App:
                     title, _, text = f.read().strip().partition("\n")
                 os.remove(BAT_MSG)
                 if title:
-                    self.modal = {"title": title, "icon": "battery-2", "sel": 0, "buttons": ["OK"], "text": text}
+                    self.modal = {"title": title, "icon": "battery-2", "sel": 0, "buttons": ["OK"], "text": text,
+                                  "bat": title != "Desligando"}
             except OSError:
                 pass
 

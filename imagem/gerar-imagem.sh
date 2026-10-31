@@ -96,7 +96,8 @@ SIS=(etc/hostname etc/hosts etc/zram.conf etc/hostapd/hostapd.conf
      usr/local/bin/BaRT_QuickMode.sh usr/local/bin/arkos_ap_mode.sh usr/local/bin/b_swap.sh
      usr/local/bin/finish.sh usr/local/bin/omni36os-start usr/local/bin/omni36os-tela
      usr/local/bin/perfmax usr/local/bin/perfnorm usr/local/bin/perfnorm.omni36os-bak
-     usr/share/plymouth/themes/text.plymouth opt/inttools/osk.py opt/omni36os-telas home/ark/usb-disco.sh)
+     usr/share/plymouth/themes/text.plymouth opt/inttools/osk.py opt/omni36os-telas home/ark/usb-disco.sh
+     usr/local/bin/batt_life_warning.py usr/local/bin/batt_life_warning.py.red usr/local/bin/batt_life_warning.py.green)
 for f in "${SIS[@]}"; do
   mkdir -p "$R/$(dirname "$f")"
   cp -a "$CARD/$f" "$R/$(dirname "$f")/"
