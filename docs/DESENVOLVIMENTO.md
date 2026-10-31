@@ -1,6 +1,6 @@
 # Omni36OS: notas de desenvolvimento
 
-> Notas internas escritas até a 1.5.0. Partes estão desatualizadas; o README da raiz descreve o sistema atual.
+> Notas internas escritas até a 1.5.0, guardadas como histórico. Os scripts de migração citados aqui (instalar-launcher, trocar-shell, validar-implementacao, aplicar-telas-e-marca) e a pasta dArkOSen extraída foram removidos em 30/10/2026. Para o estado atual, leia `docs/REFERENCIA.md`.
 
 Sistema **só de ports** para o R36S (RK3326). A base é a imagem dArkOSen_R36_10152026, com Debian trixie em aarch64.
 

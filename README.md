@@ -98,6 +98,7 @@ Os atalhos se personalizam em Controles > Atalhos. O manual completo está no pr
 - `imagem/gerar-imagem.sh`: monta a imagem de distribuição a partir da imagem original do dArkOSen. Tira o ES, o RetroArch e os emuladores e instala o Omni36OS e os arquivos de sistema.
 - `tests/`: testes automáticos (`python3 tests/run.py`).
 - **Simulador no PC:** `cd port/omni36os && OMNI_FAKE=1 OMNI_WINDOWED=1 python3 omni_ui.py`. Enter é A, Backspace é B, as setas são o direcional e F12 faz a captura de tela.
+- Referência do projeto (pastas, módulos, rotina, imagem e release): [docs/REFERENCIA.md](docs/REFERENCIA.md).
 - Notas internas antigas: [docs/DESENVOLVIMENTO.md](docs/DESENVOLVIMENTO.md).
 
 ## Agradecimentos
