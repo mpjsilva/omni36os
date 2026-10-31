@@ -4,6 +4,9 @@ Linhas que começam com "# " viram títulos no leitor."""
 
 # A versão em uso vem do arquivo VERSION. Aqui fica só ela; o histórico completo está no NOVIDADES.md.
 NOVIDADES = [
+    ("1.15.13", "30/10/2026", [
+        'Busca de capas e descrições volta a funcionar em redes cujo roteador não responde às consultas IPv6: o Omni36OS resolve os nomes só em IPv4 (cada site levava uns 6 s só para achar o endereço, e a busca estourava o tempo).',
+    ]),
     ("1.15.12", "30/10/2026", [
         'Pílula de estado: o Wi-Fi só aparece conectado com rede e IP de verdade (o adaptador Realtek dizia "ligado" mesmo sem rede).',
         'Adaptador de Wi-Fi Realtek preso no modo "disco" depois do boot (às vezes a troca para placa de Wi-Fi se perde): o Omni36OS percebe e religa sozinho.',

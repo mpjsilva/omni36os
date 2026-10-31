@@ -20,6 +20,7 @@ import html
 import json
 import os
 import re
+import socket
 import threading
 import time
 import urllib.parse
@@ -31,6 +32,23 @@ PM_LIST = "https://github.com/PortsMaster/PortMaster-New/releases/latest/downloa
 PM_RAW = "https://raw.githubusercontent.com/PortsMaster/PortMaster-New/main/ports"
 PM_INDEX = os.path.join(CACHE, "_portmaster.json")   # versão enxuta do catálogo
 UA = {"User-Agent": "Omni36OS"}
+
+# Só IPv4 na resolução de nomes: o console não tem IPv6, e há roteadores que não respondem à pergunta
+# de endereço IPv6 (AAAA) — cada nome levava ~6 s esperando essa resposta, e a busca inteira (Steam,
+# PortMaster, Wikipédia, DuckDuckGo, capa) estourava o tempo. Se só houver IPv6, usa o normal.
+_getaddrinfo = socket.getaddrinfo
+
+
+def _getaddrinfo_v4(host, port, family=0, *args, **kw):
+    if family == 0:
+        try:
+            return _getaddrinfo(host, port, socket.AF_INET, *args, **kw)
+        except socket.gaierror:
+            pass
+    return _getaddrinfo(host, port, family, *args, **kw)
+
+
+socket.getaddrinfo = _getaddrinfo_v4
 _busy = set()
 _lock = threading.Lock()
 _pm_lock = threading.Lock()

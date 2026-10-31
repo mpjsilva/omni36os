@@ -2,6 +2,10 @@
 
 Histórico completo. Dentro do console (Geral > Sobre > Novidades) aparece só a versão em uso.
 
+## 1.15.13 (30/10/2026)
+
+- Busca de capas e descrições volta a funcionar em redes cujo roteador não responde às consultas IPv6: o Omni36OS resolve os nomes só em IPv4 (cada site levava uns 6 s só para achar o endereço, e a busca estourava o tempo).
+
 ## 1.15.12 (30/10/2026)
 
 - Pílula de estado: o Wi-Fi só aparece conectado com rede e IP de verdade (o adaptador Realtek dizia "ligado" mesmo sem rede).
