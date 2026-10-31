@@ -13,6 +13,7 @@ omni_combos.py; o jogador liga, desliga e troca os botões em Controles > Atalho
 O contador, a captura e o limite são desenhados pelo hud/omni_hud.so, carregado nos
 ports com LD_PRELOAD pelo launch-direct.sh; aqui só mudam os arquivos em /dev/shm.
 """
+import fcntl
 import json
 import os
 import pwd
@@ -31,7 +32,8 @@ import omni_cpuauto        # noqa: E402
 HERE = os.path.dirname(os.path.abspath(__file__))
 PAD = "/dev/input/by-path/platform-odroidgo3-joypad-event-joystick"
 HOLD = 1.0
-EV_KEY = 1
+EV_SYN, EV_KEY, EV_ABS = 0, 1, 3
+EVIOCGRAB = 0x40044590
 EVENT = struct.Struct("llHHi")   # timeval (64 bits no aarch64), tipo, código, valor
 USER = pwd.getpwnam("ark")
 CONF = os.path.join(USER.pw_dir, ".config/omni36os/atalhos.json")
@@ -298,11 +300,81 @@ def safe_call(fn, key):
         print(f"atalho {key}: {e}", file=sys.stderr, flush=True)
 
 
+class FnGate:
+    """FN como chave: enquanto ele está apertado, o controle fica só com o Omni36OS (EVIOCGRAB),
+    então a tecla de um atalho (FN + X...) não chega ao jogo. Outra tecla com o FN (os atalhos do
+    ogage: brilho, gamma, ajustes) solta o controle e é devolvida a todos (escrever no evdev injeta
+    o evento), igual a antes. Ao soltar o FN, ele também é devolvido: ninguém fica com o FN preso.
+    Os analógicos com o FN apertado ficam guardados e são devolvidos na posição final.
+
+    O kernel guarda o estado de cada tecla e descarta evento repetido: o que já passou por ele
+    durante o grab só chega aos outros se for devolvido como "vai e volta" (o oposto, depois o
+    real). O Omni36OS também lê o que devolve: esses ecos são reconhecidos e pulados."""
+
+    def __init__(self, fd):
+        self.fd, self.on, self.since, self.abs, self.echo = fd, False, 0.0, {}, []
+
+    def grab(self, flag):
+        try:
+            fcntl.ioctl(self.fd, EVIOCGRAB, 1 if flag else 0)
+            self.on, self.since = flag, time.monotonic()
+        except OSError as e:
+            self.on = False
+            print(f"fn grab: {e}", file=sys.stderr, flush=True)
+
+    def inject(self, events):
+        out = []
+        for t, c, v in events:
+            for x in ((t, c, 0 if v else 1), (t, c, v)) if t == EV_KEY else ((t, c, v + 1), (t, c, v)):
+                out.append(EVENT.pack(0, 0, *x) + EVENT.pack(0, 0, EV_SYN, 0, 0))
+                self.echo.append(x)
+        try:
+            os.write(self.fd, b"".join(out))
+        except OSError as e:
+            self.echo = []
+            print(f"fn inject: {e}", file=sys.stderr, flush=True)
+
+    def release(self, pending):
+        """Solta o controle e devolve o que só o Omni36OS viu."""
+        self.grab(False)
+        self.inject([(EV_ABS, c, v) for c, v in self.abs.items()] + pending)
+        self.abs = {}
+
+    def filter(self, events, keys):
+        """events: [(tipo, código, valor)] de uma leitura; keys: teclas dos atalhos com FN.
+        Devolve os eventos sem os ecos do que o próprio Omni36OS devolveu. Eventos lidos com o
+        controle agarrado só chegaram aqui: os que não são atalho voltam para todos."""
+        out, owed = [], False            # owed: o resto desta leitura também foi só nosso
+        for ev in events:
+            typ, code, val = ev
+            if typ == EV_SYN:
+                continue
+            if self.echo and ev == self.echo[0]:
+                self.echo.pop(0)
+                continue
+            out.append(ev)
+            if self.on:
+                if typ == EV_ABS:
+                    self.abs[code] = val
+                elif typ == EV_KEY and code not in keys:
+                    self.release([ev])                 # FN solto ou atalho do sistema: volta ao normal
+                    owed = True
+                continue                               # a tecla do atalho: só o Omni36OS
+            if typ == EV_KEY and code == oc.FN and val == 1 and keys:
+                self.grab(True)                        # o FN em si já chegou a todos
+                owed = False
+            elif owed:
+                self.inject([ev])
+        if len(self.echo) > 64:          # eco perdido (controle reaberto): não pula evento de verdade
+            self.echo = []
+        return out
+
+
 def open_pad():
     """Espera o controle aparecer (no boot ele pode vir depois deste serviço)."""
     while True:
         try:
-            return os.open(PAD, os.O_RDONLY)
+            return os.open(PAD, os.O_RDWR)    # escrita: devolver teclas ao jogo (FnGate)
         except OSError:
             time.sleep(1)
 
@@ -322,6 +394,7 @@ def main():
         print(f"apelido: {e}", file=sys.stderr, flush=True)
     signal.signal(signal.SIGHUP, lambda *_: apply_flags())
     fd = open_pad()
+    gate = FnGate(fd)
     down, since, waiting = set(), None, None
     guard, route, cpu = BatteryGuard(), omni_audio.AutoRoute(), omni_cpuauto.AutoCpu()
     while True:
@@ -346,10 +419,15 @@ def main():
             except OSError:
                 pass
             fd, down, since, waiting = open_pad(), set(), None, None
+            gate = FnGate(fd)
             continue
         if data:
-            for k in range(0, len(data) - EVENT.size + 1, EVENT.size):
-                _s, _us, typ, code, val = EVENT.unpack_from(data, k)
+            evs = [EVENT.unpack_from(data, k)[2:] for k in range(0, len(data) - EVENT.size + 1, EVENT.size)]
+            try:
+                evs = gate.filter(evs, {c for cb in active("toque").values() if oc.FN in cb for c in cb - {oc.FN}})
+            except Exception as e:       # a chave do FN nunca derruba os atalhos
+                print(f"fn: {e}", file=sys.stderr, flush=True)
+            for typ, code, val in evs:
                 if typ != EV_KEY or val == 2:
                     continue
                 if val:
@@ -361,6 +439,8 @@ def main():
                     down.discard(code)
                 waiting = next((key for key, cb in active("segurar").items() if down == cb), None)
                 since = time.monotonic() if waiting else None
+        elif gate.on and time.monotonic() - gate.since > 15:   # FN agarrado sem soltar: devolve
+            gate.release([])
         if since is not None and time.monotonic() - since >= HOLD:
             key, since, waiting = waiting, None, None
             down = set()
