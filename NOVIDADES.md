@@ -2,6 +2,10 @@
 
 Histórico completo. Dentro do console (Geral > Sobre > Novidades) aparece só a versão em uso.
 
+## 1.15.16 (30/10/2026)
+
+- Biblioteca de ports: o A abre o jogo direto. A segunda tela (ficha com Jogar e Voltar) saiu, já que a lista mostra a capa e a descrição.
+
 ## 1.15.15 (30/10/2026)
 
 - Aviso de bateria fraca também por cima das ferramentas do sistema: a ferramenta congela, o aviso aparece e, no OK (ou ao ligar o carregador), ela continua de onde estava.

@@ -2874,9 +2874,9 @@ class App:
             else:
                 prev = [i for i in range(k) if first(i) != cur]
                 lb["game"] = next((i for i in range(len(games)) if prev and first(i) == first(prev[-1])), 0)
-        elif cmd == "ok":
+        elif cmd == "ok":            # a lista já mostra capa e descrição: A abre o jogo direto
             s, g = games[min(lb["game"], len(games) - 1)]
-            self.open_sheet(s, g)
+            self.play(s, g)
 
     def meta(self, name, path=""):
         """Ficha do jogo (cache em memória): pasta info do port + PortMaster/Steam.
@@ -2997,7 +2997,7 @@ class App:
                 local.pop(1)                  # sem espaço: fica o cartão e o mais útil (o fim)
                 ln = " · ".join(local)
             g.text("Medium", 11, ln, px + 14, py + ph - 24, FAINT)
-        self.draw_footer([("A", "Ver o jogo", TEXT), ("LR", "Página", MUTED), ("L1 / R1", "Letra", MUTED),
+        self.draw_footer([("A", "Jogar", TEXT), ("LR", "Página", MUTED), ("L1 / R1", "Letra", MUTED),
                           ("B", "Voltar", MUTED)])
 
     def power_menu(self, button=False):
