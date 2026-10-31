@@ -4,6 +4,13 @@ Linhas que começam com "# " viram títulos no leitor."""
 
 # A versão em uso vem do arquivo VERSION. Aqui fica só ela; o histórico completo está no NOVIDADES.md.
 NOVIDADES = [
+    ("1.15.19", "31/10/2026", [
+        'Processador e GPU em Automático (Desempenho): no jogo começam no mínimo e sobem um degrau por vez só até o jogo chegar em 60 FPS (ou 30, com o limite do FN + B). A carga da GPU decide quem sobe primeiro. Teto de 1296/520 MHz, ou tudo com o overclock desbloqueado. Imagens novas já vêm assim.',
+        'Contador de FPS também em jogos 32 bits (Asphalt e outros), com captura de tela e limite de FPS.',
+        'FN + X em ciclo: FPS; depois FPS com a frequência do processador e da GPU na mesma pílula; depois esconde.',
+        'Com o FN apertado, a tecla do atalho (FN + X, B, Y) não chega mais ao jogo. Os atalhos do sistema com FN continuam funcionando.',
+        'Backup vira snapshot: guarda a versão do Omni36OS, todas as configurações, as redes Wi-Fi, o nome do console, as chaves SSH, o som e o brilho. Importar volta o console exatamente ao ponto do backup e pede para reiniciar.',
+    ]),
     ("1.15.18", "31/10/2026", [
         'Runtimes do PortMaster que faltam são baixados da internet antes de abrir o port (não são mais copiados do cartão 2). Sem internet, copie o arquivo pelo PC para tools/PortMaster/libs no cartão do sistema.',
         'Resultado do teste de port: textos longos, como o caminho do relatório, não passam mais da caixa.',
