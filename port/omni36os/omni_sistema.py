@@ -860,7 +860,7 @@ def dtb_status():
         return [("aviso", f"{DTB} não existe nesta placa (DTB de outro modelo).")]
     d = _dts()
     if d is None:
-        return [("problema", "Não deu para ler o DTB.")]
+        return [("problema", "Não foi possível ler o DTB.")]
     oc = all(f"opp-{f}000000" in d for f in OC_FREQS)
     gpu = "opp-600000000" in d
     m = re.search(r"design_capacity = <(0x[0-9a-f]+|\d+)>", d)
@@ -898,7 +898,7 @@ def _backup():
 def dtb_overclock():
     d = _dts()
     if d is None:
-        return "Não deu para ler o DTB."
+        return "Não foi possível ler o DTB."
     if all(f"opp-{f}000000" in d for f in OC_FREQS) and "opp-600000000" in d:
         return "O overclock já está aplicado."
     lines, out, i = d.split("\n"), [], 0
@@ -944,7 +944,7 @@ def dtb_overclock():
 def dtb_battery():
     d = _dts()
     if d is None:
-        return "Não deu para ler o DTB."
+        return "Não foi possível ler o DTB."
     if 'compatible = "rk817,battery"' not in d:
         return "Este DTB não tem o nó de bateria rk817: nada foi mudado."
     if re.search(r"design_capacity = <(0xc44|3140)>", d):

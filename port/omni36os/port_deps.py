@@ -129,7 +129,7 @@ def main(script):
             falhas.append(f"{label}: {e}")
     gauge.close()
     if falhas:
-        message("Não deu para baixar:\n" + "\n".join(falhas) +
+        message("Não foi possível baixar:\n" + "\n".join(falhas) +
                 "\n\nConecte o Wi-Fi e abra o jogo de novo, ou copie o arquivo pelo PC para "
                 "tools/PortMaster/libs no cartão do sistema.")
         return 1
