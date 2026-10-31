@@ -137,6 +137,26 @@ mount_card2() {
 }
 mount_card2
 
+# Port do cartão 2: os scripts do PortMaster acham a pasta do jogo por "/$directory/ports/<pasta>", e o
+# control.txt só usa roms2 quando o /etc/fstab cita /roms2 (o Omni36OS monta o cartão 2 sozinho). Por
+# isso, enquanto um port do cartão 2 roda, /roms/ports mostra a pasta ports do cartão 2 (bind), e
+# volta ao normal quando ele fecha. Uma sobra (o launcher caiu no meio de um jogo) é desfeita aqui.
+PORTS_BOUND=""
+ports_card2_begin() {
+    case "$1" in
+        /roms2/ports/*)
+            if [ -d /roms2/ports ] && ! mountpoint -q /roms/ports; then
+                sudo mkdir -p /roms/ports
+                sudo mount --bind /roms2/ports /roms/ports && PORTS_BOUND=1
+            fi ;;
+    esac
+}
+ports_card2_end() {
+    [ -n "$PORTS_BOUND" ] && sudo umount /roms/ports 2>/dev/null
+    PORTS_BOUND=""
+}
+mountpoint -q /roms/ports && sudo umount /roms/ports 2>/dev/null
+
 # Loop principal: launcher → port → launcher → ...
 RESUME=""
 CRASHES=0
@@ -174,8 +194,10 @@ while true; do
         # Card "Testar ports": o port tem a tela e o launcher volta com o resultado
         test:/roms/ports/*.sh|test:/roms2/ports/*.sh)
             port_begin
+            ports_card2_begin "${next#test:}"
             bash "$OMNI_DIR/port_test.sh" "${next#test:}"
             kill_gptokeyb
+            ports_card2_end
             port_end
             RESUME="testar"
             continue ;;
@@ -186,8 +208,10 @@ while true; do
             if [ -n "$cmd" ] && [ -e "$rom" ]; then
                 sudo chmod 666 /dev/tty1
                 port_begin
+                ports_card2_begin "$rom"
                 OMNI_GAME_DIR="$(game_dir "$rom")" LD_PRELOAD="$(hud_preload)" bash -c "$cmd" > /tmp/omni36os-game.log 2>&1
                 kill_gptokeyb             # port que caiu antes do pm_finish deixa o gptokeyb rodando
+                ports_card2_end
                 port_end
                 printf "\033c" > /dev/tty1
             fi

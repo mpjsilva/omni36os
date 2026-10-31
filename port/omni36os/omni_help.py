@@ -4,6 +4,9 @@ Linhas que começam com "# " viram títulos no leitor."""
 
 # A versão em uso vem do arquivo VERSION. Aqui fica só ela; o histórico completo está no NOVIDADES.md.
 NOVIDADES = [
+    ("1.15.11", "30/10/2026", [
+        'Ports do cartão 2 abrem mesmo sem a pasta do jogo no cartão 1: enquanto um deles roda, /roms/ports mostra a pasta ports do cartão 2 (os scripts do PortMaster procuram o jogo lá).',
+    ]),
     ("1.15.10", "30/10/2026", [
         'Lista de ports: cada jogo mostra em qual cartão está (ícone de cartão SD com o número 1 ou 2), e a ficha do jogo diz "Cartão 1" ou "Cartão 2".',
     ]),

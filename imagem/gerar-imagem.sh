@@ -56,7 +56,7 @@ tar -xf "$R/roms.tar" -C "$T" roms/ports roms/backup roms/tools/PortMaster roms/
 mkdir -p "$T/roms/themes" "$T/roms/bios"
 # runtimes mais usados do PortMaster já no cartão (Mono, GameMaker, Godot/FRT 3.x-4.x, Weston/Mesa):
 # os ports que pedem um deles abrem sem baixar nada. Lista e cópia em $RUNTIMES (fora do repositório).
-RUNTIMES=${RUNTIMES:-$HOME/Apps/Omni36OS/runtimes}
+RUNTIMES=${RUNTIMES:-$BASE/runtimes}         # roda com sudo: $HOME seria o do root
 if compgen -G "$RUNTIMES/*.squashfs" >/dev/null; then
   mkdir -p "$T/roms/tools/PortMaster/libs"
   cp "$RUNTIMES"/*.squashfs "$T/roms/tools/PortMaster/libs/"
