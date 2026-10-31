@@ -3332,7 +3332,8 @@ class App:
             kind = os.environ.get("OMNI_FAKE_TESTE", "")
             if not kind:
                 return
-            r = {"nome": "Halo - Combat Evolved", "resultado": kind, "segundos": "2", "relatorio": ""}
+            r = {"nome": "TMNTShreddersRevenge", "resultado": kind, "segundos": "2",
+                 "relatorio": "/opt/omni36os/logs/TMNTShreddersRevenge/2026-10-31_09-12-44.txt"}
             found = [] if kind == "ok" else [
                 {"id": "permissao", "causa": "Um arquivo do port está sem permissão para rodar (comum depois de "
                                              "copiar pelo PC).", "dica": "Dar permissão de execução aos arquivos do port.",
@@ -4409,7 +4410,8 @@ class App:
             lines = []
             for ln in g.wrap("Regular", 13, m["text"], 380):
                 lines.append(ln)
-            lines = lines[:12]
+            if len(lines) > 12:                   # texto maior que a caixa: corta com reticências
+                lines = lines[:11] + [lines[11].rstrip(".,; ") + "…"]
             img = m.get("image")
             mh = 152 + 19 * len(lines) + (220 if img else 0)
             mx, my, mw = (W - 440) / 2, (H - mh) / 2, 440

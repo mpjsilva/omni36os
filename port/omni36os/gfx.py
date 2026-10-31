@@ -372,6 +372,19 @@ class Gfx:
         for para in s.split("\n"):
             cur = ""
             for word in para.split(" "):
+                # palavra mais larga que a linha (caminho de arquivo, nome sem espaço): quebra
+                # dentro dela, de preferência depois de uma "/"
+                while self.measure(weight, size, word)[0] > width and len(word) > 1:
+                    if cur:
+                        lines.append(cur)
+                        cur = ""
+                    n = len(word) - 1
+                    while n > 1 and self.measure(weight, size, word[:n])[0] > width:
+                        n -= 1
+                    cut = word.rfind("/", 0, n) + 1
+                    n = cut if cut > n // 2 else n
+                    lines.append(word[:n])
+                    word = word[n:]
                 cand = f"{cur} {word}".strip()
                 if cur and self.measure(weight, size, cand)[0] > width:
                     lines.append(cur)

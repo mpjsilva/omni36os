@@ -169,7 +169,7 @@ ports_card2_end() {
 }
 ports_unbind
 
-# Runtimes do PortMaster que o port pede (Mono, Godot, Java...): copia do cartão 2 ou baixa
+# Runtimes do PortMaster que o port pede (Mono, Godot, Java...): baixa da internet
 # antes de abrir. Ports antigos e independentes só montam o arquivo, sem o runtime_check.
 port_deps() {
     case "$1" in

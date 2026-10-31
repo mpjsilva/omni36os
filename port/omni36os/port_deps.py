@@ -3,9 +3,9 @@
 
 Lê o script do port e acha os runtimes (squashfs) que ele cita: o nome direto
 ("mono-6.12.0.122-aarch64.squashfs") ou a variável runtime="frt_3.5.2". Os que
-não estão em /roms/tools/PortMaster/libs vêm do outro cartão (cópia) ou do
-PortMaster na internet (URL e md5 do config/runtimes.json), com a barra de
-progresso do omni_dialog na tela.
+não estão em /roms/tools/PortMaster/libs são baixados do PortMaster (URL e md5
+do config/runtimes.json), com a barra de progresso do omni_dialog na tela. Sem
+internet, o usuário copia o arquivo para essa pasta pelo PC.
 
 Ports antigos (TMNT, jogos em Mono/FNA) só montam o arquivo e não chamam o
 runtime_check do PortMaster; ports de fora do PortMaster fazem o mesmo.
@@ -16,14 +16,12 @@ import hashlib
 import json
 import os
 import re
-import shutil
 import subprocess
 import sys
 import urllib.request
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 LIBS = "/roms/tools/PortMaster/libs"
-OTHER_LIBS = ("/roms2/tools/PortMaster/libs", "/roms2/ports/PortMaster/libs", "/roms/ports/PortMaster/libs")
 RUNTIMES_JSON = "/roms/tools/PortMaster/config/runtimes.json"
 ARCH = "aarch64"
 CHUNK = 1 << 20
@@ -41,18 +39,14 @@ def load_known():
 
 
 def wanted(script, known):
-    """Runtimes citados no script que o PortMaster conhece ou que existem no outro cartão."""
+    """Runtimes citados no script que o PortMaster conhece."""
     try:
         text = open(script, errors="ignore").read()
     except OSError:
         return []
     names = set(NAME_RE.findall(text))
     names |= {n if n.endswith(".squashfs") else n + ".squashfs" for n in VAR_RE.findall(text)}
-    out = []
-    for n in sorted(names):
-        if n in known or any(os.path.isfile(os.path.join(d, n)) for d in OTHER_LIBS):
-            out.append(n)
-    return out
+    return [n for n in sorted(names) if n in known]
 
 
 class Gauge:
@@ -92,18 +86,6 @@ def message(text):
                     "--msgbox", text, "0", "0"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
-def copy_from(src, dest, label, gauge):
-    total = os.path.getsize(src) or 1
-    done = 0
-    tmp = dest + ".part"
-    with open(src, "rb") as fi, open(tmp, "wb") as fo:
-        for data in iter(lambda: fi.read(CHUNK), b""):
-            fo.write(data)
-            done += len(data)
-            gauge.set(done * 100 // total, f"Copiando {label} do cartão 2\n{done >> 20} de {total >> 20} MB")
-    os.replace(tmp, dest)
-
-
 def download(info, dest, label, gauge):
     tmp = dest + ".part"
     md5 = hashlib.md5()
@@ -134,13 +116,8 @@ def main(script):
         dest = os.path.join(LIBS, n)
         label = known.get(n, {}).get("name") or n[:-len(".squashfs")]
         try:
-            src = next((os.path.join(d, n) for d in OTHER_LIBS if os.path.isfile(os.path.join(d, n))), None)
             info = known.get(n, {}).get("remote", {}).get(ARCH)
-            if src:
-                if shutil.disk_usage(LIBS).free < os.path.getsize(src) + (64 << 20):
-                    raise OSError("sem espaço no cartão 1")
-                copy_from(src, dest, label, gauge)
-            elif info:
+            if info:
                 download(info, dest, label, gauge)
             else:
                 raise LookupError("não existe para este aparelho")
@@ -152,8 +129,9 @@ def main(script):
             falhas.append(f"{label}: {e}")
     gauge.close()
     if falhas:
-        message("Não deu para instalar:\n" + "\n".join(falhas) +
-                "\n\nConecte o Wi-Fi e abra o jogo de novo.")
+        message("Não deu para baixar:\n" + "\n".join(falhas) +
+                "\n\nConecte o Wi-Fi e abra o jogo de novo, ou copie o arquivo pelo PC para "
+                "tools/PortMaster/libs no cartão do sistema.")
         return 1
     return 0
 
