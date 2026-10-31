@@ -118,6 +118,9 @@ sudo imagem/gerar-imagem.sh        # -> ~/Apps/Omni36OS/output/Omni36OS-<VERSION
   sem `runtime_check`. O `port_deps.py` roda antes de cada port (launch-direct.sh: Jogos e Testar ports), acha os
   runtimes citados no `.sh` e baixa os que faltam (URL/md5 do `config/runtimes.json`). Não copia do cartão 2
   (decisão do usuário: nem todos têm dois cartões); sem internet, o usuário copia para `tools/PortMaster/libs` pelo PC.
+- HUD (FPS/captura/limite) tem duas versões, as duas no LD_PRELOAD: `hud/omni_hud.so` (aarch64) e `hud/omni_hud32.so`
+  (armhf: Asphalt e outros jogos 32 bits). armhf: `podman run --rm -v "$PWD":/w:Z debian:trixie` + `gcc-arm-linux-gnueabihf`,
+  `arm-linux-gnueabihf-gcc -O2 -fPIC -shared -nostdlib -o omni_hud32.so omni_hud.c`.
 - Adaptador Realtek liga como disco (`0bda:1a2b`) e o udev troca para Wi-Fi (`0bda:c820`); a troca às vezes se perde
   → `omni_sistema.wifi_dongle_fix()` ao abrir o menu. O driver deixa a interface "up" sem rede: conectado = carrier + IPv4.
 - Bluetooth do adaptador (hci0) não funciona: firmware não carrega (btusb e rtk_btusb disputam); serviço desligado.

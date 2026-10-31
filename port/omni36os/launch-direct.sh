@@ -80,10 +80,13 @@ port_end() {
 }
 
 # Contador de FPS, limite e captura de tela (Controles > Atalhos): o hud/omni_hud.so entra nos
-# ports por LD_PRELOAD. Com os três desligados, o port roda sem ele.
+# ports por LD_PRELOAD. Com os três desligados, o port roda sem ele. Vão as duas versões: a de
+# 64 bits e a omni_hud32.so (jogos armhf, como Asphalt 7); cada processo carrega a sua e o
+# ld.so ignora a outra ("wrong ELF class", só um aviso no log).
 hud_preload() {
     local lib="$OMNI_DIR/hud/omni_hud.so"
     [ -f "$lib" ] || return
+    [ -f "$OMNI_DIR/hud/omni_hud32.so" ] && lib="$lib:$OMNI_DIR/hud/omni_hud32.so"
     python3 -c 'import sys; sys.path.insert(0, sys.argv[1]); import omni; c = omni.get_atalhos()
 sys.exit(0 if c["fps"] or c["captura"] or c["limite"] else 1)' "$OMNI_DIR" 2>/dev/null || return
     echo "$lib${LD_PRELOAD:+:$LD_PRELOAD}"

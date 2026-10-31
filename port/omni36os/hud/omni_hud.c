@@ -52,7 +52,7 @@ static dlsym_fn real_dlsym;
 static void *rdlsym(void *h, const char *n)
 {
     if (!real_dlsym) {
-        static const char *vers[] = {"GLIBC_2.34", "GLIBC_2.17", "GLIBC_2.2.5", 0};
+        static const char *vers[] = {"GLIBC_2.34", "GLIBC_2.17", "GLIBC_2.4", "GLIBC_2.2.5", 0};   /* 2.17: aarch64, 2.4: armhf */
         for (int i = 0; vers[i] && !real_dlsym; i++)
             real_dlsym = (dlsym_fn)dlvsym(RTLD_NEXT, "dlsym", vers[i]);
         if (!real_dlsym)
