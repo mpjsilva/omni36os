@@ -224,6 +224,18 @@ def swapped_ab():
 
 # --- dados (reais ou de mentira) ---
 
+def ipv4(iface):
+    """IPv4 da interface (ou "") sem chamar programa: um ioctl SIOCGIFADDR."""
+    import fcntl
+    import socket
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sk:
+            raw = fcntl.ioctl(sk.fileno(), 0x8915, struct.pack("256s", iface[:15].encode()))
+        return socket.inet_ntoa(raw[20:24])
+    except OSError:
+        return ""
+
+
 def wifi_state():
     """Wi-Fi da pílula, só com leituras do /sys e do /proc (rápidas, a cada 5 s): o adaptador (qualquer
     interface sem fio, não só wlan0), se está conectado e a força do sinal (0 a 100)."""
@@ -234,7 +246,10 @@ def wifi_state():
     for rf in glob.glob(f"/sys/class/net/{iface}/phy80211/rfkill*"):   # rádio desligado (Ligar o Wi-Fi)
         if "1" in (omni.read_text(f"{rf}/soft", "0"), omni.read_text(f"{rf}/hard", "0")):
             return {"wifi": False, "conectado": False, "sinal": 0}
-    up = omni.read_text(f"/sys/class/net/{iface}/operstate") == "up"
+    # conectado = associado a uma rede E com IPv4: o driver da Realtek (rtl8821cu) deixa a interface
+    # "up" mesmo sem rede, e o operstate sozinho fazia a pílula mostrar conexão que não existe
+    up = omni.read_text(f"/sys/class/net/{iface}/operstate") == "up" and \
+        omni.read_text(f"/sys/class/net/{iface}/carrier", "0") == "1" and bool(ipv4(iface))
     sinal = 0
     for ln in omni.read_text("/proc/net/wireless", "").splitlines():
         if ln.strip().startswith(iface + ":"):
@@ -4608,6 +4623,10 @@ class App:
             print(f"menu na tela {time.clock_gettime(time.CLOCK_BOOTTIME):.1f} s após ligar", file=sys.stderr, flush=True)
             if not FAKE:                  # o menu abriu: uma atualização recente está aprovada
                 omni_update.confirm_ok()
+                # adaptador de Wi-Fi preso no modo disco: religa sem ninguém perceber (avisa só se agiu)
+                threading.Thread(target=lambda: (lambda r: r and setattr(
+                    self, "toast", (r, "aviso" if r.startswith("Erro") else "ok", self.t + 5)))(
+                    omni_sistema.wifi_dongle_fix()), daemon=True).start()
                 if os.path.exists(omni_sistema.USBNET_PENDING):   # saiu do pendrive para ligar a rede USB
                     self.worker(omni_sistema.usbnet_pending,
                                 lambda res: res and not isinstance(res, Exception) and setattr(

@@ -324,6 +324,38 @@ def reset_custom():
     return "Sistema zerado."
 
 
+# --- adaptador de Wi-Fi Realtek: às vezes fica preso no modo "disco" ---
+# Ele liga como um pendrive virtual (0bda:1a2b, com o driver para Windows) e a regra do udev manda o
+# usb_modeswitch virar para placa de Wi-Fi (0bda:c820). Essa troca acontece no meio da subida da
+# porta USB e às vezes se perde: o adaptador fica como "DISK" e o Wi-Fi não aparece.
+
+REALTEK_DISK = ("0bda", "1a2b")
+
+
+def wifi_dongle_stuck():
+    for d in glob.glob("/sys/bus/usb/devices/*/idVendor"):
+        base = os.path.dirname(d)
+        if (omni.read_text(d, "").strip(), omni.read_text(f"{base}/idProduct", "").strip()) == REALTEK_DISK:
+            return True
+    return False
+
+
+def wifi_dongle_fix():
+    """Se o adaptador ficou no modo disco, refaz a troca (o mesmo comando da regra do udev).
+    Devolve uma mensagem só quando precisou agir."""
+    if not wifi_dongle_stuck():
+        return ""
+    time.sleep(3)                    # a troca do udev pode estar acontecendo agora: dá um tempo
+    if not wifi_dongle_stuck():
+        return ""
+    sh("usb_modeswitch", "-K", "-v", REALTEK_DISK[0], "-p", REALTEK_DISK[1], timeout=15)
+    for _ in range(20):
+        time.sleep(0.5)
+        if not wifi_dongle_stuck():
+            return "O adaptador de Wi-Fi demorou a acordar e foi religado."
+    return "Erro: o adaptador de Wi-Fi ficou no modo disco. Tire e ponha de novo na porta USB."
+
+
 # --- rede pelo cabo USB (g_ether) ---
 
 USBNET_PID, USBNET_LEASES = "/tmp/dnsmasq-usbnet.pid", "/tmp/usbnet.leases"

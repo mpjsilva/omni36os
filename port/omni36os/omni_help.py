@@ -4,6 +4,10 @@ Linhas que começam com "# " viram títulos no leitor."""
 
 # A versão em uso vem do arquivo VERSION. Aqui fica só ela; o histórico completo está no NOVIDADES.md.
 NOVIDADES = [
+    ("1.15.12", "30/10/2026", [
+        'Pílula de estado: o Wi-Fi só aparece conectado com rede e IP de verdade (o adaptador Realtek dizia "ligado" mesmo sem rede).',
+        'Adaptador de Wi-Fi Realtek preso no modo "disco" depois do boot (às vezes a troca para placa de Wi-Fi se perde): o Omni36OS percebe e religa sozinho.',
+    ]),
     ("1.15.11", "30/10/2026", [
         'Ports do cartão 2 abrem mesmo sem a pasta do jogo no cartão 1: enquanto um deles roda, /roms/ports mostra a pasta ports do cartão 2 (os scripts do PortMaster procuram o jogo lá).',
     ]),
