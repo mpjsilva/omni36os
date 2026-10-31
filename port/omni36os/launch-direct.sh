@@ -142,20 +142,32 @@ mount_card2
 # isso, enquanto um port do cartão 2 roda, /roms/ports mostra a pasta ports do cartão 2 (bind), e
 # volta ao normal quando ele fecha. Uma sobra (o launcher caiu no meio de um jogo) é desfeita aqui.
 PORTS_BOUND=""
+# Desfaz o bind mesmo com sobra do jogo segurando arquivo (processo que não fechou): tenta de novo
+# e, se ainda falhar, solta com -l (some na hora para quem abrir depois). Um bind esquecido esconde
+# os ports do cartão 1 e duplica os do cartão 2 na biblioteca com "ambos".
+ports_unbind() {
+    mountpoint -q /roms/ports || return 0
+    for _ in 1 2 3; do
+        sudo umount /roms/ports 2>/dev/null && return 0
+        sleep 0.5
+    done
+    sudo umount -l /roms/ports 2>/dev/null
+}
 ports_card2_begin() {
+    ports_unbind                         # sobra de um jogo anterior: cada port começa do zero
     case "$1" in
         /roms2/ports/*)
-            if [ -d /roms2/ports ] && ! mountpoint -q /roms/ports; then
+            if [ -d /roms2/ports ]; then
                 sudo mkdir -p /roms/ports
                 sudo mount --bind /roms2/ports /roms/ports && PORTS_BOUND=1
             fi ;;
     esac
 }
 ports_card2_end() {
-    [ -n "$PORTS_BOUND" ] && sudo umount /roms/ports 2>/dev/null
+    [ -n "$PORTS_BOUND" ] && ports_unbind
     PORTS_BOUND=""
 }
-mountpoint -q /roms/ports && sudo umount /roms/ports 2>/dev/null
+ports_unbind
 
 # Runtimes do PortMaster que o port pede (Mono, Godot, Java...): copia do cartão 2 ou baixa
 # antes de abrir. Ports antigos e independentes só montam o arquivo, sem o runtime_check.
@@ -244,6 +256,7 @@ while true; do
                 sudo python3 -c 'import sys; sys.path.insert(0, sys.argv[1]); import ports
 ports.record_port_played(sys.argv[2])' "$OMNI_DIR" "$port_path" 2>/dev/null || true
 
+                ports_unbind                     # pasta de port: sempre a do próprio cartão
                 # Num subshell: o control.txt e o cd do port não vazam para o próximo
                 (
                 cd "$port_path" || exit
